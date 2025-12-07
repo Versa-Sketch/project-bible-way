@@ -16,7 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from bible_way.views import *
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("user/signup", signup_view),
+    path("user/login", login_view),
+    path("user/google/signup", google_signup_view),
+    path("user/google/login", google_login_view),
+    path("user/profile/me", get_current_user_profile_view),
+    path("user/profile/<str:user_name>", get_user_profile_view),
+    path("user/follow", follow_user_view),
 ]

@@ -20,6 +20,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ('is_staff', 'is_active', 'country', 'preferred_language')
     search_fields = ('user_name', 'email', 'country')
     ordering = ('user_name',)
+    readonly_fields = ('user_id',)
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Additional Info', {'fields': ('user_id', 'user_name', 'country', 'age', 'preferred_language')}),
     )
