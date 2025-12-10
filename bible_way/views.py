@@ -13,8 +13,12 @@ from bible_way.presenters.google_auth_response import GoogleAuthResponse
 from bible_way.interactors.user_profile_interactor import UserProfileInteractor
 from bible_way.interactors.current_user_profile_interactor import CurrentUserProfileInteractor
 from bible_way.interactors.follow_user_interactor import FollowUserInteractor
+from bible_way.interactors.unfollow_user_interactor import UnfollowUserInteractor
+from bible_way.interactors.create_post_interactor import CreatePostInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
 from bible_way.presenters.follow_user_response import FollowUserResponse
+from bible_way.presenters.unfollow_user_response import UnfollowUserResponse
+from bible_way.presenters.create_post_response import CreatePostResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 
@@ -98,4 +102,39 @@ def follow_user_view(request):
     
     response = FollowUserInteractor(storage=UserDB(), response=FollowUserResponse()).\
         follow_user_interactor(follower_id=follower_id, followed_id=followed_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def unfollow_user_view(request):
+    follower_id = str(request.user.user_id)
+    followed_id = request.data.get('followed_id')
+    
+    if not followed_id:
+        return UnfollowUserResponse().user_not_found_response()
+    
+    response = UnfollowUserInteractor(storage=UserDB(), response=UnfollowUserResponse()).\
+        unfollow_user_interactor(follower_id=follower_id, followed_id=followed_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_post_view(request):
+    user_id = str(request.user.user_id)
+    title = request.data.get('title', '')
+    description = request.data.get('description', '')
+    
+    # Get media URLs from request body (can be list or single value)
+    media = request.data.get('media', [])
+    if isinstance(media, str):
+        media_urls = [media]
+    elif isinstance(media, list):
+        media_urls = media
+    else:
+        media_urls = []
+    
+    response = CreatePostInteractor(storage=UserDB(), response=CreatePostResponse()).\
+        create_post_interactor(user_id=user_id, title=title, description=description, media_urls=media_urls)
     return response

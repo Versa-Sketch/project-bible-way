@@ -27,4 +27,6 @@ urlpatterns = [
     path("user/profile/me", get_current_user_profile_view),
     path("user/profile/<str:user_name>", get_user_profile_view),
     path("user/follow", follow_user_view),
+    path("user/unfollow", unfollow_user_view),
+    path("post/create", create_post_view),
 ]
