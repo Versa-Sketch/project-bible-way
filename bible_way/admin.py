@@ -3,10 +3,22 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User,
     UserFollowers,
+    Post,
+    Media,
+    Comment,
+    Reaction,
+    Share,
+    Promotion,
+    PrayerRequest,
     Category,
     Language,
     AgeGroup,
     Module,
+    Book,
+    BookContent,
+    ReadingProgress,
+    ReadingNote,
+    Highlight,
     Conversation,
     ConversationMember,
     Message,
@@ -106,3 +118,120 @@ class MessageReadReceiptAdmin(admin.ModelAdmin):
     search_fields = ('message__text', 'user__user_name')
     readonly_fields = ('read_at',)
     raw_id_fields = ('message', 'user')
+
+
+@admin.register(Post)
+class PostAdmin(admin.ModelAdmin):
+    list_display = ('post_id', 'user', 'title', 'created_at', 'updated_at')
+    list_filter = ('created_at', 'updated_at')
+    search_fields = ('title', 'description', 'user__user_name', 'user__email')
+    readonly_fields = ('post_id', 'created_at', 'updated_at')
+    raw_id_fields = ('user',)
+    date_hierarchy = 'created_at'
+
+
+@admin.register(Media)
+class MediaAdmin(admin.ModelAdmin):
+    list_display = ('media_id', 'post', 'media_type', 'url', 'created_at')
+    list_filter = ('media_type', 'created_at')
+    search_fields = ('post__title', 'url')
+    readonly_fields = ('media_id', 'created_at')
+    raw_id_fields = ('post',)
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('comment_id', 'post', 'user', 'description_preview', 'created_at', 'updated_at')
+    list_filter = ('created_at', 'updated_at')
+    search_fields = ('description', 'user__user_name', 'post__title')
+    readonly_fields = ('comment_id', 'created_at', 'updated_at')
+    raw_id_fields = ('post', 'user')
+    
+    def description_preview(self, obj):
+        return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
+    description_preview.short_description = 'Description Preview'
+
+
+@admin.register(Reaction)
+class ReactionAdmin(admin.ModelAdmin):
+    list_display = ('reaction_id', 'user', 'reaction_type', 'post', 'comment', 'created_at')
+    list_filter = ('reaction_type', 'created_at')
+    search_fields = ('user__user_name', 'post__title')
+    readonly_fields = ('reaction_id', 'created_at')
+    raw_id_fields = ('user', 'post', 'comment')
+
+
+@admin.register(Share)
+class ShareAdmin(admin.ModelAdmin):
+    list_display = ('share_id', 'post', 'shared_by', 'shared_to', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('post__title', 'shared_by__user_name', 'shared_to__user_name', 'message')
+    readonly_fields = ('share_id', 'created_at')
+    raw_id_fields = ('post', 'shared_by', 'shared_to')
+
+
+@admin.register(Promotion)
+class PromotionAdmin(admin.ModelAdmin):
+    list_display = ('promotion_id', 'title', 'price', 'redirect_link', 'created_at', 'updated_at')
+    list_filter = ('created_at', 'updated_at')
+    search_fields = ('title', 'description', 'redirect_link')
+    readonly_fields = ('promotion_id', 'created_at', 'updated_at')
+    raw_id_fields = ('media',)
+
+
+@admin.register(PrayerRequest)
+class PrayerRequestAdmin(admin.ModelAdmin):
+    list_display = ('prayer_request_id', 'user', 'title', 'is_answered', 'created_at', 'updated_at')
+    list_filter = ('is_answered', 'created_at', 'updated_at')
+    search_fields = ('title', 'description', 'user__user_name')
+    readonly_fields = ('prayer_request_id', 'created_at', 'updated_at')
+    raw_id_fields = ('user',)
+
+
+@admin.register(Book)
+class BookAdmin(admin.ModelAdmin):
+    list_display = ('book_id', 'title', 'category', 'age_group', 'language', 'author', 'book_order', 'created_at')
+    list_filter = ('category', 'age_group', 'language', 'created_at')
+    search_fields = ('title', 'description', 'author')
+    readonly_fields = ('book_id', 'created_at', 'updated_at')
+    raw_id_fields = ('category', 'age_group', 'language')
+
+
+@admin.register(BookContent)
+class BookContentAdmin(admin.ModelAdmin):
+    list_display = ('book_content_id', 'book', 'chapter_number', 'chapter_title', 'content_order', 'created_at')
+    list_filter = ('created_at', 'updated_at')
+    search_fields = ('chapter_title', 'content', 'book__title')
+    readonly_fields = ('book_content_id', 'created_at', 'updated_at')
+    raw_id_fields = ('book',)
+
+
+@admin.register(ReadingProgress)
+class ReadingProgressAdmin(admin.ModelAdmin):
+    list_display = ('reading_progress_id', 'user', 'book', 'progress_percentage', 'last_read_at', 'updated_at')
+    list_filter = ('last_read_at', 'updated_at')
+    search_fields = ('user__user_name', 'book__title')
+    readonly_fields = ('reading_progress_id', 'created_at', 'updated_at')
+    raw_id_fields = ('user', 'book', 'book_content')
+
+
+@admin.register(ReadingNote)
+class ReadingNoteAdmin(admin.ModelAdmin):
+    list_display = ('note_id', 'user', 'book', 'book_content', 'note_preview', 'created_at', 'updated_at')
+    list_filter = ('created_at', 'updated_at')
+    search_fields = ('note_text', 'user__user_name', 'book__title')
+    readonly_fields = ('note_id', 'created_at', 'updated_at')
+    raw_id_fields = ('user', 'book', 'book_content')
+    
+    def note_preview(self, obj):
+        return obj.note_text[:50] + '...' if len(obj.note_text) > 50 else obj.note_text
+    note_preview.short_description = 'Note Preview'
+
+
+@admin.register(Highlight)
+class HighlightAdmin(admin.ModelAdmin):
+    list_display = ('highlight_id', 'user', 'book', 'book_content', 'color', 'created_at', 'updated_at')
+    list_filter = ('color', 'created_at', 'updated_at')
+    search_fields = ('highlighted_text', 'user__user_name', 'book__title')
+    readonly_fields = ('highlight_id', 'created_at', 'updated_at')
+    raw_id_fields = ('user', 'book', 'book_content')

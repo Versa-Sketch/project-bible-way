@@ -50,7 +50,6 @@ class ConversationMember(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
     left_at = models.DateTimeField(null=True, blank=True)
 
-    # For quick unread counts etc.
     last_read_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -73,10 +72,8 @@ class Message(models.Model):
     )
 
     text = models.TextField(blank=True)
-    # you can handle multiple attachments with a separate model if needed
     file = models.FileField(upload_to="chat/files/", blank=True, null=True)
 
-    # reply threading
     reply_to = models.ForeignKey(
         "self",
         null=True,

@@ -1,12 +1,8 @@
 from django.contrib.auth.hashers import make_password, check_password
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-from django.conf import settings
 import uuid
 import os
-import requests
-from urllib.parse import urlparse
-from bible_way.models import User, UserFollowers, Post, Media
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction
+from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
 class UserDB:
@@ -29,8 +25,8 @@ class UserDB:
         hashed_password = make_password(password)
         
         user = User.objects.create(
-            username=username,      # Required by Django's AbstractUser (inherited field)
-            user_name=user_name,    # Our custom field defined in User model
+            username=username,
+            user_name=user_name,
             email=email,
             country=country,
             age=age,
@@ -139,99 +135,35 @@ class UserDB:
         )
         return post
     
-    def _determine_media_type(self, file) -> str:
-        """Determine if file is image or video based on extension"""
-        filename = file.name.lower()
+    def _determine_media_type_from_filename(self, filename_or_url: str) -> str:
+        """Determine if filename/URL is image or video based on extension"""
+        path_lower = filename_or_url.lower()
         image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
         video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v']
         
-        file_ext = os.path.splitext(filename)[1]
+        path = path_lower.split('?')[0]
+        file_ext = os.path.splitext(path)[1]
         
         if file_ext in image_extensions:
             return Media.IMAGE
         elif file_ext in video_extensions:
             return Media.VIDEO
         else:
-            # Default to image if unknown
-            return Media.IMAGE
-    
-    def _determine_media_type_from_url(self, url: str) -> str:
-        """Determine if URL is image or video based on extension"""
-        url_lower = url.lower()
-        image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
-        video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v']
-        
-        # Extract extension from URL (before query parameters)
-        url_path = url_lower.split('?')[0]
-        file_ext = os.path.splitext(url_path)[1]
-        
-        if file_ext in image_extensions:
-            return Media.IMAGE
-        elif file_ext in video_extensions:
-            return Media.VIDEO
-        else:
-            # Default to image if unknown
             return Media.IMAGE
     
     def _generate_s3_key(self, user_id: str, post_id: str, filename: str) -> str:
         """Generate S3 key path: bible_way/user/post/{user_id}/{post_id}/{filename}"""
-        # Clean filename to avoid issues
         safe_filename = os.path.basename(filename)
         return f"bible_way/user/post/{user_id}/{post_id}/{safe_filename}"
     
-    def upload_media_to_s3(self, post: Post, media_file, user_id: str) -> str:
+    def upload_file_to_s3(self, post: Post, media_file, user_id: str) -> str:
         """Upload media file to S3 and return the URL"""
         try:
-            # Generate S3 key
             s3_key = self._generate_s3_key(str(user_id), str(post.post_id), media_file.name)
             
-            # Upload to S3 using default storage (configured in settings)
-            file_name = default_storage.save(s3_key, media_file)
-            
-            # Get the URL from storage
-            file_url = default_storage.url(file_name)
-            
-            return file_url
-        except Exception as e:
-            raise Exception(f"Failed to upload file to S3: {str(e)}")
-    
-    def download_and_upload_to_s3(self, post: Post, media_url: str, user_id: str) -> str:
-        """Download file from URL and upload to S3, return S3 URL"""
-        try:
-            # Download file from URL
-            response = requests.get(media_url, timeout=30, stream=True)
-            response.raise_for_status()
-            
-            # Get filename from URL or generate one
-            parsed_url = urlparse(media_url)
-            filename = os.path.basename(parsed_url.path)
-            
-            # If no filename in URL, generate one based on content type
-            if not filename or '.' not in filename:
-                content_type = response.headers.get('content-type', '')
-                if 'image' in content_type:
-                    filename = f"image_{uuid.uuid4().hex[:8]}.jpg"
-                elif 'video' in content_type:
-                    filename = f"video_{uuid.uuid4().hex[:8]}.mp4"
-                else:
-                    filename = f"file_{uuid.uuid4().hex[:8]}"
-            
-            # Generate S3 key
-            s3_key = self._generate_s3_key(str(user_id), str(post.post_id), filename)
-            
-            # Create ContentFile from downloaded content
-            file_content = ContentFile(response.content)
-            file_content.name = filename
-            
-            # Upload to S3
-            file_name = default_storage.save(s3_key, file_content)
-            
-            # Get the S3 URL
-            s3_url = default_storage.url(file_name)
+            s3_url = s3_upload_file(media_file, s3_key)
             
             return s3_url
-        except requests.RequestException as e:
-            raise Exception(f"Failed to download file from URL: {str(e)}")
         except Exception as e:
             raise Exception(f"Failed to upload file to S3: {str(e)}")
     
@@ -243,3 +175,216 @@ class UserDB:
             url=s3_url
         )
         return media
+    
+    def get_post_by_id(self, post_id: str) -> Post | None:
+        """Get post by post_id"""
+        try:
+            post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
+            return Post.objects.get(post_id=post_uuid)
+        except Post.DoesNotExist:
+            return None
+        except (ValueError, TypeError):
+            return None
+    
+    def update_post(self, post_id: str, user_id: str, title: str = None, description: str = None) -> Post:
+        """Update post - only owner can update"""
+        post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            post = Post.objects.get(post_id=post_uuid)
+        except Post.DoesNotExist:
+            raise Exception("Post not found")
+        
+        if post.user.user_id != user_uuid:
+            raise Exception("You are not authorized to update this post")
+        
+        if title is not None:
+            post.title = title.strip() if title else ''
+        if description is not None:
+            post.description = description.strip() if description else ''
+        
+        post.save()
+        return post
+    
+    def delete_post(self, post_id: str, user_id: str) -> bool:
+        """Delete post - only owner can delete"""
+        post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            post = Post.objects.get(post_id=post_uuid)
+        except Post.DoesNotExist:
+            raise Exception("Post not found")
+        
+        if post.user.user_id != user_uuid:
+            raise Exception("You are not authorized to delete this post")
+        
+        post.delete()
+        return True
+    
+    def create_comment(self, post_id: str, user_id: str, description: str) -> Comment:
+        """Create a comment on a post"""
+        post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        post = Post.objects.get(post_id=post_uuid)
+        user = User.objects.get(user_id=user_uuid)
+        
+        comment = Comment.objects.create(
+            post=post,
+            user=user,
+            description=description.strip()
+        )
+        return comment
+    
+    def get_comments_by_post(self, post_id: str) -> list:
+        """Get all comments for a post"""
+        post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
+        
+        try:
+            Post.objects.get(post_id=post_uuid)
+        except Post.DoesNotExist:
+            raise Exception("Post not found")
+        
+        comments = Comment.objects.filter(post_id=post_uuid).order_by('-created_at')
+        return list(comments)
+    
+    def get_comment_by_id(self, comment_id: str) -> Comment | None:
+        """Get comment by comment_id"""
+        try:
+            comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
+            return Comment.objects.get(comment_id=comment_uuid)
+        except Comment.DoesNotExist:
+            return None
+        except (ValueError, TypeError):
+            return None
+    
+    def update_comment(self, comment_id: str, user_id: str, description: str) -> Comment:
+        """Update comment - only owner can update"""
+        comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            comment = Comment.objects.get(comment_id=comment_uuid)
+        except Comment.DoesNotExist:
+            raise Exception("Comment not found")
+        
+        if comment.user.user_id != user_uuid:
+            raise Exception("You are not authorized to update this comment")
+        
+        comment.description = description.strip()
+        comment.save()
+        return comment
+    
+    def delete_comment(self, comment_id: str, user_id: str) -> bool:
+        """Delete comment - only owner can delete"""
+        comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            comment = Comment.objects.get(comment_id=comment_uuid)
+        except Comment.DoesNotExist:
+            raise Exception("Comment not found")
+        
+        if comment.user.user_id != user_uuid:
+            raise Exception("You are not authorized to delete this comment")
+        
+        comment.delete()
+        return True
+    
+    def check_reaction_exists(self, user_id: str, post_id: str = None, comment_id: str = None) -> Reaction | None:
+        """Check if a reaction already exists for user on post or comment"""
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            if post_id:
+                post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
+                return Reaction.objects.get(user__user_id=user_uuid, post__post_id=post_uuid)
+            elif comment_id:
+                comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
+                return Reaction.objects.get(user__user_id=user_uuid, comment__comment_id=comment_uuid)
+        except Reaction.DoesNotExist:
+            return None
+        except (ValueError, TypeError):
+            return None
+    
+    def like_post(self, post_id: str, user_id: str) -> Reaction:
+        """Like a post - create reaction"""
+        post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            post = Post.objects.get(post_id=post_uuid)
+        except Post.DoesNotExist:
+            raise Exception("Post not found")
+        
+        existing_reaction = self.check_reaction_exists(user_id, post_id=post_id)
+        if existing_reaction:
+            raise Exception("You have already liked this post")
+        
+        user = User.objects.get(user_id=user_uuid)
+        reaction = Reaction.objects.create(
+            user=user,
+            post=post,
+            reaction_type=Reaction.LIKE
+        )
+        return reaction
+    
+    def unlike_post(self, post_id: str, user_id: str) -> bool:
+        """Unlike a post - delete reaction"""
+        post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            post = Post.objects.get(post_id=post_uuid)
+        except Post.DoesNotExist:
+            raise Exception("Post not found")
+        
+        try:
+            reaction = Reaction.objects.get(user__user_id=user_uuid, post__post_id=post_uuid)
+        except Reaction.DoesNotExist:
+            raise Exception("You have not liked this post")
+        
+        reaction.delete()
+        return True
+    
+    def like_comment(self, comment_id: str, user_id: str) -> Reaction:
+        """Like a comment - create reaction"""
+        comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            comment = Comment.objects.get(comment_id=comment_uuid)
+        except Comment.DoesNotExist:
+            raise Exception("Comment not found")
+        
+        existing_reaction = self.check_reaction_exists(user_id, comment_id=comment_id)
+        if existing_reaction:
+            raise Exception("You have already liked this comment")
+        
+        user = User.objects.get(user_id=user_uuid)
+        reaction = Reaction.objects.create(
+            user=user,
+            comment=comment,
+            reaction_type=Reaction.LIKE
+        )
+        return reaction
+    
+    def unlike_comment(self, comment_id: str, user_id: str) -> bool:
+        """Unlike a comment - delete reaction"""
+        comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            comment = Comment.objects.get(comment_id=comment_uuid)
+        except Comment.DoesNotExist:
+            raise Exception("Comment not found")
+        
+        try:
+            reaction = Reaction.objects.get(user__user_id=user_uuid, comment__comment_id=comment_uuid)
+        except Reaction.DoesNotExist:
+            raise Exception("You have not liked this comment")
+        
+        reaction.delete()
+        return True

@@ -1,4 +1,3 @@
-# Import all models and choices
 from .user import User, UserFollowers, AuthProviderChoices
 from .social import (
     Post,
@@ -31,18 +30,14 @@ from .chat import (
     ConversationTypeChoices,
 )
 
-# Export all for backward compatibility
 __all__ = [
-    # Choices
     'LanguageChoices',
     'CategoryChoices',
     'AgeGroupChoices',
     'ConversationTypeChoices',
     'AuthProviderChoices',
-    # User models
     'User',
     'UserFollowers',
-    # Social models
     'Post',
     'Media',
     'Comment',
@@ -50,7 +45,6 @@ __all__ = [
     'Share',
     'Promotion',
     'PrayerRequest',
-    # Book/Reading models
     'Category',
     'Language',
     'AgeGroup',
@@ -60,7 +54,6 @@ __all__ = [
     'ReadingProgress',
     'ReadingNote',
     'Highlight',
-    # Chat models
     'Conversation',
     'ConversationMember',
     'Message',

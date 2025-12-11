@@ -15,10 +15,30 @@ from bible_way.interactors.current_user_profile_interactor import CurrentUserPro
 from bible_way.interactors.follow_user_interactor import FollowUserInteractor
 from bible_way.interactors.unfollow_user_interactor import UnfollowUserInteractor
 from bible_way.interactors.create_post_interactor import CreatePostInteractor
+from bible_way.interactors.update_post_interactor import UpdatePostInteractor
+from bible_way.interactors.delete_post_interactor import DeletePostInteractor
+from bible_way.interactors.create_comment_interactor import CreateCommentInteractor
+from bible_way.interactors.get_comments_interactor import GetCommentsInteractor
+from bible_way.interactors.update_comment_interactor import UpdateCommentInteractor
+from bible_way.interactors.delete_comment_interactor import DeleteCommentInteractor
+from bible_way.interactors.like_post_interactor import LikePostInteractor
+from bible_way.interactors.unlike_post_interactor import UnlikePostInteractor
+from bible_way.interactors.like_comment_interactor import LikeCommentInteractor
+from bible_way.interactors.unlike_comment_interactor import UnlikeCommentInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
 from bible_way.presenters.follow_user_response import FollowUserResponse
 from bible_way.presenters.unfollow_user_response import UnfollowUserResponse
 from bible_way.presenters.create_post_response import CreatePostResponse
+from bible_way.presenters.update_post_response import UpdatePostResponse
+from bible_way.presenters.delete_post_response import DeletePostResponse
+from bible_way.presenters.create_comment_response import CreateCommentResponse
+from bible_way.presenters.get_comments_response import GetCommentsResponse
+from bible_way.presenters.update_comment_response import UpdateCommentResponse
+from bible_way.presenters.delete_comment_response import DeleteCommentResponse
+from bible_way.presenters.like_post_response import LikePostResponse
+from bible_way.presenters.unlike_post_response import UnlikePostResponse
+from bible_way.presenters.like_comment_response import LikeCommentResponse
+from bible_way.presenters.unlike_comment_response import UnlikeCommentResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 
@@ -126,15 +146,128 @@ def create_post_view(request):
     title = request.data.get('title', '')
     description = request.data.get('description', '')
     
-    # Get media URLs from request body (can be list or single value)
-    media = request.data.get('media', [])
-    if isinstance(media, str):
-        media_urls = [media]
-    elif isinstance(media, list):
-        media_urls = media
-    else:
-        media_urls = []
+    media_files = request.FILES.getlist('media')
     
     response = CreatePostInteractor(storage=UserDB(), response=CreatePostResponse()).\
-        create_post_interactor(user_id=user_id, title=title, description=description, media_urls=media_urls)
+        create_post_interactor(user_id=user_id, title=title, description=description, media_files=media_files)
+    return response
+
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def update_post_view(request):
+    user_id = str(request.user.user_id)
+    post_id = request.data.get('post_id')
+    title = request.data.get('title')
+    description = request.data.get('description')
+    
+    if not post_id:
+        return UpdatePostResponse().validation_error_response("post_id is required in request body")
+    
+    response = UpdatePostInteractor(storage=UserDB(), response=UpdatePostResponse()).\
+        update_post_interactor(post_id=post_id, user_id=user_id, title=title, description=description)
+    return response
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_post_view(request):
+    user_id = str(request.user.user_id)
+    post_id = request.data.get('post_id')
+    
+    if not post_id:
+        return DeletePostResponse().error_response("post_id is required in request body")
+    
+    response = DeletePostInteractor(storage=UserDB(), response=DeletePostResponse()).\
+        delete_post_interactor(post_id=post_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_comment_view(request):
+    user_id = str(request.user.user_id)
+    post_id = request.data.get('post_id')
+    description = request.data.get('description')
+    
+    response = CreateCommentInteractor(storage=UserDB(), response=CreateCommentResponse()).\
+        create_comment_interactor(post_id=post_id, user_id=user_id, description=description)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([])
+def get_comments_view(request):
+    post_id = request.query_params.get('post_id')
+    user_id = str(request.user.user_id)
+    
+    response = GetCommentsInteractor(storage=UserDB(), response=GetCommentsResponse()).\
+        get_comments_interactor(post_id=post_id, user_id=user_id)
+    return response
+
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def update_comment_view(request):
+    user_id = str(request.user.user_id)
+    comment_id = request.data.get('comment_id')
+    description = request.data.get('description')
+    
+    response = UpdateCommentInteractor(storage=UserDB(), response=UpdateCommentResponse()).\
+        update_comment_interactor(comment_id=comment_id, user_id=user_id, description=description)
+    return response
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_comment_view(request):
+    user_id = str(request.user.user_id)
+    comment_id = request.data.get('comment_id')
+    
+    response = DeleteCommentInteractor(storage=UserDB(), response=DeleteCommentResponse()).\
+        delete_comment_interactor(comment_id=comment_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def like_post_view(request):
+    user_id = str(request.user.user_id)
+    post_id = request.data.get('post_id')
+    
+    response = LikePostInteractor(storage=UserDB(), response=LikePostResponse()).\
+        like_post_interactor(post_id=post_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def unlike_post_view(request):
+    user_id = str(request.user.user_id)
+    post_id = request.data.get('post_id')
+    
+    response = UnlikePostInteractor(storage=UserDB(), response=UnlikePostResponse()).\
+        unlike_post_interactor(post_id=post_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def like_comment_view(request):
+    user_id = str(request.user.user_id)
+    comment_id = request.data.get('comment_id')
+    
+    response = LikeCommentInteractor(storage=UserDB(), response=LikeCommentResponse()).\
+        like_comment_interactor(comment_id=comment_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def unlike_comment_view(request):
+    user_id = str(request.user.user_id)
+    comment_id = request.data.get('comment_id')
+    
+    response = UnlikeCommentInteractor(storage=UserDB(), response=UnlikeCommentResponse()).\
+        unlike_comment_interactor(comment_id=comment_id, user_id=user_id)
     return response
