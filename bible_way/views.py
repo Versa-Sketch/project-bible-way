@@ -72,25 +72,30 @@ def login_view(request):
 @authentication_classes([])
 @permission_classes([])
 def google_signup_view(request):
-    google_id = request.data.get('google_id')
-    email = request.data.get('email')
-    name = request.data.get('name')
+    token = request.data.get('token')
     country = request.data.get('country')
     age = request.data.get('age')
     preferred_language = request.data.get('preferred_language')
-    profile_picture_url = request.data.get('profile_picture_url')
     response = GoogleAuthInteractor(storage=UserDB(), response=GoogleAuthResponse(), authentication=UserAuthentication()).\
-        google_signup_interactor(google_id=google_id, email=email, name=name, country=country, age=age, preferred_language=preferred_language, profile_picture_url=profile_picture_url)
+        google_signup_interactor(
+            token=token, 
+            country=country, 
+            age=age, 
+            preferred_language=preferred_language
+        )
     return response
 
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([])
 def google_login_view(request):
-    google_id = request.data.get('google_id')
-    email = request.data.get('email')
-    response = GoogleLoginInteractor(storage=UserDB(), response=GoogleAuthResponse(), authentication=UserAuthentication()).\
-        google_login_interactor(google_id=google_id, email=email)
+    token = request.data.get('token') 
+    
+    response = GoogleLoginInteractor(
+        storage=UserDB(), 
+        response=GoogleAuthResponse(), 
+        authentication=UserAuthentication()
+    ).google_login_interactor(token=token) # Pass token only
     return response
 
 @api_view(['GET'])

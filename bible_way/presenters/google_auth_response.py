@@ -2,7 +2,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from bible_way.storage.dtos import GoogleSignupResponseDTO, GoogleLoginResponseDTO
 
-
 class GoogleAuthResponse:
     
     @staticmethod
@@ -25,6 +24,17 @@ class GoogleAuthResponse:
                 "error_code": "GOOGLE_SIGNUP_FAILED"
             },
             status=status.HTTP_400_BAD_REQUEST
+        )
+
+    @staticmethod
+    def google_token_verification_failed_response() -> Response:
+        return Response(
+            {
+                "success": False,
+                "error": "Invalid Google Token. Identity could not be verified.",
+                "error_code": "INVALID_GOOGLE_TOKEN"
+            },
+            status=status.HTTP_401_UNAUTHORIZED
         )
     
     @staticmethod
@@ -58,5 +68,13 @@ class GoogleAuthResponse:
             },
             status=status.HTTP_200_OK
         )
-
-
+    @staticmethod
+    def google_auth_failed_response() -> Response:
+        return Response(
+            {
+                "success": False,
+                "error": "Google authentication failed. Please try again.",
+                "error_code": "GOOGLE_AUTH_FAILED"
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )

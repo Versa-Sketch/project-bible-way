@@ -24,13 +24,18 @@ class CreatePostInteractor:
                     if not media_file or not hasattr(media_file, 'name'):
                         return self.response.validation_error_response("Invalid media file provided")
                     
+                    try:
+                        media_type = self.storage.validate_and_get_media_type(media_file)
+                    except Exception as e:
+                        if "Invalid file type" in str(e):
+                            return self.response.invalid_media_type_response()
+                        raise
+                    
                     s3_url = self.storage.upload_file_to_s3(
                         post=post,
                         media_file=media_file,
                         user_id=user_id
                     )
-                    
-                    media_type = self.storage._determine_media_type_from_filename(media_file.name)
                     
                     self.storage.create_media(
                         post=post,
@@ -38,6 +43,8 @@ class CreatePostInteractor:
                         media_type=media_type
                     )
                 except Exception as e:
+                    if "Invalid file type" in str(e):
+                        return self.response.invalid_media_type_response()
                     return self.response.s3_upload_error_response(str(e))
             
             return self.response.post_created_successfully_response(str(post.post_id))

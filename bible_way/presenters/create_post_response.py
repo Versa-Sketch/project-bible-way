@@ -20,7 +20,7 @@ class CreatePostResponse:
         return Response(
             {
                 "success": False,
-                "error": "Invalid media type. Only images and videos are allowed",
+                "error": "Invalid media type. Only images, videos, and audio files are allowed",
                 "error_code": "INVALID_MEDIA_TYPE"
             },
             status=status.HTTP_400_BAD_REQUEST

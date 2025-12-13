@@ -3,7 +3,7 @@ from bible_way.storage import UserDB, GoogleLoginResponseDTO
 from bible_way.presenters.google_auth_response import GoogleAuthResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from rest_framework.response import Response
-
+from firebase_admin import auth
 
 class GoogleLoginInteractor:
     def __init__(self, storage: UserDB, response: GoogleAuthResponse, authentication: UserAuthentication):
@@ -11,7 +11,19 @@ class GoogleLoginInteractor:
         self.response = response
         self.authentication = authentication
     
-    def google_login_interactor(self, google_id: str, email: str) -> Response:
+    def google_login_interactor(self, token: str) -> Response:
+        try:
+            if not token:
+                return self.response.google_token_verification_failed_response()
+                
+            decoded_token = auth.verify_id_token(token)
+            google_id = decoded_token['uid']
+            email = decoded_token['email']
+            
+        except Exception as e:
+            print(f"Token verification failed: {e}")
+            return self.response.google_token_verification_failed_response()
+
         user = self.storage.get_user_by_google_id(google_id)
         if user:
             tokens = self.authentication.create_tokens(user=user)
@@ -39,4 +51,3 @@ class GoogleLoginInteractor:
             return self.response.google_auth_success_response(response_dto=response_dto, message="Login successful")
         
         return self.response.google_user_not_found_response()
-

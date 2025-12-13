@@ -1,6 +1,7 @@
 from django.contrib.auth.hashers import make_password, check_password
 import uuid
 import os
+import magic
 from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
@@ -135,11 +136,39 @@ class UserDB:
         )
         return post
     
+    def validate_and_get_media_type(self, file_obj) -> str:
+        first_bytes = file_obj.read(2048)
+        file_obj.seek(0)
+        
+        mime_type = magic.from_buffer(first_bytes, mime=True)
+        
+        ALLOWED_IMAGES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
+        ALLOWED_VIDEOS = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm']
+        ALLOWED_AUDIO = [
+            'audio/mpeg',
+            'audio/wav',
+            'audio/x-wav',
+            'audio/aac',
+            'audio/ogg',
+            'audio/mp4',
+            'audio/webm',
+            'audio/flac'
+        ]
+        
+        if mime_type in ALLOWED_IMAGES:
+            return Media.IMAGE
+        elif mime_type in ALLOWED_VIDEOS:
+            return Media.VIDEO
+        elif mime_type in ALLOWED_AUDIO:
+            return Media.AUDIO
+        else:
+            raise Exception(f"Invalid file type: {mime_type}. Only images, videos, and audio are allowed.")
+    
     def _determine_media_type_from_filename(self, filename_or_url: str) -> str:
-        """Determine if filename/URL is image or video based on extension"""
         path_lower = filename_or_url.lower()
         image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg']
         video_extensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v']
+        audio_extensions = ['.mp3', '.wav', '.aac', '.ogg', '.m4a', '.flac']
         
         path = path_lower.split('?')[0]
         file_ext = os.path.splitext(path)[1]
@@ -148,16 +177,16 @@ class UserDB:
             return Media.IMAGE
         elif file_ext in video_extensions:
             return Media.VIDEO
+        elif file_ext in audio_extensions:
+            return Media.AUDIO
         else:
             return Media.IMAGE
     
     def _generate_s3_key(self, user_id: str, post_id: str, filename: str) -> str:
-        """Generate S3 key path: bible_way/user/post/{user_id}/{post_id}/{filename}"""
         safe_filename = os.path.basename(filename)
         return f"bible_way/user/post/{user_id}/{post_id}/{safe_filename}"
     
     def upload_file_to_s3(self, post: Post, media_file, user_id: str) -> str:
-        """Upload media file to S3 and return the URL"""
         try:
             s3_key = self._generate_s3_key(str(user_id), str(post.post_id), media_file.name)
             
@@ -168,7 +197,6 @@ class UserDB:
             raise Exception(f"Failed to upload file to S3: {str(e)}")
     
     def create_media(self, post: Post, s3_url: str, media_type: str) -> Media:
-        """Create Media record with S3 URL"""
         media = Media.objects.create(
             post=post,
             media_type=media_type,
@@ -177,7 +205,6 @@ class UserDB:
         return media
     
     def get_post_by_id(self, post_id: str) -> Post | None:
-        """Get post by post_id"""
         try:
             post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
             return Post.objects.get(post_id=post_uuid)
@@ -187,7 +214,6 @@ class UserDB:
             return None
     
     def update_post(self, post_id: str, user_id: str, title: str = None, description: str = None) -> Post:
-        """Update post - only owner can update"""
         post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -208,7 +234,6 @@ class UserDB:
         return post
     
     def delete_post(self, post_id: str, user_id: str) -> bool:
-        """Delete post - only owner can delete"""
         post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -224,7 +249,6 @@ class UserDB:
         return True
     
     def create_comment(self, post_id: str, user_id: str, description: str) -> Comment:
-        """Create a comment on a post"""
         post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -239,7 +263,6 @@ class UserDB:
         return comment
     
     def get_comments_by_post(self, post_id: str) -> list:
-        """Get all comments for a post"""
         post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
         
         try:
@@ -251,7 +274,6 @@ class UserDB:
         return list(comments)
     
     def get_comment_by_id(self, comment_id: str) -> Comment | None:
-        """Get comment by comment_id"""
         try:
             comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
             return Comment.objects.get(comment_id=comment_uuid)
@@ -261,7 +283,6 @@ class UserDB:
             return None
     
     def update_comment(self, comment_id: str, user_id: str, description: str) -> Comment:
-        """Update comment - only owner can update"""
         comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -278,7 +299,6 @@ class UserDB:
         return comment
     
     def delete_comment(self, comment_id: str, user_id: str) -> bool:
-        """Delete comment - only owner can delete"""
         comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -294,7 +314,6 @@ class UserDB:
         return True
     
     def check_reaction_exists(self, user_id: str, post_id: str = None, comment_id: str = None) -> Reaction | None:
-        """Check if a reaction already exists for user on post or comment"""
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
         try:
@@ -310,7 +329,6 @@ class UserDB:
             return None
     
     def like_post(self, post_id: str, user_id: str) -> Reaction:
-        """Like a post - create reaction"""
         post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -332,7 +350,6 @@ class UserDB:
         return reaction
     
     def unlike_post(self, post_id: str, user_id: str) -> bool:
-        """Unlike a post - delete reaction"""
         post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -350,7 +367,6 @@ class UserDB:
         return True
     
     def like_comment(self, comment_id: str, user_id: str) -> Reaction:
-        """Like a comment - create reaction"""
         comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -372,7 +388,6 @@ class UserDB:
         return reaction
     
     def unlike_comment(self, comment_id: str, user_id: str) -> bool:
-        """Unlike a comment - delete reaction"""
         comment_uuid = uuid.UUID(comment_id) if isinstance(comment_id, str) else comment_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         

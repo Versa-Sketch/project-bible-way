@@ -21,9 +21,11 @@ class Post(models.Model):
 class Media(models.Model):
     IMAGE = "image"
     VIDEO = "video"
+    AUDIO = "audio"
     MEDIA_TYPES = [
         (IMAGE, "Image"),
         (VIDEO, "Video"),
+        (AUDIO, "Audio"),
     ]
 
     media_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

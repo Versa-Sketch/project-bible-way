@@ -143,27 +143,37 @@ Authorization: Bearer <access_token>
 **Request Body:**
 ```json
 {
-  "google_id": "string (required)",
-  "email": "string (required)",
-  "name": "string (required)",
+  "token": "string (required)",
   "country": "string (optional)",
   "age": "integer (optional)",
-  "preferred_language": "string (optional)",
-  "profile_picture_url": "string (optional)"
+  "preferred_language": "string (optional)"
 }
 ```
+
+**Note:** The `token` is a Firebase ID token obtained from Google Sign-In on the client side. The server verifies this token and extracts user information (google_id, email, name, profile_picture_url) from the verified token.
 
 **Success Response (201 Created):**
 ```json
 {
   "success": true,
-  "message": "Authentication successful",
+  "message": "Google signup successful",
   "access_token": "string",
   "refresh_token": "string"
 }
 ```
 
+**Note:** If a user with the same Google ID already exists, the response message will be "Login successful" instead of "Google signup successful".
+
 **Error Responses:**
+
+- **401 Unauthorized** - Invalid token:
+```json
+{
+  "success": false,
+  "error": "Invalid Google Token. Identity could not be verified.",
+  "error_code": "INVALID_GOOGLE_TOKEN"
+}
+```
 
 - **400 Bad Request** - Signup failed:
 ```json
@@ -183,22 +193,32 @@ Authorization: Bearer <access_token>
 **Request Body:**
 ```json
 {
-  "google_id": "string (required)",
-  "email": "string (required)"
+  "token": "string (required)"
 }
 ```
+
+**Note:** The `token` is a Firebase ID token obtained from Google Sign-In on the client side. The server verifies this token and extracts user information (google_id, email) from the verified token.
 
 **Success Response (200 OK):**
 ```json
 {
   "success": true,
-  "message": "Authentication successful",
+  "message": "Login successful",
   "access_token": "string",
   "refresh_token": "string"
 }
 ```
 
 **Error Responses:**
+
+- **401 Unauthorized** - Invalid token:
+```json
+{
+  "success": false,
+  "error": "Invalid Google Token. Identity could not be verified.",
+  "error_code": "INVALID_GOOGLE_TOKEN"
+}
+```
 
 - **404 Not Found** - Google user not found:
 ```json
@@ -807,6 +827,7 @@ Authorization: Bearer <access_token>
 | `USER_EMAIL_ALREADY_EXISTS` | Email already registered |
 | `USER_USERNAME_ALREADY_EXISTS` | Username already taken |
 | `PASSWORD_MISMATCH` | Password and confirm password don't match |
+| `INVALID_GOOGLE_TOKEN` | Invalid or unverifiable Google/Firebase ID token |
 | `USER_NOT_FOUND` | User does not exist |
 | `POST_NOT_FOUND` | Post does not exist |
 | `ALREADY_FOLLOWING` | Already following the user |
