@@ -38,27 +38,15 @@ class GoogleAuthResponse:
         )
     
     @staticmethod
-    def google_auth_success_response(response_dto, message: str = "Authentication successful") -> Response:
-        if isinstance(response_dto, GoogleSignupResponseDTO):
-            return Response(
-                {
-                    "success": True,
-                    "message": message,
-                    "access_token": response_dto.access_token,
-                    "refresh_token": response_dto.refresh_token
-                },
-                status=status.HTTP_201_CREATED
-            )
-        elif isinstance(response_dto, GoogleLoginResponseDTO):
-            return Response(
-                {
-                    "success": True,
-                    "message": message,
-                    "access_token": response_dto.access_token,
-                    "refresh_token": response_dto.refresh_token
-                },
-                status=status.HTTP_200_OK
-            )
+    def google_auth_success_response(response_dto, message: str = "Authentication successful", status_code: int = None) -> Response:
+        if status_code is None:
+            if isinstance(response_dto, GoogleSignupResponseDTO):
+                status_code = status.HTTP_201_CREATED
+            elif isinstance(response_dto, GoogleLoginResponseDTO):
+                status_code = status.HTTP_200_OK
+            else:
+                status_code = status.HTTP_200_OK
+        
         return Response(
             {
                 "success": True,
@@ -66,7 +54,18 @@ class GoogleAuthResponse:
                 "access_token": response_dto.access_token,
                 "refresh_token": response_dto.refresh_token
             },
-            status=status.HTTP_200_OK
+            status=status_code
+        )
+    
+    @staticmethod
+    def account_not_found_response() -> Response:
+        return Response(
+            {
+                "success": False,
+                "error": "Account doesn't exist. Please provide age and preferred_language to create an account.",
+                "error_code": "ACCOUNT_NOT_FOUND"
+            },
+            status=status.HTTP_404_NOT_FOUND
         )
     @staticmethod
     def google_auth_failed_response() -> Response:

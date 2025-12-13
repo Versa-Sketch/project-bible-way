@@ -9,7 +9,9 @@ from .models import (
     Reaction,
     Share,
     Promotion,
+    PromotionImage,
     PrayerRequest,
+    Verse,
     Category,
     Language,
     AgeGroup,
@@ -179,13 +181,36 @@ class PromotionAdmin(admin.ModelAdmin):
     raw_id_fields = ('media',)
 
 
+@admin.register(PromotionImage)
+class PromotionImageAdmin(admin.ModelAdmin):
+    list_display = ('promotion_image_id', 'promotion', 'image_type', 'order', 'created_at')
+    list_filter = ('image_type', 'created_at')
+    search_fields = ('promotion__title', 'image_url')
+    readonly_fields = ('promotion_image_id', 'created_at')
+    raw_id_fields = ('promotion',)
+
+
 @admin.register(PrayerRequest)
 class PrayerRequestAdmin(admin.ModelAdmin):
-    list_display = ('prayer_request_id', 'user', 'title', 'is_answered', 'created_at', 'updated_at')
-    list_filter = ('is_answered', 'created_at', 'updated_at')
+    list_display = ('prayer_request_id', 'user', 'title', 'created_at', 'updated_at')
+    list_filter = ('created_at', 'updated_at')
     search_fields = ('title', 'description', 'user__user_name')
     readonly_fields = ('prayer_request_id', 'created_at', 'updated_at')
     raw_id_fields = ('user',)
+
+
+@admin.register(Verse)
+class VerseAdmin(admin.ModelAdmin):
+    list_display = ('verse_id', 'title', 'description_preview', 'created_at', 'updated_at')
+    list_filter = ('created_at',)
+    search_fields = ('title', 'description')
+    readonly_fields = ('verse_id',)
+    
+    def description_preview(self, obj):
+        if obj.description:
+            return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
+        return '-'
+    description_preview.short_description = 'Description Preview'
 
 
 @admin.register(Book)

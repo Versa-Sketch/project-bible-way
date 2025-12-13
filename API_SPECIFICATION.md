@@ -136,70 +136,29 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 1.3 Google Signup
-**Endpoint:** `POST /user/google/signup`  
+### 1.3 Google Authentication
+**Endpoint:** `POST /user/google/authentication`  
 **Authentication:** Not required
 
 **Request Body:**
 ```json
 {
-  "token": "string (required)",
-  "country": "string (optional)",
+  "token": "string (required) - Google/Firebase ID token",
   "age": "integer (optional)",
-  "preferred_language": "string (optional)"
+  "preferred_language": "string (optional)",
+  "country": "string (optional)"
 }
 ```
 
 **Note:** The `token` is a Firebase ID token obtained from Google Sign-In on the client side. The server verifies this token and extracts user information (google_id, email, name, profile_picture_url) from the verified token.
 
-**Success Response (201 Created):**
-```json
-{
-  "success": true,
-  "message": "Google signup successful",
-  "access_token": "string",
-  "refresh_token": "string"
-}
-```
+**Flow:**
+- **If user exists** (by google_id or email): Returns login response (200 OK)
+- **If user doesn't exist**:
+  - If `age` and `preferred_language` are provided: Creates new account and returns signup response (201 Created)
+  - If `age` or `preferred_language` is missing: Returns error "Account doesn't exist" (404 Not Found)
 
-**Note:** If a user with the same Google ID already exists, the response message will be "Login successful" instead of "Google signup successful".
-
-**Error Responses:**
-
-- **401 Unauthorized** - Invalid token:
-```json
-{
-  "success": false,
-  "error": "Invalid Google Token. Identity could not be verified.",
-  "error_code": "INVALID_GOOGLE_TOKEN"
-}
-```
-
-- **400 Bad Request** - Signup failed:
-```json
-{
-  "success": false,
-  "error": "Google signup failed. Please try again.",
-  "error_code": "GOOGLE_SIGNUP_FAILED"
-}
-```
-
----
-
-### 1.4 Google Login
-**Endpoint:** `POST /user/google/login`  
-**Authentication:** Not required
-
-**Request Body:**
-```json
-{
-  "token": "string (required)"
-}
-```
-
-**Note:** The `token` is a Firebase ID token obtained from Google Sign-In on the client side. The server verifies this token and extracts user information (google_id, email) from the verified token.
-
-**Success Response (200 OK):**
+**Success Response (200 OK) - Login:**
 ```json
 {
   "success": true,
@@ -209,6 +168,16 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**Success Response (201 Created) - Signup:**
+```json
+{
+  "success": true,
+  "message": "Google signup successful",
+  "access_token": "string",
+  "refresh_token": "string"
+}
+```
+
 **Error Responses:**
 
 - **401 Unauthorized** - Invalid token:
@@ -220,12 +189,12 @@ Authorization: Bearer <access_token>
 }
 ```
 
-- **404 Not Found** - Google user not found:
+- **404 Not Found** - Account doesn't exist (missing age/preferred_language):
 ```json
 {
   "success": false,
-  "error": "Google account not found. Please sign up first.",
-  "error_code": "GOOGLE_USER_NOT_FOUND"
+  "error": "Account doesn't exist. Please provide age and preferred_language to create an account.",
+  "error_code": "ACCOUNT_NOT_FOUND"
 }
 ```
 
@@ -1008,6 +977,451 @@ Authorization: Bearer <access_token>
 
 ---
 
+## 7. Promotion APIs
+
+### 7.1 Get All Promotions
+**Endpoint:** `GET /promotion/all`  
+**Authentication:** Required (JWT)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Promotions retrieved successfully",
+  "data": [
+    {
+      "promotion_id": "uuid-string",
+      "title": "string",
+      "description": "string",
+      "price": "10.00",
+      "redirect_link": "https://...",
+      "meta_data": {},
+      "media": {
+        "media_id": "uuid-string",
+        "media_type": "image|video|audio",
+        "url": "https://..."
+      },
+      "images": [
+        {
+          "promotion_image_id": "uuid-string",
+          "image_url": "https://...",
+          "image_type": "image",
+          "order": 1
+        }
+      ],
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve promotions: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+## 8. Prayer Request APIs
+
+### 8.1 Create Prayer Request
+**Endpoint:** `POST /prayer-request/create`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "title": "string (required)",
+  "description": "string (required)"
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Prayer request created successfully",
+  "prayer_request_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Title is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+---
+
+### 8.2 Update Prayer Request
+**Endpoint:** `PUT /prayer-request/update` or `PATCH /prayer-request/update`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "prayer_request_id": "uuid-string (required)",
+  "title": "string (optional)",
+  "description": "string (optional)"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Prayer request updated successfully"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Prayer request ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **403 Forbidden** - Unauthorized:
+```json
+{
+  "success": false,
+  "error": "You are not authorized to update this prayer request",
+  "error_code": "UNAUTHORIZED"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "Prayer request not found",
+  "error_code": "PRAYER_REQUEST_NOT_FOUND"
+}
+```
+
+---
+
+### 8.3 Delete Prayer Request
+**Endpoint:** `DELETE /prayer-request/delete`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "prayer_request_id": "uuid-string (required)"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Prayer request deleted successfully"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request:**
+```json
+{
+  "success": false,
+  "error": "Prayer request ID is required",
+  "error_code": "ERROR"
+}
+```
+
+- **403 Forbidden** - Unauthorized:
+```json
+{
+  "success": false,
+  "error": "You are not authorized to delete this prayer request",
+  "error_code": "UNAUTHORIZED"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "Prayer request not found",
+  "error_code": "PRAYER_REQUEST_NOT_FOUND"
+}
+```
+
+---
+
+### 8.4 Get All Prayer Requests
+**Endpoint:** `GET /prayer-request/all`  
+**Authentication:** Required (JWT)
+
+**Query Parameters:**
+- `limit` (integer, optional, default: 10) - Number of prayer requests to return
+- `offset` (integer, optional, default: 0) - Number of prayer requests to skip
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Prayer requests retrieved successfully",
+  "data": [
+    {
+      "prayer_request_id": "uuid-string",
+      "user": {
+        "user_id": "uuid-string",
+        "user_name": "string",
+        "profile_picture_url": "string"
+      },
+      "title": "string",
+      "description": "string",
+      "comments_count": 5,
+      "reactions_count": 10,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total_count": 50,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Invalid limit:
+```json
+{
+  "success": false,
+  "error": "Limit must be greater than 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid offset:
+```json
+{
+  "success": false,
+  "error": "Offset must be greater than or equal to 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+---
+
+### 8.5 Create Comment on Prayer Request
+**Endpoint:** `POST /prayer-request/comment/create`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "prayer_request_id": "uuid-string (required)",
+  "description": "string (required)"
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Comment created successfully",
+  "comment_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Prayer request ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "Prayer request not found",
+  "error_code": "PRAYER_REQUEST_NOT_FOUND"
+}
+```
+
+---
+
+### 8.6 Get Comments for Prayer Request
+**Endpoint:** `GET /prayer-request/comment/details/<prayer_request_id>/v1`  
+**Authentication:** Required (JWT)
+
+**Path Parameters:**
+- `prayer_request_id` (string, required) - The prayer request ID
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Comments retrieved successfully",
+  "prayer_request_id": "uuid-string",
+  "data": [
+    {
+      "comment_id": "uuid-string",
+      "user": {
+        "user_id": "uuid-string",
+        "user_name": "string",
+        "profile_picture_url": "string"
+      },
+      "description": "string",
+      "likes_count": 5,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Prayer request ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "Prayer request not found",
+  "error_code": "PRAYER_REQUEST_NOT_FOUND"
+}
+```
+
+---
+
+### 8.7 Like Prayer Request
+**Endpoint:** `POST /prayer-request/reaction/like`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "prayer_request_id": "uuid-string (required)"
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Prayer request liked successfully",
+  "reaction_id": "uuid-string",
+  "prayer_request_id": "uuid-string",
+  "reaction_type": "like"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Already liked:
+```json
+{
+  "success": false,
+  "error": "You have already liked this prayer request",
+  "error_code": "ALREADY_LIKED"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "Prayer request not found",
+  "error_code": "PRAYER_REQUEST_NOT_FOUND"
+}
+```
+
+---
+
+### 8.8 Unlike Prayer Request
+**Endpoint:** `POST /prayer-request/reaction/unlike`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "prayer_request_id": "uuid-string (required)"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Prayer request unliked successfully"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Not liked:
+```json
+{
+  "success": false,
+  "error": "You have not liked this prayer request",
+  "error_code": "NOT_LIKED"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "Prayer request not found",
+  "error_code": "PRAYER_REQUEST_NOT_FOUND"
+}
+```
+
+---
+
 ## Common Error Codes
 
 | Error Code | Description |
@@ -1017,15 +1431,20 @@ Authorization: Bearer <access_token>
 | `USER_USERNAME_ALREADY_EXISTS` | Username already taken |
 | `PASSWORD_MISMATCH` | Password and confirm password don't match |
 | `INVALID_GOOGLE_TOKEN` | Invalid or unverifiable Google/Firebase ID token |
+| `ACCOUNT_NOT_FOUND` | Account doesn't exist, requires age and preferred_language for signup |
 | `USER_NOT_FOUND` | User does not exist |
 | `POST_NOT_FOUND` | Post does not exist |
+| `PRAYER_REQUEST_NOT_FOUND` | Prayer request does not exist |
 | `ALREADY_FOLLOWING` | Already following the user |
 | `CANNOT_FOLLOW_YOURSELF` | Cannot follow your own account |
-| `ALREADY_LIKED` | Already liked the post/comment |
+| `ALREADY_LIKED` | Already liked the post/comment/prayer request |
+| `NOT_LIKED` | Prayer request has not been liked |
+| `UNAUTHORIZED` | Not authorized to perform this action |
 | `VALIDATION_ERROR` | Request validation failed |
 | `INVALID_MEDIA_TYPE` | Media file type not supported |
 | `NO_MEDIA_PROVIDED` | No media files in request |
 | `S3_UPLOAD_ERROR` | Failed to upload to S3 storage |
+| `INTERNAL_ERROR` | Internal server error |
 | `INTERNAL_SERVER_ERROR` | Unexpected server error |
 
 ---
@@ -1037,7 +1456,7 @@ Authorization: Bearer <access_token>
    Authorization: Bearer <access_token>
    ```
 
-2. **Media Upload:** The create post endpoint accepts multiple media files. Supported formats are images and videos.
+2. **Media Upload:** The create post endpoint accepts multiple media files. Supported formats are images, videos, and audio files.
 
 3. **Base URL:** Replace `http://localhost:8000/` with your actual server URL in production.
 

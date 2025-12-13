@@ -1,0 +1,29 @@
+from bible_way.storage import UserDB
+from bible_way.presenters.unlike_prayer_request_response import UnlikePrayerRequestResponse
+from rest_framework.response import Response
+
+
+class UnlikePrayerRequestInteractor:
+    def __init__(self, storage: UserDB, response: UnlikePrayerRequestResponse):
+        self.storage = storage
+        self.response = response
+
+    def unlike_prayer_request_interactor(self, prayer_request_id: str, user_id: str) -> Response:
+        if not prayer_request_id:
+            return self.response.validation_error_response("Prayer request ID is required")
+        
+        try:
+            self.storage.unlike_prayer_request(
+                prayer_request_id=prayer_request_id,
+                user_id=user_id
+            )
+            
+            return self.response.prayer_request_unliked_successfully_response()
+        except Exception as e:
+            error_message = str(e)
+            if "not found" in error_message.lower():
+                return self.response.prayer_request_not_found_response()
+            if "not liked" in error_message.lower():
+                return self.response.not_liked_response()
+            return self.response.error_response(f"Failed to unlike prayer request: {error_message}")
+

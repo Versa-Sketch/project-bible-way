@@ -3,7 +3,7 @@ from django.db.models import Count, Q
 import uuid
 import os
 import magic
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
@@ -529,3 +529,279 @@ class UserDB:
             })
         
         return comments_data
+    
+    def get_all_promotions(self) -> list:
+        promotions = Promotion.objects.select_related('media').prefetch_related('promotion_images').order_by('-created_at')
+        
+        promotions_data = []
+        for promotion in promotions:
+            media_data = None
+            if promotion.media:
+                media_data = {
+                    'media_id': str(promotion.media.media_id),
+                    'media_type': promotion.media.media_type,
+                    'url': promotion.media.url
+                }
+            
+            images_data = []
+            for image in promotion.promotion_images.all():
+                images_data.append({
+                    'promotion_image_id': str(image.promotion_image_id),
+                    'image_url': image.image_url,
+                    'image_type': image.image_type,
+                    'order': image.order
+                })
+            
+            promotions_data.append({
+                'promotion_id': str(promotion.promotion_id),
+                'title': promotion.title,
+                'description': promotion.description,
+                'price': str(promotion.price),
+                'redirect_link': promotion.redirect_link,
+                'meta_data': promotion.meta_data or {},
+                'media': media_data,
+                'images': images_data,
+                'created_at': promotion.created_at.isoformat(),
+                'updated_at': promotion.updated_at.isoformat()
+            })
+        
+        return promotions_data
+    
+    def create_prayer_request(self, user_id: str, title: str, description: str) -> PrayerRequest:
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        user = User.objects.get(user_id=user_uuid)
+        
+        prayer_request = PrayerRequest.objects.create(
+            user=user,
+            title=title.strip(),
+            description=description.strip()
+        )
+        return prayer_request
+    
+    def update_prayer_request(self, prayer_request_id: str, user_id: str, title: str = None, description: str = None) -> PrayerRequest:
+        prayer_request_uuid = uuid.UUID(prayer_request_id) if isinstance(prayer_request_id, str) else prayer_request_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            prayer_request = PrayerRequest.objects.get(prayer_request_id=prayer_request_uuid)
+        except PrayerRequest.DoesNotExist:
+            raise Exception("Prayer request not found")
+        
+        if prayer_request.user.user_id != user_uuid:
+            raise Exception("You are not authorized to update this prayer request")
+        
+        if title is not None:
+            prayer_request.title = title.strip()
+        if description is not None:
+            prayer_request.description = description.strip()
+        
+        prayer_request.save()
+        return prayer_request
+    
+    def delete_prayer_request(self, prayer_request_id: str, user_id: str) -> bool:
+        prayer_request_uuid = uuid.UUID(prayer_request_id) if isinstance(prayer_request_id, str) else prayer_request_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            prayer_request = PrayerRequest.objects.get(prayer_request_id=prayer_request_uuid)
+        except PrayerRequest.DoesNotExist:
+            raise Exception("Prayer request not found")
+        
+        if prayer_request.user.user_id != user_uuid:
+            raise Exception("You are not authorized to delete this prayer request")
+        
+        prayer_request.delete()
+        return True
+    
+    def get_all_prayer_requests(self, limit: int = 10, offset: int = 0) -> dict:
+        total_count = PrayerRequest.objects.count()
+        
+        prayer_requests = PrayerRequest.objects.select_related('user').annotate(
+            comments_count=Count('comments'),
+            reactions_count=Count('reactions')
+        ).order_by('-created_at')[offset:offset + limit]
+        
+        prayer_requests_data = []
+        for prayer_request in prayer_requests:
+            prayer_requests_data.append({
+                'prayer_request_id': str(prayer_request.prayer_request_id),
+                'user': {
+                    'user_id': str(prayer_request.user.user_id),
+                    'user_name': prayer_request.user.user_name,
+                    'profile_picture_url': prayer_request.user.profile_picture_url or ''
+                },
+                'title': prayer_request.title,
+                'description': prayer_request.description,
+                'comments_count': prayer_request.comments_count,
+                'reactions_count': prayer_request.reactions_count,
+                'created_at': prayer_request.created_at.isoformat(),
+                'updated_at': prayer_request.updated_at.isoformat()
+            })
+        
+        has_next = (offset + limit) < total_count
+        has_previous = offset > 0
+        
+        return {
+            'prayer_requests': prayer_requests_data,
+            'limit': limit,
+            'offset': offset,
+            'total_count': total_count,
+            'has_next': has_next,
+            'has_previous': has_previous
+        }
+    
+    def create_prayer_request_comment(self, prayer_request_id: str, user_id: str, description: str) -> Comment:
+        prayer_request_uuid = uuid.UUID(prayer_request_id) if isinstance(prayer_request_id, str) else prayer_request_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            prayer_request = PrayerRequest.objects.get(prayer_request_id=prayer_request_uuid)
+        except PrayerRequest.DoesNotExist:
+            raise Exception("Prayer request not found")
+        
+        user = User.objects.get(user_id=user_uuid)
+        
+        comment = Comment.objects.create(
+            prayer_request=prayer_request,
+            user=user,
+            description=description.strip()
+        )
+        return comment
+    
+    def get_prayer_request_comments(self, prayer_request_id: str) -> list:
+        prayer_request_uuid = uuid.UUID(prayer_request_id) if isinstance(prayer_request_id, str) else prayer_request_id
+        
+        try:
+            PrayerRequest.objects.get(prayer_request_id=prayer_request_uuid)
+        except PrayerRequest.DoesNotExist:
+            raise Exception("Prayer request not found")
+        
+        comments = Comment.objects.select_related('user').filter(prayer_request_id=prayer_request_uuid).annotate(
+            likes_count=Count('reactions')
+        ).order_by('-created_at')
+        
+        comments_data = []
+        for comment in comments:
+            comments_data.append({
+                'comment_id': str(comment.comment_id),
+                'user': {
+                    'user_id': str(comment.user.user_id),
+                    'user_name': comment.user.user_name,
+                    'profile_picture_url': comment.user.profile_picture_url or ''
+                },
+                'description': comment.description,
+                'likes_count': comment.likes_count,
+                'created_at': comment.created_at.isoformat(),
+                'updated_at': comment.updated_at.isoformat()
+            })
+        
+        return comments_data
+    
+    def check_prayer_request_reaction_exists(self, user_id: str, prayer_request_id: str):
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        prayer_request_uuid = uuid.UUID(prayer_request_id) if isinstance(prayer_request_id, str) else prayer_request_id
+        
+        try:
+            return Reaction.objects.get(user__user_id=user_uuid, prayer_request__prayer_request_id=prayer_request_uuid)
+        except Reaction.DoesNotExist:
+            return None
+        except (ValueError, TypeError):
+            return None
+    
+    def like_prayer_request(self, prayer_request_id: str, user_id: str) -> Reaction:
+        prayer_request_uuid = uuid.UUID(prayer_request_id) if isinstance(prayer_request_id, str) else prayer_request_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            prayer_request = PrayerRequest.objects.get(prayer_request_id=prayer_request_uuid)
+        except PrayerRequest.DoesNotExist:
+            raise Exception("Prayer request not found")
+        
+        existing_reaction = self.check_prayer_request_reaction_exists(user_id, prayer_request_id)
+        if existing_reaction:
+            raise Exception("You have already liked this prayer request")
+        
+        user = User.objects.get(user_id=user_uuid)
+        reaction = Reaction.objects.create(
+            user=user,
+            prayer_request=prayer_request,
+            reaction_type=Reaction.LIKE
+        )
+        return reaction
+    
+    def unlike_prayer_request(self, prayer_request_id: str, user_id: str) -> bool:
+        prayer_request_uuid = uuid.UUID(prayer_request_id) if isinstance(prayer_request_id, str) else prayer_request_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            prayer_request = PrayerRequest.objects.get(prayer_request_id=prayer_request_uuid)
+        except PrayerRequest.DoesNotExist:
+            raise Exception("Prayer request not found")
+        
+        try:
+            reaction = Reaction.objects.get(user__user_id=user_uuid, prayer_request__prayer_request_id=prayer_request_uuid)
+        except Reaction.DoesNotExist:
+            raise Exception("You have not liked this prayer request")
+        
+        reaction.delete()
+        return True
+    
+    def get_verse(self):
+        try:
+            verse = Verse.objects.order_by('-created_at').first()
+            
+            if not verse:
+                return None
+            
+            return {
+                'verse_id': str(verse.verse_id),
+                'title': verse.title or 'Quote of the day',
+                'description': verse.description or '',
+                'created_at': verse.created_at.isoformat(),
+                'updated_at': verse.updated_at.isoformat()
+            }
+        except Exception:
+            return None
+    
+    def clear_all_verses(self) -> int:
+        count = Verse.objects.count()
+        Verse.objects.all().delete()
+        return count
+    
+    def create_verse(self, title: str, description: str) -> Verse:
+        verse = Verse.objects.create(
+            title=title.strip() if title else 'Quote of the day',
+            description=description.strip()
+        )
+        return verse
+    
+    def create_promotion(self, title: str, description: str, price, redirect_link: str, meta_data: dict = None, media_id: str = None) -> Promotion:
+        media = None
+        if media_id:
+            try:
+                media_uuid = uuid.UUID(media_id) if isinstance(media_id, str) else media_id
+                media = Media.objects.get(media_id=media_uuid)
+            except Media.DoesNotExist:
+                raise Exception("Media not found")
+        
+        promotion = Promotion.objects.create(
+            title=title.strip(),
+            description=description.strip() if description else '',
+            price=price,
+            redirect_link=redirect_link.strip(),
+            meta_data=meta_data,
+            media=media
+        )
+        return promotion
+    
+    def create_promotion_images(self, promotion: Promotion, image_urls: list) -> list:
+        promotion_images = []
+        for index, image_url in enumerate(image_urls):
+            promotion_image = PromotionImage.objects.create(
+                promotion=promotion,
+                image_url=image_url,
+                image_type='image',
+                order=index
+            )
+            promotion_images.append(promotion_image)
+        return promotion_images

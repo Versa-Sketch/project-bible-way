@@ -6,7 +6,9 @@ from .social import (
     Reaction,
     Share,
     Promotion,
+    PromotionImage,
     PrayerRequest,
+    Verse,
 )
 from .book_reading import (
     Category,
@@ -44,7 +46,9 @@ __all__ = [
     'Reaction',
     'Share',
     'Promotion',
+    'PromotionImage',
     'PrayerRequest',
+    'Verse',
     'Category',
     'Language',
     'AgeGroup',

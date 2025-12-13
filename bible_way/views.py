@@ -1,5 +1,5 @@
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
@@ -7,8 +7,7 @@ from bible_way.interactors.singup_interactor import SignupInteractor
 from bible_way.presenters.singup_response import SignupResponse
 from bible_way.interactors.login_interactor import LoginInteractor
 from bible_way.presenters.login_response import LoginResponse
-from bible_way.interactors.google_auth_interactor import GoogleAuthInteractor
-from bible_way.interactors.google_login_interactor import GoogleLoginInteractor
+from bible_way.interactors.google_authentication_interactor import GoogleAuthenticationInteractor
 from bible_way.presenters.google_auth_response import GoogleAuthResponse
 from bible_way.interactors.user_profile_interactor import UserProfileInteractor
 from bible_way.interactors.current_user_profile_interactor import CurrentUserProfileInteractor
@@ -28,6 +27,18 @@ from bible_way.interactors.unlike_comment_interactor import UnlikeCommentInterac
 from bible_way.interactors.get_all_posts_interactor import GetAllPostsInteractor
 from bible_way.interactors.get_user_posts_interactor import GetUserPostsInteractor
 from bible_way.interactors.get_user_comments_interactor import GetUserCommentsInteractor
+from bible_way.interactors.get_promotions_interactor import GetPromotionsInteractor
+from bible_way.interactors.create_prayer_request_interactor import CreatePrayerRequestInteractor
+from bible_way.interactors.update_prayer_request_interactor import UpdatePrayerRequestInteractor
+from bible_way.interactors.delete_prayer_request_interactor import DeletePrayerRequestInteractor
+from bible_way.interactors.get_all_prayer_requests_interactor import GetAllPrayerRequestsInteractor
+from bible_way.interactors.create_prayer_request_comment_interactor import CreatePrayerRequestCommentInteractor
+from bible_way.interactors.get_prayer_request_comments_interactor import GetPrayerRequestCommentsInteractor
+from bible_way.interactors.like_prayer_request_interactor import LikePrayerRequestInteractor
+from bible_way.interactors.unlike_prayer_request_interactor import UnlikePrayerRequestInteractor
+from bible_way.interactors.get_verse_interactor import GetVerseInteractor
+from bible_way.interactors.admin.create_verse_interactor import CreateVerseInteractor
+from bible_way.interactors.admin.create_promotion_interactor import CreatePromotionInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
 from bible_way.presenters.follow_user_response import FollowUserResponse
 from bible_way.presenters.unfollow_user_response import UnfollowUserResponse
@@ -45,6 +56,18 @@ from bible_way.presenters.unlike_comment_response import UnlikeCommentResponse
 from bible_way.presenters.get_all_posts_response import GetAllPostsResponse
 from bible_way.presenters.get_user_posts_response import GetUserPostsResponse
 from bible_way.presenters.get_user_comments_response import GetUserCommentsResponse
+from bible_way.presenters.get_promotions_response import GetPromotionsResponse
+from bible_way.presenters.create_prayer_request_response import CreatePrayerRequestResponse
+from bible_way.presenters.update_prayer_request_response import UpdatePrayerRequestResponse
+from bible_way.presenters.delete_prayer_request_response import DeletePrayerRequestResponse
+from bible_way.presenters.get_all_prayer_requests_response import GetAllPrayerRequestsResponse
+from bible_way.presenters.create_prayer_request_comment_response import CreatePrayerRequestCommentResponse
+from bible_way.presenters.get_prayer_request_comments_response import GetPrayerRequestCommentsResponse
+from bible_way.presenters.like_prayer_request_response import LikePrayerRequestResponse
+from bible_way.presenters.unlike_prayer_request_response import UnlikePrayerRequestResponse
+from bible_way.presenters.get_verse_response import GetVerseResponse
+from bible_way.presenters.admin.create_verse_response import CreateVerseResponse
+from bible_way.presenters.admin.create_promotion_response import CreatePromotionResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 
@@ -77,31 +100,28 @@ def login_view(request):
 @api_view(['POST'])
 @authentication_classes([])
 @permission_classes([])
-def google_signup_view(request):
+def google_authentication_view(request):
     token = request.data.get('token')
-    country = request.data.get('country')
     age = request.data.get('age')
     preferred_language = request.data.get('preferred_language')
-    response = GoogleAuthInteractor(storage=UserDB(), response=GoogleAuthResponse(), authentication=UserAuthentication()).\
-        google_signup_interactor(
-            token=token, 
-            country=country, 
-            age=age, 
-            preferred_language=preferred_language
-        )
-    return response
-
-@api_view(['POST'])
-@authentication_classes([])
-@permission_classes([])
-def google_login_view(request):
-    token = request.data.get('token') 
+    country = request.data.get('country')
     
-    response = GoogleLoginInteractor(
+    try:
+        if age is not None:
+            age = int(age)
+    except (ValueError, TypeError):
+        age = None
+    
+    response = GoogleAuthenticationInteractor(
         storage=UserDB(), 
         response=GoogleAuthResponse(), 
         authentication=UserAuthentication()
-    ).google_login_interactor(token=token) # Pass token only
+    ).google_authentication_interactor(
+        token=token,
+        age=age,
+        preferred_language=preferred_language,
+        country=country
+    )
     return response
 
 @api_view(['GET'])
@@ -244,6 +264,165 @@ def get_user_comments_view(request):
     
     response = GetUserCommentsInteractor(storage=UserDB(), response=GetUserCommentsResponse()).\
         get_user_comments_interactor(user_id=user_id)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_all_promotions_view(request):
+    response = GetPromotionsInteractor(storage=UserDB(), response=GetPromotionsResponse()).\
+        get_all_promotions_interactor()
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_prayer_request_view(request):
+    user_id = str(request.user.user_id)
+    title = request.data.get('title')
+    description = request.data.get('description')
+    
+    response = CreatePrayerRequestInteractor(storage=UserDB(), response=CreatePrayerRequestResponse()).\
+        create_prayer_request_interactor(user_id=user_id, title=title, description=description)
+    return response
+
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def update_prayer_request_view(request):
+    user_id = str(request.user.user_id)
+    prayer_request_id = request.data.get('prayer_request_id')
+    title = request.data.get('title')
+    description = request.data.get('description')
+    
+    response = UpdatePrayerRequestInteractor(storage=UserDB(), response=UpdatePrayerRequestResponse()).\
+        update_prayer_request_interactor(
+            prayer_request_id=prayer_request_id,
+            user_id=user_id,
+            title=title,
+            description=description
+        )
+    return response
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_prayer_request_view(request):
+    user_id = str(request.user.user_id)
+    prayer_request_id = request.data.get('prayer_request_id')
+    
+    response = DeletePrayerRequestInteractor(storage=UserDB(), response=DeletePrayerRequestResponse()).\
+        delete_prayer_request_interactor(prayer_request_id=prayer_request_id, user_id=user_id)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_all_prayer_requests_view(request):
+    limit = request.query_params.get('limit', 10)
+    offset = request.query_params.get('offset', 0)
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
+    
+    try:
+        offset = int(offset)
+    except (ValueError, TypeError):
+        offset = 0
+    
+    response = GetAllPrayerRequestsInteractor(storage=UserDB(), response=GetAllPrayerRequestsResponse()).\
+        get_all_prayer_requests_interactor(limit=limit, offset=offset)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_prayer_request_comment_view(request):
+    user_id = str(request.user.user_id)
+    prayer_request_id = request.data.get('prayer_request_id')
+    description = request.data.get('description')
+    
+    response = CreatePrayerRequestCommentInteractor(storage=UserDB(), response=CreatePrayerRequestCommentResponse()).\
+        create_prayer_request_comment_interactor(
+            prayer_request_id=prayer_request_id,
+            user_id=user_id,
+            description=description
+        )
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_prayer_request_comments_view(request, prayer_request_id):
+    response = GetPrayerRequestCommentsInteractor(storage=UserDB(), response=GetPrayerRequestCommentsResponse()).\
+        get_prayer_request_comments_interactor(prayer_request_id=prayer_request_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def like_prayer_request_view(request):
+    user_id = str(request.user.user_id)
+    prayer_request_id = request.data.get('prayer_request_id')
+    
+    response = LikePrayerRequestInteractor(storage=UserDB(), response=LikePrayerRequestResponse()).\
+        like_prayer_request_interactor(prayer_request_id=prayer_request_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def unlike_prayer_request_view(request):
+    user_id = str(request.user.user_id)
+    prayer_request_id = request.data.get('prayer_request_id')
+    
+    response = UnlikePrayerRequestInteractor(storage=UserDB(), response=UnlikePrayerRequestResponse()).\
+        unlike_prayer_request_interactor(prayer_request_id=prayer_request_id, user_id=user_id)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_verse_view(request):
+    response = GetVerseInteractor(storage=UserDB(), response=GetVerseResponse()).\
+        get_verse_interactor()
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_create_verse_view(request):
+    title = request.data.get('title')
+    description = request.data.get('description')
+    
+    response = CreateVerseInteractor(storage=UserDB(), response=CreateVerseResponse()).\
+        create_verse_interactor(title=title, description=description)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_create_promotion_view(request):
+    title = request.data.get('title')
+    description = request.data.get('description')
+    price = request.data.get('price')
+    redirect_link = request.data.get('redirect_link')
+    meta_data = request.data.get('meta_data')
+    media_file = request.FILES.get('media')
+    image_files = request.FILES.getlist('images')
+    
+    response = CreatePromotionInteractor(storage=UserDB(), response=CreatePromotionResponse()).\
+        create_promotion_interactor(
+            title=title,
+            description=description,
+            price=price,
+            redirect_link=redirect_link,
+            meta_data_str=meta_data,
+            media_file=media_file,
+            image_files=image_files
+        )
     return response
 
 @api_view(['POST'])

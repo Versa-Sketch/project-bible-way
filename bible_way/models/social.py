@@ -17,6 +17,34 @@ class Post(models.Model):
     def __str__(self):
         return f"Post {self.post_id} by {self.user}"
 
+class Verse(models.Model):
+    verse_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    description = models.TextField(null=True, blank=True) 
+    title = models.CharField(max_length=255, null=True, blank=True, default="Quote of the day") 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bible_way_verse'
+
+    def __str__(self):
+        return f"Verse {self.verse_id} - {self.title}"
+    
+
+class PrayerRequest(models.Model):
+    prayer_request_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="prayer_requests")
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bible_way_prayer_request'
+
+    def __str__(self):
+        return f"Prayer Request {self.prayer_request_id} by {self.user}"
+
 
 class Media(models.Model):
     IMAGE = "image"
@@ -51,6 +79,7 @@ class Comment(models.Model):
     comment_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="comments")
+    prayer_request = models.ForeignKey(PrayerRequest, on_delete=models.CASCADE, related_name="comments", null=True, blank=True)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -86,6 +115,8 @@ class Reaction(models.Model):
         null=True,
         blank=True,
     )
+    prayer_request = models.ForeignKey(PrayerRequest, on_delete=models.CASCADE, related_name="reactions", null=True, blank=True)
+    verse = models.ForeignKey(Verse, on_delete=models.CASCADE, related_name="reactions", null=True, blank=True)
     reaction_type = models.CharField(max_length=20, choices=REACTION_TYPES)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -137,18 +168,25 @@ class Promotion(models.Model):
         return f"Promotion {self.promotion_id} - {self.title}"
 
 
-class PrayerRequest(models.Model):
-    prayer_request_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="prayer_requests")
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    is_answered = models.BooleanField(default=False)
+class PromotionImage(models.Model):
+    promotion_image_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    promotion = models.ForeignKey(
+        Promotion,
+        on_delete=models.CASCADE,
+        related_name="promotion_images"
+    )
+    image_url = models.URLField()
+    image_type = models.CharField(max_length=20, default="image")
+    order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
     class Meta:
-        db_table = 'bible_way_prayer_request'
+        db_table = 'bible_way_promotion_image'
+        ordering = ['order', 'created_at']
 
     def __str__(self):
-        return f"Prayer Request {self.prayer_request_id} by {self.user}"
+        return f"PromotionImage {self.promotion_image_id} for {self.promotion.title}"
+
+
+
 

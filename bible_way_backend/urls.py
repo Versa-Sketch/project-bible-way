@@ -6,8 +6,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path("user/signup", signup_view),
     path("user/login", login_view),
-    path("user/google/signup", google_signup_view),
-    path("user/google/login", google_login_view),
+    path("user/google/authentication", google_authentication_view),
     path("user/profile/me", get_current_user_profile_view),
     path("user/profile/<str:user_name>", get_user_profile_view),
     path("user/follow", follow_user_view),
@@ -26,4 +25,18 @@ urlpatterns = [
     path("reaction/post/unlike", unlike_post_view),
     path("reaction/comment/like", like_comment_view),
     path("reaction/comment/unlike", unlike_comment_view),
+    path("promotion/all", get_all_promotions_view),
+    path("prayer-request/create", create_prayer_request_view),
+    path("prayer-request/update", update_prayer_request_view),
+    path("prayer-request/delete", delete_prayer_request_view),
+    path("prayer-request/all", get_all_prayer_requests_view),
+    path("prayer-request/comment/create", create_prayer_request_comment_view),
+    path("prayer-request/comment/details/<str:prayer_request_id>/v1", get_prayer_request_comments_view),
+    path("prayer-request/reaction/like", like_prayer_request_view),
+    path("prayer-request/reaction/unlike", unlike_prayer_request_view),
+    path("verse/daily", get_verse_view),
+
+    ################# admin side api's ################ 
+    path("admin/verse/create", admin_create_verse_view),
+    path("admin/promotion/create", admin_create_promotion_view),
 ]
