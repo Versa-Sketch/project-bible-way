@@ -25,6 +25,9 @@ from bible_way.interactors.like_post_interactor import LikePostInteractor
 from bible_way.interactors.unlike_post_interactor import UnlikePostInteractor
 from bible_way.interactors.like_comment_interactor import LikeCommentInteractor
 from bible_way.interactors.unlike_comment_interactor import UnlikeCommentInteractor
+from bible_way.interactors.get_all_posts_interactor import GetAllPostsInteractor
+from bible_way.interactors.get_user_posts_interactor import GetUserPostsInteractor
+from bible_way.interactors.get_user_comments_interactor import GetUserCommentsInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
 from bible_way.presenters.follow_user_response import FollowUserResponse
 from bible_way.presenters.unfollow_user_response import UnfollowUserResponse
@@ -39,6 +42,9 @@ from bible_way.presenters.like_post_response import LikePostResponse
 from bible_way.presenters.unlike_post_response import UnlikePostResponse
 from bible_way.presenters.like_comment_response import LikeCommentResponse
 from bible_way.presenters.unlike_comment_response import UnlikeCommentResponse
+from bible_way.presenters.get_all_posts_response import GetAllPostsResponse
+from bible_way.presenters.get_user_posts_response import GetUserPostsResponse
+from bible_way.presenters.get_user_comments_response import GetUserCommentsResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 
@@ -187,6 +193,59 @@ def delete_post_view(request):
         delete_post_interactor(post_id=post_id, user_id=user_id)
     return response
 
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([])
+def get_all_posts_view(request):
+    limit = request.query_params.get('limit', '10')
+    offset = request.query_params.get('offset', '0')
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
+    
+    try:
+        offset = int(offset)
+    except (ValueError, TypeError):
+        offset = 0
+    
+    response = GetAllPostsInteractor(storage=UserDB(), response=GetAllPostsResponse()).\
+        get_all_posts_interactor(limit=limit, offset=offset)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_user_posts_view(request):
+    user_id = str(request.user.user_id)
+    limit = request.query_params.get('limit', '10')
+    offset = request.query_params.get('offset', '0')
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
+    
+    try:
+        offset = int(offset)
+    except (ValueError, TypeError):
+        offset = 0
+    
+    response = GetUserPostsInteractor(storage=UserDB(), response=GetUserPostsResponse()).\
+        get_user_posts_interactor(user_id=user_id, limit=limit, offset=offset)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_user_comments_view(request):
+    user_id = str(request.user.user_id)
+    
+    response = GetUserCommentsInteractor(storage=UserDB(), response=GetUserCommentsResponse()).\
+        get_user_comments_interactor(user_id=user_id)
+    return response
+
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -200,14 +259,11 @@ def create_comment_view(request):
     return response
 
 @api_view(['GET'])
-@authentication_classes([])
-@permission_classes([])
-def get_comments_view(request):
-    post_id = request.query_params.get('post_id')
-    user_id = str(request.user.user_id)
-    
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_comments_view(request, post_id):
     response = GetCommentsInteractor(storage=UserDB(), response=GetCommentsResponse()).\
-        get_comments_interactor(post_id=post_id, user_id=user_id)
+        get_comments_interactor(post_id=post_id)
     return response
 
 @api_view(['PUT', 'PATCH'])

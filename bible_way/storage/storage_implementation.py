@@ -1,4 +1,5 @@
 from django.contrib.auth.hashers import make_password, check_password
+from django.db.models import Count, Q
 import uuid
 import os
 import magic
@@ -270,8 +271,26 @@ class UserDB:
         except Post.DoesNotExist:
             raise Exception("Post not found")
         
-        comments = Comment.objects.filter(post_id=post_uuid).order_by('-created_at')
-        return list(comments)
+        comments = Comment.objects.select_related('user').filter(post_id=post_uuid).annotate(
+            likes_count=Count('reactions')
+        ).order_by('-created_at')
+        
+        comments_data = []
+        for comment in comments:
+            comments_data.append({
+                'comment_id': str(comment.comment_id),
+                'user': {
+                    'user_id': str(comment.user.user_id),
+                    'user_name': comment.user.user_name,
+                    'profile_picture_url': comment.user.profile_picture_url or ''
+                },
+                'description': comment.description,
+                'likes_count': comment.likes_count,
+                'created_at': comment.created_at.isoformat(),
+                'updated_at': comment.updated_at.isoformat()
+            })
+        
+        return comments_data
     
     def get_comment_by_id(self, comment_id: str) -> Comment | None:
         try:
@@ -403,3 +422,110 @@ class UserDB:
         
         reaction.delete()
         return True
+    
+    def get_all_posts_with_counts(self, limit: int = 10, offset: int = 0) -> dict:
+        total_count = Post.objects.count()
+        
+        posts = Post.objects.select_related('user').prefetch_related('media').annotate(
+            likes_count=Count('reactions', filter=Q(reactions__post__isnull=False)),
+            comments_count=Count('comments')
+        ).order_by('-created_at')[offset:offset + limit]
+        
+        posts_data = []
+        for post in posts:
+            media_list = []
+            for media in post.media.all():
+                media_list.append({
+                    'media_id': str(media.media_id),
+                    'media_type': media.media_type,
+                    'url': media.url
+                })
+            
+            posts_data.append({
+                'post_id': str(post.post_id),
+                'user': {
+                    'user_id': str(post.user.user_id),
+                    'user_name': post.user.user_name,
+                    'profile_picture_url': post.user.profile_picture_url or ''
+                },
+                'title': post.title,
+                'description': post.description,
+                'media': media_list,
+                'likes_count': post.likes_count,
+                'comments_count': post.comments_count,
+                'created_at': post.created_at.isoformat(),
+                'updated_at': post.updated_at.isoformat()
+            })
+        
+        has_next = (offset + limit) < total_count
+        has_previous = offset > 0
+        
+        return {
+            'posts': posts_data,
+            'limit': limit,
+            'offset': offset,
+            'total_count': total_count,
+            'has_next': has_next,
+            'has_previous': has_previous
+        }
+    
+    def get_user_posts_with_counts(self, user_id: str, limit: int = 10, offset: int = 0) -> dict:
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        total_count = Post.objects.filter(user__user_id=user_uuid).count()
+        
+        posts = Post.objects.prefetch_related('media').filter(user__user_id=user_uuid).annotate(
+            likes_count=Count('reactions', filter=Q(reactions__post__isnull=False)),
+            comments_count=Count('comments')
+        ).order_by('-created_at')[offset:offset + limit]
+        
+        posts_data = []
+        for post in posts:
+            media_list = []
+            for media in post.media.all():
+                media_list.append({
+                    'media_id': str(media.media_id),
+                    'media_type': media.media_type,
+                    'url': media.url
+                })
+            
+            posts_data.append({
+                'post_id': str(post.post_id),
+                'title': post.title,
+                'description': post.description,
+                'media': media_list,
+                'likes_count': post.likes_count,
+                'comments_count': post.comments_count,
+                'created_at': post.created_at.isoformat(),
+                'updated_at': post.updated_at.isoformat()
+            })
+        
+        has_next = (offset + limit) < total_count
+        has_previous = offset > 0
+        
+        return {
+            'posts': posts_data,
+            'limit': limit,
+            'offset': offset,
+            'total_count': total_count,
+            'has_next': has_next,
+            'has_previous': has_previous
+        }
+    
+    def get_user_comments(self, user_id: str) -> list:
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        comments = Comment.objects.filter(user__user_id=user_uuid).annotate(
+            likes_count=Count('reactions')
+        ).order_by('-created_at')
+        
+        comments_data = []
+        for comment in comments:
+            comments_data.append({
+                'comment_id': str(comment.comment_id),
+                'description': comment.description,
+                'likes_count': comment.likes_count,
+                'created_at': comment.created_at.isoformat(),
+                'updated_at': comment.updated_at.isoformat()
+            })
+        
+        return comments_data

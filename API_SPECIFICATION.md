@@ -407,7 +407,7 @@ Authorization: Bearer <access_token>
 **Request Body (Form Data):**
 - `title` (string, optional) - Post title
 - `description` (string, optional) - Post description
-- `media` (file[], required) - One or more media files (images/videos)
+- `media` (file[], required) - One or more media files (images/videos/audio)
 
 **Success Response (201 Created):**
 ```json
@@ -433,7 +433,7 @@ Authorization: Bearer <access_token>
 ```json
 {
   "success": false,
-  "error": "Invalid media type. Only images and videos are allowed",
+  "error": "Invalid media type. Only images, videos, and audio files are allowed",
   "error_code": "INVALID_MEDIA_TYPE"
 }
 ```
@@ -515,6 +515,144 @@ Authorization: Bearer <access_token>
 
 ---
 
+### 4.4 Get All Posts
+**Endpoint:** `GET /post/all`  
+**Authentication:** Not required
+
+**Query Parameters:**
+- `limit` (integer, optional, default: 10) - Number of posts to return
+- `offset` (integer, optional, default: 0) - Number of posts to skip
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Posts retrieved successfully",
+  "data": [
+    {
+      "post_id": "uuid-string",
+      "user": {
+        "user_id": "uuid-string",
+        "user_name": "string",
+        "profile_picture_url": "string"
+      },
+      "title": "string",
+      "description": "string",
+      "media": [
+        {
+          "media_id": "uuid-string",
+          "media_type": "image|video|audio",
+          "url": "string"
+        }
+      ],
+      "likes_count": 5,
+      "comments_count": 3,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total_count": 50,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Invalid limit:
+```json
+{
+  "success": false,
+  "error": "Limit must be greater than 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid offset:
+```json
+{
+  "success": false,
+  "error": "Offset must be greater than or equal to 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+---
+
+### 4.5 Get User's Posts
+**Endpoint:** `GET /post/user/me`  
+**Authentication:** Required (JWT)
+
+**Query Parameters:**
+- `limit` (integer, optional, default: 10) - Number of posts to return
+- `offset` (integer, optional, default: 0) - Number of posts to skip
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "User posts retrieved successfully",
+  "data": [
+    {
+      "post_id": "uuid-string",
+      "title": "string",
+      "description": "string",
+      "media": [
+        {
+          "media_id": "uuid-string",
+          "media_type": "image|video|audio",
+          "url": "string"
+        }
+      ],
+      "likes_count": 5,
+      "comments_count": 3,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total_count": 25,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Invalid limit:
+```json
+{
+  "success": false,
+  "error": "Limit must be greater than 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid offset:
+```json
+{
+  "success": false,
+  "error": "Offset must be greater than or equal to 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+---
+
 ## 5. Comment APIs
 
 ### 5.1 Create Comment
@@ -560,11 +698,11 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 5.2 Get Comments
-**Endpoint:** `GET /comment/post`  
-**Authentication:** Not required
+### 5.2 Get Comments for a Post
+**Endpoint:** `GET /comment/details/<post_id>/v1`  
+**Authentication:** Required (JWT)
 
-**Query Parameters:**
+**Path Parameters:**
 - `post_id` (string, required) - The ID of the post
 
 **Success Response (200 OK):**
@@ -572,16 +710,19 @@ Authorization: Bearer <access_token>
 {
   "success": true,
   "message": "Comments retrieved successfully",
-  "post_id": "string",
+  "post_id": "uuid-string",
   "data": [
     {
-      "comment_id": "string",
-      "user_id": "string",
-      "user_name": "string",
+      "comment_id": "uuid-string",
+      "user": {
+        "user_id": "uuid-string",
+        "user_name": "string",
+        "profile_picture_url": "string"
+      },
       "description": "string",
-      "created_at": "datetime",
-      "likes_count": "integer",
-      "is_liked": "boolean"
+      "likes_count": 5,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
     }
   ]
 }
@@ -589,11 +730,18 @@ Authorization: Bearer <access_token>
 
 **Error Responses:**
 
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
 - **400 Bad Request** - Validation error:
 ```json
 {
   "success": false,
-  "error": "<error_message>",
+  "error": "Post ID is required",
   "error_code": "VALIDATION_ERROR"
 }
 ```
@@ -669,6 +817,47 @@ Authorization: Bearer <access_token>
   "success": false,
   "error": "<error_message>",
   "error_code": "ERROR"
+}
+```
+
+---
+
+### 5.5 Get User's Comments
+**Endpoint:** `GET /comment/user/me`  
+**Authentication:** Required (JWT)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "User comments retrieved successfully",
+  "data": [
+    {
+      "comment_id": "uuid-string",
+      "description": "string",
+      "likes_count": 5,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve user comments: <error_message>",
+  "error_code": "INTERNAL_ERROR"
 }
 ```
 
