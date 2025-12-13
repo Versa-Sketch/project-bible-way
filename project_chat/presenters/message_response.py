@@ -46,7 +46,12 @@ class MessageResponse:
             "sender_name": message.sender.user_name,
             "sender_email": message.sender.email,
             "text": message.text,
-            "file": message.file.url if message.file else None,
+            "file": {
+                "url": message.file,
+                "type": message.file_type,
+                "size": message.file_size,
+                "name": message.file_name
+            } if message.file else None,
             "reply_to_id": str(message.reply_to_id) if message.reply_to else None,
             "created_at": message.created_at.isoformat() if message.created_at else None,
             "edited_at": message.edited_at.isoformat() if message.edited_at else None,

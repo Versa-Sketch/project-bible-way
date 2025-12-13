@@ -22,8 +22,8 @@ class ConversationMemberAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'conversation', 'sender', 'text_preview', 'created_at', 'edited_at', 'is_deleted_for_everyone')
-    list_filter = ('is_deleted_for_everyone', 'created_at', 'edited_at')
+    list_display = ('id', 'conversation', 'sender', 'text_preview', 'file_type', 'file_name', 'created_at', 'edited_at', 'is_deleted_for_everyone')
+    list_filter = ('is_deleted_for_everyone', 'file_type', 'created_at', 'edited_at')
     search_fields = ('text', 'sender__user_name', 'conversation__name')
     readonly_fields = ('created_at',)
     raw_id_fields = ('conversation', 'sender', 'reply_to')

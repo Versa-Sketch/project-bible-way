@@ -2,23 +2,26 @@
 
 ## Overview
 
-The Project Chat API provides real-time chat functionality via WebSocket connections. All communication is done through WebSocket messages using JSON format.
+The Project Chat API provides real-time chat functionality via WebSocket connections. All communication is done through WebSocket messages using JSON format. File uploads are handled via HTTP REST API endpoints.
 
-**Base URL:** `ws://your-domain/ws/user/`
+**WebSocket Base URL:** `ws://your-domain/ws/user/`
 
-**Authentication:** JWT token passed as query parameter: `?token=<JWT_TOKEN>`
+**HTTP Base URL:** `http://your-domain/`
+
+**Authentication:** JWT token passed as query parameter for WebSocket: `?token=<JWT_TOKEN>` or in Authorization header for HTTP endpoints: `Bearer <JWT_TOKEN>`
 
 ---
 
 ## Table of Contents
 
 1. [Connection](#connection)
-2. [Message Format](#message-format)
-3. [Actions](#actions)
-4. [Broadcasts](#broadcasts)
-5. [Error Handling](#error-handling)
-6. [Rate Limiting](#rate-limiting)
-7. [Data Models](#data-models)
+2. [File Upload (HTTP)](#file-upload-http)
+3. [Message Format](#message-format)
+4. [Actions](#actions)
+5. [Broadcasts](#broadcasts)
+6. [Error Handling](#error-handling)
+7. [Rate Limiting](#rate-limiting)
+8. [Data Models](#data-models)
 
 ---
 
@@ -52,6 +55,69 @@ Upon successful connection, the server sends:
 - **401 Unauthorized**: Invalid or missing token
 - **403 Forbidden**: Token expired or user not found
 - **Connection Closed**: Server closes connection on authentication failure
+
+---
+
+## File Upload (HTTP)
+
+### HTTP POST `/api/chat/upload/`
+
+Upload files (images, videos, audio) for chat messages via HTTP before sending them in WebSocket messages.
+
+**Request:**
+- Method: POST
+- Content-Type: `multipart/form-data`
+- Authentication: JWT token in `Authorization` header: `Bearer <JWT_TOKEN>`
+- Body:
+  - `file` (required): File to upload (image, video, or audio)
+  - `conversation_id` (optional): Conversation ID for organizing files
+
+**Response (Success - 200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "file_url": "https://bucket.s3.region.amazonaws.com/chat/files/user-uuid/uuid/filename.jpg",
+    "file_type": "IMAGE",
+    "file_size": 245678,
+    "file_name": "photo.jpg"
+  }
+}
+```
+
+**Response (Error - 400 Bad Request):**
+```json
+{
+  "success": false,
+  "error": "File size exceeds 10 MB limit",
+  "error_code": "FILE_TOO_LARGE"
+}
+```
+
+**Supported File Types:**
+- **Images:** jpg, jpeg, png, gif, webp, bmp
+- **Videos:** mp4, mov, avi, mkv, webm, flv, wmv, m4v
+- **Audio:** mp3, wav, ogg, m4a, aac, flac, wma
+
+**File Size Limit:** 10 MB (10,485,760 bytes)
+
+**Error Codes:**
+- `VALIDATION_ERROR`: Missing or invalid file
+- `FILE_TOO_LARGE`: File size exceeds 10 MB limit
+- `INVALID_FILE_TYPE`: File type not supported
+- `FILE_UPLOAD_FAILED`: Failed to upload file to S3
+- `SERVER_ERROR`: Internal server error
+
+**Example Usage:**
+```bash
+curl -X POST http://your-domain/api/chat/upload/ \
+  -H "Authorization: Bearer <JWT_TOKEN>" \
+  -F "file=@photo.jpg" \
+  -F "conversation_id=1"
+```
+
+**S3 Storage Structure:**
+Files are stored at: `chat/files/{user_id}/{uuid}/{filename}`
 
 ---
 
@@ -105,7 +171,7 @@ All client requests must follow this format:
 
 ### 1. Send Message
 
-Send a text message, reply, or share a post in a conversation.
+Send a text message, reply, share a post, or send a file (image, video, audio) in a conversation.
 
 **Request:**
 ```json
@@ -115,17 +181,35 @@ Send a text message, reply, or share a post in a conversation.
   "conversation_id": "1",
   "content": "Hello! This is my message.",
   "parent_message_id": "123",  // Optional: for replies
-  "shared_post_id": "post-uuid"  // Optional: to share a post
+  "shared_post_id": "post-uuid",  // Optional: to share a post
+  "file_url": "https://bucket.s3.region.amazonaws.com/chat/files/user-uuid/uuid/photo.jpg",  // Optional: S3 URL from HTTP upload
+  "file_type": "IMAGE",  // Optional: IMAGE, VIDEO, or AUDIO
+  "file_size": 245678,  // Optional: File size in bytes
+  "file_name": "photo.jpg"  // Optional: Original filename
 }
 ```
 
 **Required Fields:**
 - `conversation_id` (integer): ID of the conversation
-- `content` (string): Message text (can be empty if `shared_post_id` is provided)
+- `content` (string): Message text (can be empty if `file_url` or `shared_post_id` is provided)
 
 **Optional Fields:**
 - `parent_message_id` (integer): ID of message being replied to
 - `shared_post_id` (UUID): ID of post to share in message
+- `file_url` (string): S3 URL of uploaded file (obtained from HTTP upload endpoint)
+- `file_type` (string): File type - "IMAGE", "VIDEO", or "AUDIO"
+- `file_size` (integer): File size in bytes
+- `file_name` (string): Original filename
+
+**File Upload:**
+- Files must be uploaded via HTTP POST to `/api/chat/upload/` first
+- The endpoint returns a `file_url` which should be used in WebSocket messages
+- Supported formats:
+  - **Images:** jpg, jpeg, png, gif, webp, bmp
+  - **Videos:** mp4, mov, avi, mkv, webm, flv, wmv, m4v
+  - **Audio:** mp3, wav, ogg, m4a, aac, flac, wma
+- Maximum file size: 10 MB
+- File type is automatically detected from filename extension
 
 **Success Response:**
 ```json
@@ -152,7 +236,12 @@ Send a text message, reply, or share a post in a conversation.
     "sender_name": "John Doe",
     "sender_email": "john@example.com",
     "text": "Hello! This is my message.",
-    "file": null,
+    "file": {
+      "url": "https://bucket.s3.region.amazonaws.com/chat/files/user-uuid/uuid/photo.jpg",
+      "type": "IMAGE",
+      "size": 245678,
+      "name": "photo.jpg"
+    },
     "reply_to_id": "122",
     "created_at": "2025-12-13T12:00:00Z",
     "edited_at": null,
@@ -174,14 +263,29 @@ Send a text message, reply, or share a post in a conversation.
 }
 ```
 
+**File Object Structure:**
+- `file` is `null` if no file is attached
+- If file is present, it contains:
+  - `url` (string): Public S3 URL to access the file
+  - `type` (string): File type - "IMAGE", "VIDEO", or "AUDIO"
+  - `size` (integer): File size in bytes
+  - `name` (string): Original filename
+
 **Validation Rules:**
 - `conversation_id` must be a valid integer
-- `content` cannot be empty unless `shared_post_id` is provided
+- `content` cannot be empty unless `file_url` or `shared_post_id` is provided
 - `parent_message_id` must exist in the conversation
 - `shared_post_id` must be a valid UUID and post must exist
+- `file_url` must be a valid HTTP/HTTPS URL if provided
 - User must be a member of the conversation
 - For DIRECT conversations, sender must follow receiver (one-way follow check)
 - Conversation must be active
+
+**File Upload Rules:**
+- Files must be uploaded via HTTP POST to `/api/chat/upload/` before sending message
+- `file_url` must be a valid S3 URL obtained from the upload endpoint
+- Maximum file size: 10 MB (10,485,760 bytes)
+- File type must be one of: IMAGE, VIDEO, or AUDIO
 
 **Error Codes:**
 - `VALIDATION_ERROR`: Missing or invalid fields
@@ -190,6 +294,9 @@ Send a text message, reply, or share a post in a conversation.
 - `NO_FOLLOW_RELATIONSHIP`: Sender doesn't follow receiver (DIRECT conversations)
 - `POST_NOT_FOUND`: Shared post doesn't exist
 - `RATE_LIMIT_EXCEEDED`: Too many messages sent
+- `FILE_TOO_LARGE`: File size exceeds 10 MB limit
+- `INVALID_FILE_TYPE`: File type not supported
+- `FILE_UPLOAD_FAILED`: Failed to upload file to S3
 
 ---
 
@@ -244,9 +351,10 @@ Edit an existing message. Can only be edited within 24 hours of creation.
 - User must be the owner of the message
 - Message must be less than 24 hours old
 - Message must not be deleted
+- `content` cannot be empty
 
 **Error Codes:**
-- `VALIDATION_ERROR`: Missing or invalid fields
+- `VALIDATION_ERROR`: Missing or invalid fields (including empty content)
 - `MESSAGE_NOT_FOUND`: Message doesn't exist
 - `UNAUTHORIZED`: User is not the message owner
 - `EDIT_TIME_EXPIRED`: Message is older than 24 hours
@@ -278,7 +386,7 @@ Delete a message. Can only be deleted within 7 days of creation. Messages are so
   "ok": true,
   "data": {
     "message_id": "123",
-    "deleted_at": "2025-12-13T12:30:00Z"
+    "conversation_id": "1"
   }
 }
 ```
@@ -401,9 +509,10 @@ Join a conversation group to receive broadcasts. Automatically called when sendi
 - Conversation must exist and be active
 
 **Error Codes:**
-- `VALIDATION_ERROR`: Missing or invalid fields
-- `CONVERSATION_NOT_FOUND`: Conversation doesn't exist
+- `VALIDATION_ERROR`: Missing or invalid fields (conversation_id required)
 - `NOT_MEMBER`: User is not a member of the conversation
+
+**Note:** If conversation doesn't exist, `NOT_MEMBER` error is returned.
 
 ---
 
@@ -473,9 +582,9 @@ Send typing indicator to other users in the conversation.
 
 **Validation Rules:**
 - User must be a member of the conversation
+- If `conversation_id` is missing or user is not a member, action is silently ignored (no error sent)
 
-**Error Codes:**
-- `NOT_MEMBER`: User is not a member of the conversation
+**Note:** This is a silent action - no acknowledgment or error is sent. Invalid requests are simply ignored.
 
 ---
 
@@ -524,9 +633,8 @@ Get online/offline status of all members in a conversation.
 - User must be a member of the conversation
 
 **Error Codes:**
-- `VALIDATION_ERROR`: Missing or invalid fields
-- `CONVERSATION_NOT_FOUND`: Conversation doesn't exist
-- `NOT_MEMBER`: User is not a member of the conversation
+- `VALIDATION_ERROR`: Missing or invalid fields (conversation_id required)
+- `NOT_MEMBER`: User is not a member of the conversation (also returned if conversation doesn't exist)
 
 **Note:** Presence is tracked in-memory. Users show as online only while connected via WebSocket.
 
@@ -606,6 +714,9 @@ All errors follow this format:
 | `NO_FOLLOW_RELATIONSHIP` | Sender doesn't follow receiver (DIRECT conversations) |
 | `POST_NOT_FOUND` | Post not found |
 | `POST_SHARING_NOT_ALLOWED` | Post sharing not allowed |
+| `FILE_TOO_LARGE` | File size exceeds 10 MB limit |
+| `INVALID_FILE_TYPE` | File type not supported (must be image, video, or audio) |
+| `FILE_UPLOAD_FAILED` | Failed to upload file to S3 |
 
 ### Common Error Scenarios
 
@@ -770,6 +881,22 @@ For **DIRECT** conversations:
 4. Server sends: ACK with `message_id`
 5. Server broadcasts: `message.sent` to other users
 
+### Sending a File
+
+1. Client uploads file via HTTP POST to `/api/chat/upload/`
+2. Server validates:
+   - File size ≤ 10 MB
+   - File type is supported (image/video/audio)
+   - Filename has valid extension
+3. Server uploads file to S3: `chat/files/{user_id}/{uuid}/{filename}`
+4. Server returns file URL and metadata
+5. Client sends WebSocket message: `send_message` with `file_url`, `file_type`, `file_size`, `file_name`
+6. Server validates file URL format (must be valid HTTP/HTTPS URL)
+7. Server creates message with S3 URL
+8. Server sends: ACK with `message_id`
+9. Server broadcasts: `message.sent` with file object containing URL, type, size, name
+10. Other users receive file URL and can directly access from S3
+
 ### Replying to a Message
 
 1. Client sends: `send_message` with `parent_message_id`
@@ -815,15 +942,76 @@ ws.onmessage = (event) => {
   if (data.request_id === requestId) {
     // This is the response to our request
     if (data.ok) {
-      // Success
+      // Success - message sent
+      console.log("Message ID:", data.data.message_id);
     } else {
       // Error
+      console.error("Error:", data.error, data.error_code);
     }
   } else if (data.type === "message.sent") {
     // This is a broadcast from another user
+    if (data.data.file) {
+      // Message contains a file
+      console.log("File received:", data.data.file.url);
+      // Display file using the S3 URL
+    }
   }
 };
 ```
+
+### Sending a File
+
+```javascript
+// Step 1: Upload file via HTTP
+const fileInput = document.getElementById('fileInput');
+const file = fileInput.files[0];
+
+const formData = new FormData();
+formData.append('file', file);
+formData.append('conversation_id', '1');
+
+fetch('http://your-domain/api/chat/upload/', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${jwtToken}`
+  },
+  body: formData
+})
+.then(response => response.json())
+.then(data => {
+  if (data.success) {
+    // Step 2: Send WebSocket message with file URL
+    const requestId = generateUUID();
+    ws.send(JSON.stringify({
+      action: "send_message",
+      request_id: requestId,
+      conversation_id: "1",
+      content: "Check out this image!",
+      file_url: data.data.file_url,
+      file_type: data.data.file_type,
+      file_size: data.data.file_size,
+      file_name: data.data.file_name
+    }));
+    
+    // Handle response
+    ws.onmessage = (event) => {
+      const response = JSON.parse(event.data);
+      if (response.request_id === requestId) {
+        if (response.ok) {
+          console.log("Message sent successfully!");
+          console.log("Message ID:", response.data.message_id);
+        } else {
+          console.error("Failed:", response.error);
+        }
+      }
+    };
+  } else {
+    console.error("File upload failed:", data.error);
+  }
+})
+.catch(error => {
+  console.error("Upload error:", error);
+});
 
 ### Handling Broadcasts
 
@@ -874,8 +1062,8 @@ ws.onmessage = (event) => {
 
 **API Version:** 1.0.0  
 **Last Updated:** December 13, 2025  
-**Protocol:** WebSocket (JSON messages)  
-**Authentication:** JWT (query parameter)
+**Protocol:** WebSocket (JSON messages) + HTTP REST (file uploads)  
+**Authentication:** JWT (query parameter for WebSocket, Bearer token for HTTP)
 
 ---
 

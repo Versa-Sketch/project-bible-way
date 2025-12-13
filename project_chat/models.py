@@ -7,6 +7,12 @@ class ConversationTypeChoices(models.TextChoices):
     GROUP = "GROUP", "Group Chat"
 
 
+class FileTypeChoices(models.TextChoices):
+    IMAGE = "IMAGE", "Image"
+    VIDEO = "VIDEO", "Video"
+    AUDIO = "AUDIO", "Audio"
+
+
 class Conversation(models.Model):
     type = models.CharField(
         max_length=10,
@@ -72,7 +78,15 @@ class Message(models.Model):
     )
 
     text = models.TextField(blank=True)
-    file = models.FileField(upload_to="chat/files/", blank=True, null=True)
+    file = models.URLField(max_length=500, blank=True, null=True)  # S3 URL
+    file_type = models.CharField(
+        max_length=10,
+        choices=FileTypeChoices.choices,
+        blank=True,
+        null=True
+    )
+    file_size = models.IntegerField(blank=True, null=True)  # Size in bytes
+    file_name = models.CharField(max_length=255, blank=True, null=True)
 
     reply_to = models.ForeignKey(
         "self",

@@ -5,8 +5,11 @@ Includes rate limiting, message validation, error codes, and serialization helpe
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 import uuid
+import base64
+import os
+import mimetypes
 
 # Error codes
 class ErrorCodes:
@@ -27,6 +30,16 @@ class ErrorCodes:
     NO_FOLLOW_RELATIONSHIP = "NO_FOLLOW_RELATIONSHIP"
     POST_NOT_FOUND = "POST_NOT_FOUND"
     POST_SHARING_NOT_ALLOWED = "POST_SHARING_NOT_ALLOWED"
+    FILE_TOO_LARGE = "FILE_TOO_LARGE"
+    INVALID_FILE_TYPE = "INVALID_FILE_TYPE"
+    FILE_UPLOAD_FAILED = "FILE_UPLOAD_FAILED"
+
+# File validation constants
+ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
+ALLOWED_VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.m4v']
+ALLOWED_AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma']
+
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
 # Rate limiting storage (in-memory, per user)
@@ -120,9 +133,17 @@ def validate_message_data(data: dict) -> tuple[bool, Optional[str]]:
         content = data.get('content', '')
         if not isinstance(content, str):
             return False, "content must be a string"
-        # Allow empty content if file or shared_post is provided
-        if len(content.strip()) == 0 and not data.get('file') and not data.get('shared_post_id'):
-            return False, "content cannot be empty unless file or shared_post_id is provided"
+        # Allow empty content if file_url or shared_post is provided
+        if len(content.strip()) == 0 and not data.get('file_url') and not data.get('shared_post_id'):
+            return False, "content cannot be empty unless file_url or shared_post_id is provided"
+    
+    # Validate file_url if provided
+    if 'file_url' in data and data.get('file_url'):
+        file_url = data.get('file_url')
+        if not isinstance(file_url, str):
+            return False, "file_url must be a string"
+        if not file_url.startswith(('http://', 'https://')):
+            return False, "file_url must be a valid HTTP/HTTPS URL"
     
     # Validate shared_post_id if provided
     if 'shared_post_id' in data and data.get('shared_post_id'):
@@ -223,4 +244,158 @@ def serialize_conversation(conversation, user_id: str = None) -> dict:
     }
     
     return data
+
+
+def determine_file_type_from_filename(filename: str) -> Optional[str]:
+    """
+    Determine file type (IMAGE, VIDEO, AUDIO) from filename extension.
+    
+    Args:
+        filename: Name of the file
+        
+    Returns:
+        File type string or None if unknown
+    """
+    from project_chat.models import FileTypeChoices
+    
+    if not filename:
+        return None
+    
+    # Get file extension
+    path_lower = filename.lower()
+    path = path_lower.split('?')[0]  # Remove query params if any
+    file_ext = os.path.splitext(path)[1]
+    
+    if file_ext in ALLOWED_IMAGE_EXTENSIONS:
+        return FileTypeChoices.IMAGE
+    elif file_ext in ALLOWED_VIDEO_EXTENSIONS:
+        return FileTypeChoices.VIDEO
+    elif file_ext in ALLOWED_AUDIO_EXTENSIONS:
+        return FileTypeChoices.AUDIO
+    
+    return None
+
+
+def decode_base64_file(file_data_base64: str) -> Tuple[bytes, str]:
+    """
+    Decode base64 file data.
+    
+    Args:
+        file_data_base64: Base64 encoded file string (with or without data URL prefix)
+        
+    Returns:
+        Tuple of (file_bytes, content_type)
+        
+    Raises:
+        ValueError: If base64 string is invalid
+    """
+    try:
+        # Remove data URL prefix if present (e.g., "data:image/jpeg;base64,")
+        if ',' in file_data_base64:
+            header, data = file_data_base64.split(',', 1)
+            # Extract content type from header
+            if 'data:' in header and ';base64' in header:
+                content_type = header.split('data:')[1].split(';base64')[0]
+            else:
+                content_type = 'application/octet-stream'
+        else:
+            data = file_data_base64
+            content_type = 'application/octet-stream'
+        
+        # Decode base64
+        file_bytes = base64.b64decode(data)
+        
+        return file_bytes, content_type
+    except Exception as e:
+        raise ValueError(f"Invalid base64 file data: {str(e)}")
+
+
+def validate_file_data(file_data_base64: str, filename: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    Validate file data and determine file type.
+    
+    Args:
+        file_data_base64: Base64 encoded file string
+        filename: Original filename
+        
+    Returns:
+        Tuple of (is_valid, error_message, file_type)
+        - is_valid: True if file is valid
+        - error_message: Error message if invalid, None if valid
+        - file_type: File type (IMAGE, VIDEO, AUDIO) or None
+    """
+    from project_chat.models import FileTypeChoices
+    
+    # Check filename is provided
+    if not filename:
+        return False, "Filename is required when file_data is provided", None
+    
+    # Determine file type from filename
+    file_type = determine_file_type_from_filename(filename)
+    if not file_type:
+        allowed = ', '.join(ALLOWED_IMAGE_EXTENSIONS + ALLOWED_VIDEO_EXTENSIONS + ALLOWED_AUDIO_EXTENSIONS)
+        return False, f"Invalid file type. Allowed extensions: {allowed}", None
+    
+    # Decode and check file size
+    try:
+        file_bytes, _ = decode_base64_file(file_data_base64)
+        file_size = len(file_bytes)
+        
+        # Check file size
+        if file_size > MAX_FILE_SIZE:
+            max_mb = MAX_FILE_SIZE / (1024 * 1024)
+            return False, f"File size exceeds {max_mb} MB limit", None
+        
+        if file_size == 0:
+            return False, "File is empty", None
+        
+        return True, None, file_type
+    except ValueError as e:
+        return False, str(e), None
+    except Exception as e:
+        return False, f"Error validating file: {str(e)}", None
+
+
+def validate_uploaded_file(file_obj, max_size: int = MAX_FILE_SIZE) -> Tuple[bool, Optional[str], Optional[str]]:
+    """
+    Validate uploaded file object (Django UploadedFile).
+    
+    Args:
+        file_obj: Django UploadedFile object from request.FILES
+        max_size: Maximum file size in bytes (default: 10 MB)
+        
+    Returns:
+        Tuple of (is_valid, error_message, file_type)
+        - is_valid: True if file is valid
+        - error_message: Error message if invalid, None if valid
+        - file_type: File type (IMAGE, VIDEO, AUDIO) or None
+    """
+    from project_chat.models import FileTypeChoices
+    
+    # Check if file object is valid
+    if not file_obj or not hasattr(file_obj, 'name'):
+        return False, "Invalid file object", None
+    
+    # Check file name
+    if not file_obj.name:
+        return False, "Filename is required", None
+    
+    # Determine file type from filename
+    file_type = determine_file_type_from_filename(file_obj.name)
+    if not file_type:
+        allowed = ', '.join(ALLOWED_IMAGE_EXTENSIONS + ALLOWED_VIDEO_EXTENSIONS + ALLOWED_AUDIO_EXTENSIONS)
+        return False, f"Invalid file type. Allowed extensions: {allowed}", None
+    
+    # Check file size
+    if not hasattr(file_obj, 'size'):
+        return False, "Unable to determine file size", None
+    
+    if file_obj.size > max_size:
+        max_mb = max_size / (1024 * 1024)
+        return False, f"File size exceeds {max_mb} MB limit", None
+    
+    if file_obj.size == 0:
+        return False, "File is empty", None
+    
+    return True, None, file_type
 

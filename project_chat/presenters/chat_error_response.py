@@ -202,4 +202,52 @@ class ChatErrorResponse:
         if request_id:
             response["request_id"] = request_id
         return response
+    
+    @staticmethod
+    def file_too_large(request_id: str = None) -> Dict[str, Any]:
+        """File size exceeds limit."""
+        response = {
+            "type": "error",
+            "error": "File size exceeds 10 MB limit",
+            "error_code": ErrorCodes.FILE_TOO_LARGE
+        }
+        if request_id:
+            response["request_id"] = request_id
+        return response
+    
+    @staticmethod
+    def invalid_file_type(request_id: str = None) -> Dict[str, Any]:
+        """Invalid file type."""
+        response = {
+            "type": "error",
+            "error": "Invalid file type. Allowed: images (jpg, png, gif, webp, bmp), videos (mp4, mov, avi, mkv, webm, flv), audio (mp3, wav, ogg, m4a, aac, flac)",
+            "error_code": ErrorCodes.INVALID_FILE_TYPE
+        }
+        if request_id:
+            response["request_id"] = request_id
+        return response
+    
+    @staticmethod
+    def file_upload_failed(request_id: str = None) -> Dict[str, Any]:
+        """File upload to S3 failed."""
+        response = {
+            "type": "error",
+            "error": "Failed to upload file. Please try again.",
+            "error_code": ErrorCodes.FILE_UPLOAD_FAILED
+        }
+        if request_id:
+            response["request_id"] = request_id
+        return response
+    
+    @staticmethod
+    def invalid_file_url(request_id: str = None) -> Dict[str, Any]:
+        """Invalid file URL format."""
+        response = {
+            "type": "error",
+            "error": "Invalid file URL format. File must be uploaded via HTTP endpoint first.",
+            "error_code": ErrorCodes.VALIDATION_ERROR
+        }
+        if request_id:
+            response["request_id"] = request_id
+        return response
 

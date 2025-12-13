@@ -153,6 +153,10 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             text = data.get('content', '')
             reply_to_id = data.get('parent_message_id')
             shared_post_id = data.get('shared_post_id')
+            file_url = data.get('file_url')  # S3 URL from HTTP upload
+            file_type = data.get('file_type')  # IMAGE, VIDEO, or AUDIO
+            file_size = data.get('file_size')  # File size in bytes
+            file_name = data.get('file_name')  # Original filename
             
             if not conversation_id:
                 await self.send(text_data=json.dumps(
@@ -177,6 +181,10 @@ class UserChatConsumer(AsyncWebsocketConsumer):
                 user_id=self.user_id,
                 conversation_id=conversation_id,
                 text=text,
+                file_url=file_url,
+                file_type=file_type,
+                file_size=file_size,
+                file_name=file_name,
                 reply_to_id=reply_to_id,
                 shared_post_id=shared_post_id,
                 request_id=request_id

@@ -8,7 +8,10 @@ from typing import Optional, Dict, Any
 from project_chat.storage import ChatDB
 from project_chat.presenters.message_response import MessageResponse
 from project_chat.presenters.chat_error_response import ChatErrorResponse
-from project_chat.websocket.utils import validate_message_data, ErrorCodes
+from project_chat.websocket.utils import (
+    validate_message_data, 
+    ErrorCodes
+)
 from project_chat.models import Message, ConversationTypeChoices
 
 
@@ -25,7 +28,10 @@ class SendMessageInteractor:
         user_id: str,
         conversation_id: str,
         text: str = "",
-        file=None,
+        file_url: Optional[str] = None,  # S3 URL from HTTP upload
+        file_type: Optional[str] = None,  # IMAGE, VIDEO, or AUDIO
+        file_size: Optional[int] = None,  # File size in bytes
+        file_name: Optional[str] = None,  # Original filename
         reply_to_id: Optional[str] = None,
         shared_post_id: Optional[str] = None,
         request_id: str = ""
@@ -37,8 +43,12 @@ class SendMessageInteractor:
             user_id: ID of the user sending the message
             conversation_id: ID of the conversation
             text: Message text content
-            file: Optional file attachment
+            file_url: Optional S3 URL of uploaded file (from HTTP upload endpoint)
+            file_type: Optional file type (IMAGE, VIDEO, AUDIO)
+            file_size: Optional file size in bytes
+            file_name: Optional original filename
             reply_to_id: Optional ID of message being replied to
+            shared_post_id: Optional ID of post to share
             request_id: Request ID for acknowledgment
             
         Returns:
@@ -73,11 +83,20 @@ class SendMessageInteractor:
                     return self.error_response.post_not_found(request_id)
                 # Optionally check if user has access to the post (for future privacy features)
             
+            # Validate file URL if provided
+            if file_url:
+                # Basic URL validation
+                if not isinstance(file_url, str) or not file_url.startswith(('http://', 'https://')):
+                    return self.error_response.validation_error("Invalid file URL format", request_id)
+                
+                # Optionally verify file URL belongs to S3 bucket (security check)
+                # This can be enhanced to verify file ownership
+            
             # Validate message data
             data = {
                 'conversation_id': conversation_id,
                 'content': text,
-                'file': file,
+                'file_url': file_url,
                 'shared_post_id': shared_post_id
             }
             is_valid, error_msg = validate_message_data(data)
@@ -89,7 +108,10 @@ class SendMessageInteractor:
                 conversation_id=conversation_id,
                 sender_id=user_id,
                 text=text,
-                file=file,
+                file_url=file_url,
+                file_type=file_type,
+                file_size=file_size,
+                file_name=file_name,
                 reply_to_id=reply_to_id,
                 shared_post_id=shared_post_id
             )
