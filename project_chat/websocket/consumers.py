@@ -97,9 +97,9 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         """Handle messages received from WebSocket."""
         try:
             data = json.loads(text_data)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
             await self.send(text_data=json.dumps(
-                self.error_response.validation_error("Invalid JSON format")
+                self.error_response.validation_error("Invalid JSON format", "")
             ))
             return
         
@@ -112,95 +112,112 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             ))
             return
         
-        # Route to appropriate handler
-        if action == 'send_message':
-            await self.handle_send_message(data, request_id)
-        elif action == 'edit_message':
-            await self.handle_edit_message(data, request_id)
-        elif action == 'delete_message':
-            await self.handle_delete_message(data, request_id)
-        elif action == 'mark_read':
-            await self.handle_mark_read(data, request_id)
-        elif action == 'join_conversation':
-            await self.handle_join_conversation(data, request_id)
-        elif action == 'leave_conversation':
-            await self.handle_leave_conversation(data, request_id)
-        elif action == 'typing':
-            await self.handle_typing(data, request_id)
-        elif action == 'pong':
-            # Heartbeat response
-            pass
-        elif action == 'get_presence':
-            await self.handle_get_presence(data, request_id)
-        else:
+        # Route to appropriate handler with exception handling
+        try:
+            if action == 'send_message':
+                await self.handle_send_message(data, request_id)
+            elif action == 'edit_message':
+                await self.handle_edit_message(data, request_id)
+            elif action == 'delete_message':
+                await self.handle_delete_message(data, request_id)
+            elif action == 'mark_read':
+                await self.handle_mark_read(data, request_id)
+            elif action == 'join_conversation':
+                await self.handle_join_conversation(data, request_id)
+            elif action == 'leave_conversation':
+                await self.handle_leave_conversation(data, request_id)
+            elif action == 'typing':
+                await self.handle_typing(data, request_id)
+            elif action == 'pong':
+                # Heartbeat response
+                pass
+            elif action == 'get_presence':
+                await self.handle_get_presence(data, request_id)
+            else:
+                await self.send(text_data=json.dumps(
+                    self.error_response.invalid_action(request_id)
+                ))
+        except Exception as e:
+            # Log the error for debugging
+            import traceback
+            print(f"Error handling action {action}: {e}")
+            print(traceback.format_exc())
             await self.send(text_data=json.dumps(
-                self.error_response.invalid_action(request_id)
+                self.error_response.server_error(request_id)
             ))
     
     async def handle_send_message(self, data: Dict[str, Any], request_id: str):
         """Handle send_message action."""
-        conversation_id = data.get('conversation_id')
-        text = data.get('content', '')
-        reply_to_id = data.get('parent_message_id')
-        shared_post_id = data.get('shared_post_id')
-        
-        if not conversation_id:
+        try:
+            conversation_id = data.get('conversation_id')
+            text = data.get('content', '')
+            reply_to_id = data.get('parent_message_id')
+            shared_post_id = data.get('shared_post_id')
+            
+            if not conversation_id:
+                await self.send(text_data=json.dumps(
+                    self.error_response.validation_error("conversation_id is required", request_id)
+                ))
+                return
+            
+            # Rate limiting (synchronous function, no need for async wrapper)
+            is_allowed, remaining = check_rate_limit(
+                self.user_id, 'send_message'
+            )
+            if not is_allowed:
+                await self.send(text_data=json.dumps(
+                    self.error_response.rate_limit_exceeded(request_id)
+                ))
+                return
+            
+            # Send message
+            response = await database_sync_to_async(
+                self.send_message_interactor.send_message_interactor
+            )(
+                user_id=self.user_id,
+                conversation_id=conversation_id,
+                text=text,
+                reply_to_id=reply_to_id,
+                shared_post_id=shared_post_id,
+                request_id=request_id
+            )
+            
+            # Send acknowledgment
+            await self.send(text_data=json.dumps(response))
+            
+            # If successful, broadcast to conversation group
+            if response.get('ok'):
+                message_id = response.get('data', {}).get('message_id')
+                if message_id:
+                    message = await database_sync_to_async(
+                        self.storage.get_message_by_id
+                    )(message_id)
+                    if message:
+                        broadcast_data = await database_sync_to_async(
+                            self.send_message_interactor.get_message_for_broadcast
+                        )(message)
+                        
+                        # Ensure we're in the conversation group
+                        conv_group = f"conversation_{conversation_id}"
+                        if conv_group not in self.user_groups:
+                            await self.channel_layer.group_add(conv_group, self.channel_name)
+                            self.user_groups.add(conv_group)
+                        
+                        # Broadcast to conversation group (excluding sender)
+                        await self.channel_layer.group_send(
+                            conv_group,
+                            {
+                                'type': 'message_sent',
+                                'data': broadcast_data
+                            }
+                        )
+        except Exception as e:
+            import traceback
+            print(f"Error in handle_send_message: {e}")
+            print(traceback.format_exc())
             await self.send(text_data=json.dumps(
-                self.error_response.validation_error("conversation_id is required", request_id)
+                self.error_response.server_error(request_id)
             ))
-            return
-        
-        # Rate limiting (synchronous function, no need for async wrapper)
-        is_allowed, remaining = check_rate_limit(
-            self.user_id, 'send_message'
-        )
-        if not is_allowed:
-            await self.send(text_data=json.dumps(
-                self.error_response.rate_limit_exceeded(request_id)
-            ))
-            return
-        
-        # Send message
-        response = await database_sync_to_async(
-            self.send_message_interactor.send_message_interactor
-        )(
-            user_id=self.user_id,
-            conversation_id=conversation_id,
-            text=text,
-            reply_to_id=reply_to_id,
-            shared_post_id=shared_post_id,
-            request_id=request_id
-        )
-        
-        # Send acknowledgment
-        await self.send(text_data=json.dumps(response))
-        
-        # If successful, broadcast to conversation group
-        if response.get('ok'):
-            message_id = response.get('data', {}).get('message_id')
-            if message_id:
-                message = await database_sync_to_async(
-                    self.storage.get_message_by_id
-                )(message_id)
-                if message:
-                    broadcast_data = await database_sync_to_async(
-                        self.send_message_interactor.get_message_for_broadcast
-                    )(message)
-                    
-                    # Ensure we're in the conversation group
-                    conv_group = f"conversation_{conversation_id}"
-                    if conv_group not in self.user_groups:
-                        await self.channel_layer.group_add(conv_group, self.channel_name)
-                        self.user_groups.add(conv_group)
-                    
-                    # Broadcast to conversation group (excluding sender)
-                    await self.channel_layer.group_send(
-                        conv_group,
-                        {
-                            'type': 'message_sent',
-                            'data': broadcast_data
-                        }
-                    )
     
     async def handle_edit_message(self, data: Dict[str, Any], request_id: str):
         """Handle edit_message action."""

@@ -105,7 +105,20 @@ class ChatDB:
             
             message.save()
             return message
-        except (Conversation.DoesNotExist, User.DoesNotExist, ValueError, TypeError, Exception):
+        except (Conversation.DoesNotExist, User.DoesNotExist) as e:
+            import traceback
+            print(f"Error creating message - object not found: {e}")
+            print(traceback.format_exc())
+            return None
+        except (ValueError, TypeError) as e:
+            import traceback
+            print(f"Error creating message - invalid type/value: {e}")
+            print(traceback.format_exc())
+            return None
+        except Exception as e:
+            import traceback
+            print(f"Unexpected error creating message: {e}")
+            print(traceback.format_exc())
             return None
     
     def get_message_by_id(self, message_id: str) -> Optional[Message]:
