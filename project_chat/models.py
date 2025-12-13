@@ -1,5 +1,5 @@
 from django.db import models
-from .user import User
+from bible_way.models import User
 
 
 class ConversationTypeChoices(models.TextChoices):
@@ -81,6 +81,14 @@ class Message(models.Model):
         on_delete=models.SET_NULL,
         related_name="replies",
     )
+    
+    shared_post = models.ForeignKey(
+        'bible_way.Post',  # String reference to avoid circular import
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='shared_in_messages'
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     edited_at = models.DateTimeField(null=True, blank=True)
@@ -114,4 +122,3 @@ class MessageReadReceipt(models.Model):
 
     def __str__(self):
         return f"{self.user} read {self.message_id}"
-

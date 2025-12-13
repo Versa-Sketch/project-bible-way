@@ -22,19 +22,11 @@ from .book_reading import (
     CategoryChoices,
     AgeGroupChoices,
 )
-from .chat import (
-    Conversation,
-    ConversationMember,
-    Message,
-    MessageReadReceipt,
-    ConversationTypeChoices,
-)
 
 __all__ = [
     'LanguageChoices',
     'CategoryChoices',
     'AgeGroupChoices',
-    'ConversationTypeChoices',
     'AuthProviderChoices',
     'User',
     'UserFollowers',
@@ -54,9 +46,5 @@ __all__ = [
     'ReadingProgress',
     'ReadingNote',
     'Highlight',
-    'Conversation',
-    'ConversationMember',
-    'Message',
-    'MessageReadReceipt',
 ]
 

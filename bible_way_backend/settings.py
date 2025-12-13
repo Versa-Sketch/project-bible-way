@@ -37,6 +37,8 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',  # Must be FIRST for ASGI support
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -46,6 +48,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     "bible_way",
+    "project_chat",  
     "storages",
 ]
 
@@ -92,6 +95,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'bible_way_backend.wsgi.application'
 
+# ASGI Application for WebSocket support
+ASGI_APPLICATION = 'bible_way_backend.asgi.application'
+
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
@@ -103,6 +109,8 @@ DATABASES = {
     }
 }
 
+# Default primary key field type
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
@@ -170,3 +178,26 @@ STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 # }
 # AWS_QUERYSTRING_AUTH = False
 # AWS_S3_VERIFY = True
+
+# Channel Layers Configuration for WebSocket support
+USE_REDIS = os.getenv('USE_REDIS', 'false').lower() == 'true'
+
+if USE_REDIS:
+    # Production: Redis channel layer
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("127.0.0.1", 6379)],
+                "capacity": 1500,
+                "expiry": 60,
+            },
+        },
+    }
+else:
+    # Development: InMemory channel layer (no Redis required)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
