@@ -1,18 +1,26 @@
 from pathlib import Path
 import os
+from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials
-from dotenv import load_dotenv
+from datetime import timedelta
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-2l7)6pd1jtn6_f)d)b$lh-&502@2b@x$5%4m0kwz-o7opz4q*d')
+SECRET_KEY = os.getenv(
+    'SECRET_KEY',
+    'django-insecure-2l7)6pd1jtn6_f)d)b$lh-&502@2b@x$5%4m0kwz-o7opz4q*d'
+)
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["*"]  # DEV ONLY
 
+# -------------------------------------------------------------------
+# APPLICATIONS
+# -------------------------------------------------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -20,13 +28,19 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     'rest_framework',
     'corsheaders',
-    "bible_way",
-    "storages",
+    'storages',
+
+    'bible_way',
 ]
 
+# -------------------------------------------------------------------
+# MIDDLEWARE (ORDER MATTERS!)
+# -------------------------------------------------------------------
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # MUST BE FIRST
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -34,11 +48,14 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.BrokenLinkEmailsMiddleware',
 ]
+
+# -------------------------------------------------------------------
+# CORS CONFIGURATION (FOR FRONTEND)
+# -------------------------------------------------------------------
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -49,7 +66,17 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'ngrok-skip-browser-warning',  # IMPORTANT
 ]
+
+# -------------------------------------------------------------------
+# CSRF CONFIG (NGROK)
+# -------------------------------------------------------------------
+CSRF_TRUSTED_ORIGINS = [
+    "https://*.ngrok-free.app",
+]
+
+# -------------------------------------------------------------------
 ROOT_URLCONF = 'bible_way_backend.urls'
 
 TEMPLATES = [
@@ -69,6 +96,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'bible_way_backend.wsgi.application'
 
+# -------------------------------------------------------------------
+# DATABASE
+# -------------------------------------------------------------------
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -76,34 +106,21 @@ DATABASES = {
     }
 }
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
+# -------------------------------------------------------------------
+# AUTH
+# -------------------------------------------------------------------
 AUTH_USER_MODEL = 'bible_way.User'
 
-LANGUAGE_CODE = 'en-us'
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
 
-TIME_ZONE = 'Asia/Kolkata'
-
-USE_I18N = True
-
-USE_TZ = True
-
-from datetime import timedelta
-
-STATIC_URL = 'static/'
+# -------------------------------------------------------------------
+# JWT
+# -------------------------------------------------------------------
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -111,26 +128,39 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
-    'JTI_CLAIM': 'jti',
 }
+
+# -------------------------------------------------------------------
+# INTERNATIONALIZATION
+# -------------------------------------------------------------------
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'Asia/Kolkata'
+USE_I18N = True
+USE_TZ = True
+
+# -------------------------------------------------------------------
+# STATIC / MEDIA (S3)
+# -------------------------------------------------------------------
+STATIC_URL = 'static/'
 
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '')
 AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-1')
-AWS_S3_CUSTOM_DOMAIN = os.getenv('AWS_S3_CUSTOM_DOMAIN', '')
-AWS_S3_FILE_OVERWRITE = os.getenv('AWS_S3_FILE_OVERWRITE', 'False') == 'True'
-AWS_DEFAULT_ACL = os.getenv('AWS_DEFAULT_ACL', 'public-read')
+AWS_DEFAULT_ACL = 'public-read'
 
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
+# -------------------------------------------------------------------
+# FIREBASE
+# -------------------------------------------------------------------
 CRED_PATH = os.path.join(BASE_DIR, 'serviceAccountKey.json')
 
 if not firebase_admin._apps:
     try:
         cred = credentials.Certificate(CRED_PATH)
         firebase_admin.initialize_app(cred)
-        print("Firebase Admin SDK initialized successfully.")
+        print("Firebase initialized")
     except Exception as e:
-        print(f"Error initializing Firebase: {e}")
+        print("Firebase init error:", e)

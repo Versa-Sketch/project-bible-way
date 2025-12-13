@@ -23,7 +23,7 @@ def upload_file_to_s3(file_obj, key: str) -> str:
         Bucket=BUCKET_NAME,
         Key=key,
         ExtraArgs={
-            "ContentType": file_obj.content_type,
+            "ContentType": file_obj.content_type
         },
     )
 

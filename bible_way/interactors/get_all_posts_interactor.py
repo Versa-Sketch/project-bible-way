@@ -8,7 +8,7 @@ class GetAllPostsInteractor:
         self.storage = storage
         self.response = response
 
-    def get_all_posts_interactor(self, limit: int = 10, offset: int = 0) -> Response:
+    def get_all_posts_interactor(self, limit: int = 10, offset: int = 0, current_user_id: str = None) -> Response:
         try:
             if limit < 1:
                 return self.response.validation_error_response("Limit must be greater than 0")
@@ -16,7 +16,7 @@ class GetAllPostsInteractor:
             if offset < 0:
                 return self.response.validation_error_response("Offset must be greater than or equal to 0")
             
-            result = self.storage.get_all_posts_with_counts(limit=limit, offset=offset)
+            result = self.storage.get_all_posts_with_counts(limit=limit, offset=offset, current_user_id=current_user_id)
             
             return self.response.posts_retrieved_successfully_response(
                 posts_data=result['posts'],

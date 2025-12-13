@@ -376,7 +376,9 @@ Authorization: Bearer <access_token>
 **Request Body (Form Data):**
 - `title` (string, optional) - Post title
 - `description` (string, optional) - Post description
-- `media` (file[], required) - One or more media files (images/videos/audio)
+- `media` (file[], optional) - One or more media files (images/videos/audio)
+
+**Note:** Media files are optional. Posts can be created without media.
 
 **Success Response (201 Created):**
 ```json
@@ -389,16 +391,7 @@ Authorization: Bearer <access_token>
 
 **Error Responses:**
 
-- **400 Bad Request** - No media provided:
-```json
-{
-  "success": false,
-  "error": "At least one media file is required",
-  "error_code": "NO_MEDIA_PROVIDED"
-}
-```
-
-- **400 Bad Request** - Invalid media type:
+- **500 Internal Server Error** - S3 upload error:
 ```json
 {
   "success": false,
@@ -486,7 +479,7 @@ Authorization: Bearer <access_token>
 
 ### 4.4 Get All Posts
 **Endpoint:** `GET /post/all`  
-**Authentication:** Not required
+**Authentication:** Required (JWT)
 
 **Query Parameters:**
 - `limit` (integer, optional, default: 10) - Number of posts to return
@@ -516,6 +509,8 @@ Authorization: Bearer <access_token>
       ],
       "likes_count": 5,
       "comments_count": 3,
+      "is_liked": true,
+      "is_commented": false,
       "created_at": "2024-01-01T12:00:00",
       "updated_at": "2024-01-01T12:00:00"
     }
@@ -530,7 +525,18 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**Note:** 
+- `is_liked`: Indicates if the current authenticated user has liked this post
+- `is_commented`: Indicates if the current authenticated user has commented on this post
+
 **Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
 
 - **400 Bad Request** - Invalid limit:
 ```json
@@ -579,6 +585,8 @@ Authorization: Bearer <access_token>
       ],
       "likes_count": 5,
       "comments_count": 3,
+      "is_liked": true,
+      "is_commented": false,
       "created_at": "2024-01-01T12:00:00",
       "updated_at": "2024-01-01T12:00:00"
     }
@@ -592,6 +600,10 @@ Authorization: Bearer <access_token>
   }
 }
 ```
+
+**Note:** 
+- `is_liked`: Indicates if the current authenticated user has liked this post
+- `is_commented`: Indicates if the current authenticated user has commented on this post
 
 **Error Responses:**
 
@@ -690,12 +702,16 @@ Authorization: Bearer <access_token>
       },
       "description": "string",
       "likes_count": 5,
+      "is_liked": true,
       "created_at": "2024-01-01T12:00:00",
       "updated_at": "2024-01-01T12:00:00"
     }
   ]
 }
 ```
+
+**Note:** 
+- `is_liked`: Indicates if the current authenticated user has liked this comment
 
 **Error Responses:**
 
@@ -1422,6 +1438,146 @@ Authorization: Bearer <access_token>
 
 ---
 
+## 9. Verse APIs
+
+### 9.1 Get Daily Verse
+**Endpoint:** `GET /verse/daily`  
+**Authentication:** Required (JWT)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Verse retrieved successfully",
+  "data": {
+    "verse_id": "uuid-string",
+    "title": "Quote of the day",
+    "description": "string",
+    "created_at": "2024-01-01T12:00:00",
+    "updated_at": "2024-01-01T12:00:00"
+  }
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **404 Not Found** - No verse found:
+```json
+{
+  "success": false,
+  "error": "Verse not found",
+  "error_code": "VERSE_NOT_FOUND"
+}
+```
+
+---
+
+## 10. Admin APIs
+
+### 10.1 Admin Create Verse
+**Endpoint:** `POST /admin/verse/create`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Request Body:**
+```json
+{
+  "title": "string (optional, default: 'Quote of the day')",
+  "description": "string (required)"
+}
+```
+
+**Note:** This endpoint clears all existing verses before creating a new one (24-hour clearing mechanism).
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Verse created successfully",
+  "verse_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Description is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+---
+
+### 10.2 Admin Create Promotion
+**Endpoint:** `POST /admin/promotion/create`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)  
+**Content-Type:** `multipart/form-data`
+
+**Request Body (Form Data):**
+- `title` (string, required) - Promotion title
+- `description` (string, optional) - Promotion description
+- `price` (decimal, required) - Promotion price
+- `redirect_link` (string, required) - URL to redirect to
+- `meta_data` (string, optional) - JSON string for metadata
+- `media` (file, optional) - Single media file (image/video/audio)
+- `images` (file[], optional) - Multiple image files
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Promotion created successfully",
+  "promotion_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Title is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid JSON format:
+```json
+{
+  "success": false,
+  "error": "Invalid JSON format for meta_data",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+---
+
 ## Common Error Codes
 
 | Error Code | Description |
@@ -1435,6 +1591,7 @@ Authorization: Bearer <access_token>
 | `USER_NOT_FOUND` | User does not exist |
 | `POST_NOT_FOUND` | Post does not exist |
 | `PRAYER_REQUEST_NOT_FOUND` | Prayer request does not exist |
+| `VERSE_NOT_FOUND` | Verse not found in database |
 | `ALREADY_FOLLOWING` | Already following the user |
 | `CANNOT_FOLLOW_YOURSELF` | Cannot follow your own account |
 | `ALREADY_LIKED` | Already liked the post/comment/prayer request |
@@ -1456,11 +1613,13 @@ Authorization: Bearer <access_token>
    Authorization: Bearer <access_token>
    ```
 
-2. **Media Upload:** The create post endpoint accepts multiple media files. Supported formats are images, videos, and audio files.
+2. **Media Upload:** The create post endpoint accepts multiple media files (optional). Supported formats are images, videos, and audio files. Media files are determined by filename extension (no magic library validation).
 
 3. **Base URL:** Replace `http://localhost:8000/` with your actual server URL in production.
 
 4. **Date Formats:** All datetime fields are returned in ISO 8601 format.
 
 5. **Error Responses:** All error responses follow a consistent format with `success: false`, `error` message, and `error_code`.
+
+6. **User Interaction Flags:** Posts include `is_liked` and `is_commented` flags indicating if the current authenticated user has liked or commented. Comments include `is_liked` flag indicating if the current authenticated user has liked the comment.
 

@@ -37,7 +37,7 @@ class CreatePromotionInteractor:
         media_id = None
         if media_file:
             try:
-                media_type = self.storage.validate_and_get_media_type(media_file)
+                media_type = self.storage.get_media_type_from_file(media_file)
                 media_key = f"promotions/media/{os.urandom(16).hex()}/{media_file.name}"
                 media_url = s3_upload_file(media_file, media_key)
                 
@@ -49,8 +49,6 @@ class CreatePromotionInteractor:
                 media_id = str(media.media_id)
             except Exception as e:
                 error_message = str(e)
-                if "Invalid file type" in error_message or "Invalid media type" in error_message:
-                    return self.response.invalid_media_type_response()
                 return self.response.error_response(f"Failed to upload media: {error_message}")
         
         try:

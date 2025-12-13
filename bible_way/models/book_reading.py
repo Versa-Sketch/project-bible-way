@@ -56,7 +56,11 @@ class CategoryChoices(models.TextChoices):
 class AgeGroupChoices(models.TextChoices):
     CHILDREN = 'CHILDREN', 'Children'
     TEEN = 'TEEN', 'Teen'
-    ADULT = 'ADULT', 'Adult'
+    ADULT_1 = 'ADULT_1', 'Adult 1'
+    ADULT_2 = 'ADULT_2', 'Adult 2'
+    ADULT_3 = 'ADULT_3', 'Adult 3'
+    ADULT_4 = 'ADULT_4', 'Adult 4'
+    ADULT_5 = 'ADULT_5', 'Adult 5'
     SENIOR = 'SENIOR', 'Senior'
     ALL = 'ALL', 'All'
 
@@ -223,4 +227,5 @@ class Highlight(models.Model):
 
     def __str__(self):
         return f"Highlight {self.highlight_id} by {self.user.user_name} on {self.book.title}"
+
 

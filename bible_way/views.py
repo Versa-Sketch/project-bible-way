@@ -214,9 +214,10 @@ def delete_post_view(request):
     return response
 
 @api_view(['GET'])
-@authentication_classes([])
-@permission_classes([])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def get_all_posts_view(request):
+    current_user_id = str(request.user.user_id)
     limit = request.query_params.get('limit', '10')
     offset = request.query_params.get('offset', '0')
     
@@ -231,7 +232,7 @@ def get_all_posts_view(request):
         offset = 0
     
     response = GetAllPostsInteractor(storage=UserDB(), response=GetAllPostsResponse()).\
-        get_all_posts_interactor(limit=limit, offset=offset)
+        get_all_posts_interactor(limit=limit, offset=offset, current_user_id=current_user_id)
     return response
 
 @api_view(['GET'])
@@ -239,6 +240,7 @@ def get_all_posts_view(request):
 @permission_classes([IsAuthenticated])
 def get_user_posts_view(request):
     user_id = str(request.user.user_id)
+    current_user_id = str(request.user.user_id)
     limit = request.query_params.get('limit', '10')
     offset = request.query_params.get('offset', '0')
     
@@ -253,7 +255,7 @@ def get_user_posts_view(request):
         offset = 0
     
     response = GetUserPostsInteractor(storage=UserDB(), response=GetUserPostsResponse()).\
-        get_user_posts_interactor(user_id=user_id, limit=limit, offset=offset)
+        get_user_posts_interactor(user_id=user_id, limit=limit, offset=offset, current_user_id=current_user_id)
     return response
 
 @api_view(['GET'])
@@ -441,8 +443,9 @@ def create_comment_view(request):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def get_comments_view(request, post_id):
+    current_user_id = str(request.user.user_id)
     response = GetCommentsInteractor(storage=UserDB(), response=GetCommentsResponse()).\
-        get_comments_interactor(post_id=post_id)
+        get_comments_interactor(post_id=post_id, current_user_id=current_user_id)
     return response
 
 @api_view(['PUT', 'PATCH'])

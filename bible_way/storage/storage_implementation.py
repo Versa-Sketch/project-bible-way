@@ -2,7 +2,6 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Count, Q
 import uuid
 import os
-import magic
 from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
@@ -137,33 +136,11 @@ class UserDB:
         )
         return post
     
-    def validate_and_get_media_type(self, file_obj) -> str:
-        first_bytes = file_obj.read(2048)
-        file_obj.seek(0)
-        
-        mime_type = magic.from_buffer(first_bytes, mime=True)
-        
-        ALLOWED_IMAGES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
-        ALLOWED_VIDEOS = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm']
-        ALLOWED_AUDIO = [
-            'audio/mpeg',
-            'audio/wav',
-            'audio/x-wav',
-            'audio/aac',
-            'audio/ogg',
-            'audio/mp4',
-            'audio/webm',
-            'audio/flac'
-        ]
-        
-        if mime_type in ALLOWED_IMAGES:
+    def get_media_type_from_file(self, file_obj) -> str:
+        if not file_obj or not hasattr(file_obj, 'name'):
             return Media.IMAGE
-        elif mime_type in ALLOWED_VIDEOS:
-            return Media.VIDEO
-        elif mime_type in ALLOWED_AUDIO:
-            return Media.AUDIO
-        else:
-            raise Exception(f"Invalid file type: {mime_type}. Only images, videos, and audio are allowed.")
+        
+        return self._determine_media_type_from_filename(file_obj.name)
     
     def _determine_media_type_from_filename(self, filename_or_url: str) -> str:
         path_lower = filename_or_url.lower()
@@ -263,7 +240,7 @@ class UserDB:
         )
         return comment
     
-    def get_comments_by_post(self, post_id: str) -> list:
+    def get_comments_by_post(self, post_id: str, current_user_id: str = None) -> list:
         post_uuid = uuid.UUID(post_id) if isinstance(post_id, str) else post_id
         
         try:
@@ -275,8 +252,24 @@ class UserDB:
             likes_count=Count('reactions')
         ).order_by('-created_at')
         
+        current_user_uuid = None
+        if current_user_id:
+            try:
+                current_user_uuid = uuid.UUID(current_user_id) if isinstance(current_user_id, str) else current_user_id
+            except (ValueError, TypeError):
+                current_user_uuid = None
+        
         comments_data = []
         for comment in comments:
+            is_liked = False
+            
+            if current_user_uuid:
+                is_liked = Reaction.objects.filter(
+                    comment=comment,
+                    user__user_id=current_user_uuid,
+                    reaction_type=Reaction.LIKE
+                ).exists()
+            
             comments_data.append({
                 'comment_id': str(comment.comment_id),
                 'user': {
@@ -286,6 +279,7 @@ class UserDB:
                 },
                 'description': comment.description,
                 'likes_count': comment.likes_count,
+                'is_liked': is_liked,
                 'created_at': comment.created_at.isoformat(),
                 'updated_at': comment.updated_at.isoformat()
             })
@@ -423,13 +417,20 @@ class UserDB:
         reaction.delete()
         return True
     
-    def get_all_posts_with_counts(self, limit: int = 10, offset: int = 0) -> dict:
+    def get_all_posts_with_counts(self, limit: int = 10, offset: int = 0, current_user_id: str = None) -> dict:
         total_count = Post.objects.count()
         
         posts = Post.objects.select_related('user').prefetch_related('media').annotate(
             likes_count=Count('reactions', filter=Q(reactions__post__isnull=False)),
             comments_count=Count('comments')
         ).order_by('-created_at')[offset:offset + limit]
+        
+        current_user_uuid = None
+        if current_user_id:
+            try:
+                current_user_uuid = uuid.UUID(current_user_id) if isinstance(current_user_id, str) else current_user_id
+            except (ValueError, TypeError):
+                current_user_uuid = None
         
         posts_data = []
         for post in posts:
@@ -440,6 +441,21 @@ class UserDB:
                     'media_type': media.media_type,
                     'url': media.url
                 })
+            
+            is_liked = False
+            is_commented = False
+            
+            if current_user_uuid:
+                is_liked = Reaction.objects.filter(
+                    post=post,
+                    user__user_id=current_user_uuid,
+                    reaction_type=Reaction.LIKE
+                ).exists()
+                
+                is_commented = Comment.objects.filter(
+                    post=post,
+                    user__user_id=current_user_uuid
+                ).exists()
             
             posts_data.append({
                 'post_id': str(post.post_id),
@@ -453,6 +469,8 @@ class UserDB:
                 'media': media_list,
                 'likes_count': post.likes_count,
                 'comments_count': post.comments_count,
+                'is_liked': is_liked,
+                'is_commented': is_commented,
                 'created_at': post.created_at.isoformat(),
                 'updated_at': post.updated_at.isoformat()
             })
@@ -469,7 +487,7 @@ class UserDB:
             'has_previous': has_previous
         }
     
-    def get_user_posts_with_counts(self, user_id: str, limit: int = 10, offset: int = 0) -> dict:
+    def get_user_posts_with_counts(self, user_id: str, limit: int = 10, offset: int = 0, current_user_id: str = None) -> dict:
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         total_count = Post.objects.filter(user__user_id=user_uuid).count()
         
@@ -477,6 +495,13 @@ class UserDB:
             likes_count=Count('reactions', filter=Q(reactions__post__isnull=False)),
             comments_count=Count('comments')
         ).order_by('-created_at')[offset:offset + limit]
+        
+        current_user_uuid = None
+        if current_user_id:
+            try:
+                current_user_uuid = uuid.UUID(current_user_id) if isinstance(current_user_id, str) else current_user_id
+            except (ValueError, TypeError):
+                current_user_uuid = None
         
         posts_data = []
         for post in posts:
@@ -488,6 +513,21 @@ class UserDB:
                     'url': media.url
                 })
             
+            is_liked = False
+            is_commented = False
+            
+            if current_user_uuid:
+                is_liked = Reaction.objects.filter(
+                    post=post,
+                    user__user_id=current_user_uuid,
+                    reaction_type=Reaction.LIKE
+                ).exists()
+                
+                is_commented = Comment.objects.filter(
+                    post=post,
+                    user__user_id=current_user_uuid
+                ).exists()
+            
             posts_data.append({
                 'post_id': str(post.post_id),
                 'title': post.title,
@@ -495,6 +535,8 @@ class UserDB:
                 'media': media_list,
                 'likes_count': post.likes_count,
                 'comments_count': post.comments_count,
+                'is_liked': is_liked,
+                'is_commented': is_commented,
                 'created_at': post.created_at.isoformat(),
                 'updated_at': post.updated_at.isoformat()
             })

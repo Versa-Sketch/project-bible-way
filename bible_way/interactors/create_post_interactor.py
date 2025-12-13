@@ -19,33 +19,27 @@ class CreatePostInteractor:
                 description=description
             )
             
-            for media_file in media_files:
-                try:
-                    if not media_file or not hasattr(media_file, 'name'):
-                        return self.response.validation_error_response("Invalid media file provided")
-                    
+            if media_files:
+                for media_file in media_files:
                     try:
-                        media_type = self.storage.validate_and_get_media_type(media_file)
+                        if not media_file or not hasattr(media_file, 'name'):
+                            continue
+                        
+                        media_type = self.storage.get_media_type_from_file(media_file)
+                        
+                        s3_url = self.storage.upload_file_to_s3(
+                            post=post,
+                            media_file=media_file,
+                            user_id=user_id
+                        )
+                        
+                        self.storage.create_media(
+                            post=post,
+                            s3_url=s3_url,
+                            media_type=media_type
+                        )
                     except Exception as e:
-                        if "Invalid file type" in str(e):
-                            return self.response.invalid_media_type_response()
-                        raise
-                    
-                    s3_url = self.storage.upload_file_to_s3(
-                        post=post,
-                        media_file=media_file,
-                        user_id=user_id
-                    )
-                    
-                    self.storage.create_media(
-                        post=post,
-                        s3_url=s3_url,
-                        media_type=media_type
-                    )
-                except Exception as e:
-                    if "Invalid file type" in str(e):
-                        return self.response.invalid_media_type_response()
-                    return self.response.s3_upload_error_response(str(e))
+                        return self.response.s3_upload_error_response(str(e))
             
             return self.response.post_created_successfully_response(str(post.post_id))
             

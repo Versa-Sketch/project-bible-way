@@ -8,12 +8,12 @@ class GetCommentsInteractor:
         self.storage = storage
         self.response = response
 
-    def get_comments_interactor(self, post_id: str) -> Response:
+    def get_comments_interactor(self, post_id: str, current_user_id: str = None) -> Response:
         if not post_id:
             return self.response.validation_error_response("Post ID is required")
         
         try:
-            comments_data = self.storage.get_comments_by_post(post_id=post_id)
+            comments_data = self.storage.get_comments_by_post(post_id=post_id, current_user_id=current_user_id)
             
             return self.response.comments_retrieved_successfully_response(
                 post_id=post_id,
