@@ -1,28 +1,43 @@
 # Django Core
-Django>=5.2.0,<6.0.0
+Django==6.0
 
 # Django REST Framework
-djangorestframework>=3.14.0
-djangorestframework-simplejwt>=5.2.0
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
 
 # WebSocket Support (Django Channels)
 channels>=4.0.0
 daphne>=4.0.0
-# Optional for production with Redis:
+
+# Redis Support (Optional - for production WebSocket scaling)
+# Uncomment if using Redis for channel layers:
 # channels-redis>=4.0.0
 
 # CORS Headers
-django-cors-headers>=4.0.0
+django-cors-headers==4.9.0
 
 # AWS S3 Storage
-django-storages>=1.14.0
-boto3>=1.26.0
+django-storages==1.14.6
+boto3==1.42.4
 
 # Image Processing (required for ImageField)
-Pillow>=10.0.0
+Pillow==12.0.0
 
 # Environment Variables
-python-dotenv>=1.0.0
+python-dotenv==1.2.1
+
+# Firebase Admin SDK (for Firebase authentication/notifications)
+firebase-admin==7.1.0
+
+# PDF Processing (PyMuPDF)
+PyMuPDF==1.26.6
+
+# File Type Detection
+python-magic-bin==0.4.14
 
 # WebSocket Testing
 websockets>=12.0
+
+# HTTP Client
+requests==2.32.5
+httpx==0.28.1
