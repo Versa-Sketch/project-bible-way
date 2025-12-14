@@ -1,10 +1,16 @@
 from django.db import models
-from .user import User
+from bible_way.models import User
 
 
 class ConversationTypeChoices(models.TextChoices):
     DIRECT = "DIRECT", "Direct Chat"
     GROUP = "GROUP", "Group Chat"
+
+
+class FileTypeChoices(models.TextChoices):
+    IMAGE = "IMAGE", "Image"
+    VIDEO = "VIDEO", "Video"
+    AUDIO = "AUDIO", "Audio"
 
 
 class Conversation(models.Model):
@@ -72,7 +78,15 @@ class Message(models.Model):
     )
 
     text = models.TextField(blank=True)
-    file = models.FileField(upload_to="chat/files/", blank=True, null=True)
+    file = models.URLField(max_length=500, blank=True, null=True)  # S3 URL
+    file_type = models.CharField(
+        max_length=10,
+        choices=FileTypeChoices.choices,
+        blank=True,
+        null=True
+    )
+    file_size = models.IntegerField(blank=True, null=True)  # Size in bytes
+    file_name = models.CharField(max_length=255, blank=True, null=True)
 
     reply_to = models.ForeignKey(
         "self",
@@ -80,6 +94,14 @@ class Message(models.Model):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="replies",
+    )
+    
+    shared_post = models.ForeignKey(
+        'bible_way.Post',  # String reference to avoid circular import
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='shared_in_messages'
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -114,4 +136,3 @@ class MessageReadReceipt(models.Model):
 
     def __str__(self):
         return f"{self.user} read {self.message_id}"
-

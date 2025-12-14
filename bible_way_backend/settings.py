@@ -22,6 +22,8 @@ ALLOWED_HOSTS = ["*"]  # DEV ONLY
 # APPLICATIONS
 # -------------------------------------------------------------------
 INSTALLED_APPS = [
+    'daphne',  # Must be FIRST for ASGI support
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -31,9 +33,9 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'corsheaders',
-    'storages',
-
-    'bible_way',
+    "bible_way",
+    "project_chat",  
+    "storages",
 ]
 
 # -------------------------------------------------------------------
@@ -96,9 +98,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'bible_way_backend.wsgi.application'
 
-# -------------------------------------------------------------------
-# DATABASE
-# -------------------------------------------------------------------
+# ASGI Application for WebSocket support
+ASGI_APPLICATION = 'bible_way_backend.asgi.application'
+
+
+# Database
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -106,10 +112,11 @@ DATABASES = {
     }
 }
 
-# -------------------------------------------------------------------
-# AUTH
-# -------------------------------------------------------------------
-AUTH_USER_MODEL = 'bible_way.User'
+# Default primary key field type
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Password validation
+# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -152,15 +159,32 @@ AWS_DEFAULT_ACL = 'public-read'
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
-# -------------------------------------------------------------------
-# FIREBASE
-# -------------------------------------------------------------------
-CRED_PATH = os.path.join(BASE_DIR, 'serviceAccountKey.json')
+# Optional AWS Settings
+# AWS_S3_OBJECT_PARAMETERS = {
+#     'CacheControl': 'max-age=86400',
+# }
+# AWS_QUERYSTRING_AUTH = False
+# AWS_S3_VERIFY = True
 
-if not firebase_admin._apps:
-    try:
-        cred = credentials.Certificate(CRED_PATH)
-        firebase_admin.initialize_app(cred)
-        print("Firebase initialized")
-    except Exception as e:
-        print("Firebase init error:", e)
+# Channel Layers Configuration for WebSocket support
+USE_REDIS = os.getenv('USE_REDIS', 'false').lower() == 'true'
+
+if USE_REDIS:
+    # Production: Redis channel layer
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("127.0.0.1", 6379)],
+                "capacity": 1500,
+                "expiry": 60,
+            },
+        },
+    }
+else:
+    # Development: InMemory channel layer (no Redis required)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
