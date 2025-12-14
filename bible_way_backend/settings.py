@@ -34,9 +34,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'storages',
     'bible_way',
-    "bible_way",
-    "project_chat",  
-    "storages",
+    "project_chat",
 ]
 
 # -------------------------------------------------------------------

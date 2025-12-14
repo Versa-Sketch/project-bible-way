@@ -282,6 +282,107 @@ Authorization: Bearer <access_token>
 
 ---
 
+### 2.3 Search Users
+**Endpoint:** `GET /user/search`  
+**Authentication:** Required (JWT)
+
+**Query Parameters:**
+- `q` (string, required) - Search query (minimum 2 characters, maximum 50 characters)
+- `limit` (integer, optional) - Maximum number of results (default: 20, maximum: 50)
+
+**Description:**
+Search for users by username with partial matching (case-insensitive). Results are prioritized by relevance:
+1. Exact match (highest priority)
+2. Starts with query
+3. Contains query
+
+**Example Request:**
+```
+GET /user/search?q=ven&limit=20
+Authorization: Bearer <access_token>
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "user_id": "abc-123-uuid",
+      "user_name": "venugopal",
+      "profile_picture_url": "https://s3.amazonaws.com/bucket/profile.jpg",
+      "followers_count": 150,
+      "is_following": false
+    },
+    {
+      "user_id": "def-456-uuid",
+      "user_name": "venkat",
+      "profile_picture_url": "https://s3.amazonaws.com/bucket/profile2.jpg",
+      "followers_count": 89,
+      "is_following": true
+    }
+  ],
+  "total_count": 15,
+  "query": "ven"
+}
+```
+
+**Response Fields:**
+- `user_id` (string) - Unique user identifier
+- `user_name` (string) - Username
+- `profile_picture_url` (string) - URL to user's profile picture (empty string if not set)
+- `followers_count` (integer) - Number of followers
+- `is_following` (boolean) - Whether the authenticated user is following this user
+- `total_count` (integer) - Total number of matching users (may be more than returned results)
+- `query` (string) - The original search query
+
+**Error Responses:**
+
+- **400 Bad Request** - Search query required:
+```json
+{
+  "success": false,
+  "error": "Search query is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Query too short:
+```json
+{
+  "success": false,
+  "error": "Search query must be at least 2 characters",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Query too long:
+```json
+{
+  "success": false,
+  "error": "Search query must be less than 50 characters",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to search users: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- Search is case-insensitive
+- Results are ordered by relevance (exact matches first, then starts with, then contains)
+- Maximum 50 results can be returned per request
+- The `is_following` field indicates the follow relationship from the authenticated user to each result
+- Empty search queries (less than 2 characters) return empty results
+
+---
+
 ## 3. User Follow APIs
 
 ### 3.1 Follow User

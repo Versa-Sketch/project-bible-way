@@ -11,6 +11,7 @@ from bible_way.interactors.google_authentication_interactor import GoogleAuthent
 from bible_way.presenters.google_auth_response import GoogleAuthResponse
 from bible_way.interactors.user_profile_interactor import UserProfileInteractor
 from bible_way.interactors.current_user_profile_interactor import CurrentUserProfileInteractor
+from bible_way.interactors.search_users_interactor import SearchUsersInteractor
 from bible_way.interactors.follow_user_interactor import FollowUserInteractor
 from bible_way.interactors.unfollow_user_interactor import UnfollowUserInteractor
 from bible_way.interactors.create_post_interactor import CreatePostInteractor
@@ -40,6 +41,7 @@ from bible_way.interactors.get_verse_interactor import GetVerseInteractor
 from bible_way.interactors.admin.create_verse_interactor import CreateVerseInteractor
 from bible_way.interactors.admin.create_promotion_interactor import CreatePromotionInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
+from bible_way.presenters.search_users_response import SearchUsersResponse
 from bible_way.presenters.follow_user_response import FollowUserResponse
 from bible_way.presenters.unfollow_user_response import UnfollowUserResponse
 from bible_way.presenters.create_post_response import CreatePostResponse
@@ -139,6 +141,23 @@ def get_current_user_profile_view(request):
     user_id = str(request.user.user_id)
     response = CurrentUserProfileInteractor(storage=UserDB(), response=UserProfileResponse()).\
         get_current_user_profile_interactor(user_id=user_id)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def search_users_view(request):
+    query = request.query_params.get('q', '').strip()
+    limit = request.query_params.get('limit', 20)
+    current_user_id = str(request.user.user_id)
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 20
+    
+    response = SearchUsersInteractor(storage=UserDB(), response=SearchUsersResponse()).\
+        search_users_interactor(query=query, limit=limit, current_user_id=current_user_id)
     return response
 
 @api_view(['POST'])

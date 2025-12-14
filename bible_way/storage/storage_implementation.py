@@ -96,6 +96,89 @@ class UserDB:
         except UserFollowers.DoesNotExist:
             return False
     
+    def search_users(self, query: str, limit: int = 20, current_user_id: str = None) -> dict:
+        """
+        Search users by username (partial match, case-insensitive).
+        
+        Args:
+            query: Search term (e.g., "ven")
+            limit: Maximum number of results
+            current_user_id: Optional - to include follow status and followers count
+            
+        Returns:
+            Dictionary with:
+            - users: List of user dictionaries
+            - total_count: Total matching users
+            - query: Original search query
+        """
+        if not query or len(query.strip()) < 2:
+            return {
+                'users': [],
+                'total_count': 0,
+                'query': query
+            }
+        
+        query = query.strip()
+        current_user_uuid = None
+        if current_user_id:
+            try:
+                current_user_uuid = uuid.UUID(current_user_id) if isinstance(current_user_id, str) else current_user_id
+            except (ValueError, TypeError):
+                current_user_uuid = None
+        
+        # Search with priority: exact match > starts with > contains
+        from django.db.models import Case, When, IntegerField, Count
+        
+        # Build query with priority ordering
+        users = User.objects.filter(
+            Q(user_name__iexact=query) |
+            Q(user_name__istartswith=query) |
+            Q(user_name__icontains=query)
+        ).annotate(
+            priority=Case(
+                When(user_name__iexact=query, then=1),
+                When(user_name__istartswith=query, then=2),
+                When(user_name__icontains=query, then=3),
+                output_field=IntegerField()
+            )
+        ).annotate(
+            followers_count=Count('followed', distinct=True)
+        ).order_by('priority', 'user_name')[:limit]
+        
+        # Get total count (without limit)
+        total_count = User.objects.filter(
+            Q(user_name__iexact=query) |
+            Q(user_name__istartswith=query) |
+            Q(user_name__icontains=query)
+        ).count()
+        
+        users_data = []
+        for user in users:
+            user_data = {
+                'user_id': str(user.user_id),
+                'user_name': user.user_name,
+                'profile_picture_url': user.profile_picture_url or '',
+                'followers_count': user.followers_count
+            }
+            
+            # Add follow status if current_user_id provided
+            if current_user_uuid:
+                is_following = UserFollowers.objects.filter(
+                    follower_id__user_id=current_user_uuid,
+                    followed_id__user_id=user.user_id
+                ).exists()
+                user_data['is_following'] = is_following
+            else:
+                user_data['is_following'] = False
+            
+            users_data.append(user_data)
+        
+        return {
+            'users': users_data,
+            'total_count': total_count,
+            'query': query
+        }
+    
     def follow_user(self, follower_id: str, followed_id: str) -> UserFollowers:
         import uuid
         follower_uuid = uuid.UUID(follower_id) if isinstance(follower_id, str) else follower_id
