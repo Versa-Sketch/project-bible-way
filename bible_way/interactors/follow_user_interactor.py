@@ -21,12 +21,5 @@ class FollowUserInteractor:
         
         self.storage.follow_user(follower_id, followed_id)
         
-        # Create or get conversation between follower and followed user
-        from project_chat.storage import ChatDB
-        chat_db = ChatDB()
-        conversation = chat_db.get_or_create_direct_conversation(follower_id, followed_id)
-        
-        conversation_id = str(conversation.id) if conversation else None
-        
-        return self.response.follow_success_response(conversation_id=conversation_id)
+        return self.response.follow_success_response()
 

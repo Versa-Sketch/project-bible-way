@@ -59,14 +59,18 @@ def upload_chat_file_to_s3(
         
         # Generate unique S3 key
         safe_filename = os.path.basename(filename)
+        file_uuid = str(uuid.uuid4())
         
-        # Generate unique path: chat/files/{user_id}/{uuid}/{filename}
-        # Or simpler: chat/files/{uuid}/{filename} if no user_id
-        if user_id:
-            file_uuid = str(uuid.uuid4())
-            s3_key = f"chat/files/{user_id}/{file_uuid}/{safe_filename}"
+        # Generate unique path organized by conversation_id
+        # Priority: conversation_id > user_id > generic
+        if conversation_id:
+            # Organize by conversation: chat/files/conversations/{conversation_id}/{uuid}/{filename}
+            s3_key = f"chat/files/conversations/{conversation_id}/{file_uuid}/{safe_filename}"
+        elif user_id:
+            # Fallback to user-based: chat/files/users/{user_id}/{uuid}/{filename}
+            s3_key = f"chat/files/users/{user_id}/{file_uuid}/{safe_filename}"
         else:
-            file_uuid = str(uuid.uuid4())
+            # Generic fallback: chat/files/{uuid}/{filename}
             s3_key = f"chat/files/{file_uuid}/{safe_filename}"
         
         # Handle file object (Django UploadedFile) or bytes
@@ -77,18 +81,28 @@ def upload_chat_file_to_s3(
             # Bytes - create file-like object
             file_to_upload = BytesIO(file_obj)
         
-        # Upload to S3
+        # Upload to S3 (without ACL to avoid Block Public Access issues)
+        # Access will be controlled via bucket policy or presigned URLs
+        extra_args = {
+            "ContentType": content_type
+        }
+        
+        # Only add ACL if explicitly allowed and not blocked
+        # Check if we should use ACL (only if bucket allows it)
+        use_acl = getattr(settings, 'AWS_S3_USE_ACL', False)
+        if use_acl and hasattr(settings, 'AWS_DEFAULT_ACL'):
+            extra_args["ACL"] = settings.AWS_DEFAULT_ACL
+        
         s3_client.upload_fileobj(
             Fileobj=file_to_upload,
             Bucket=BUCKET_NAME,
             Key=s3_key,
-            ExtraArgs={
-                "ContentType": content_type,
-                "ACL": settings.AWS_DEFAULT_ACL if hasattr(settings, 'AWS_DEFAULT_ACL') else 'public-read'
-            }
+            ExtraArgs=extra_args
         )
         
-        # Generate public URL
+        # Generate public URL (no expiration)
+        # Note: Requires bucket policy to allow public read access
+        # If bucket has Block Public Access, you'll need to configure bucket policy
         if hasattr(settings, 'AWS_S3_CUSTOM_DOMAIN') and settings.AWS_S3_CUSTOM_DOMAIN:
             public_url = f"https://{settings.AWS_S3_CUSTOM_DOMAIN}/{s3_key}"
         else:

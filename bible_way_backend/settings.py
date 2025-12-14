@@ -1,9 +1,15 @@
 from pathlib import Path
 import os
 from dotenv import load_dotenv
-import firebase_admin
-from firebase_admin import credentials
 from datetime import timedelta
+
+# Optional Firebase import
+try:
+    import firebase_admin
+    from firebase_admin import credentials
+    FIREBASE_AVAILABLE = True
+except ImportError:
+    FIREBASE_AVAILABLE = False
 
 load_dotenv()
 

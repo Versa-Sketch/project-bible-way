@@ -15,7 +15,6 @@ from .models import (
     Category,
     Language,
     AgeGroup,
-    Module,
     Book,
     BookContent,
     ReadingProgress,
@@ -63,19 +62,10 @@ class LanguageAdmin(admin.ModelAdmin):
 
 @admin.register(AgeGroup)
 class AgeGroupAdmin(admin.ModelAdmin):
-    list_display = ('age_group_id', 'age_group_name', 'get_age_group_name_display', 'age_group_created_at', 'age_group_updated_at')
+    list_display = ('age_group_id', 'age_group_name', 'get_age_group_name_display', 'cover_image_url', 'age_group_created_at', 'age_group_updated_at')
     list_filter = ('age_group_name', 'age_group_created_at')
     search_fields = ('age_group_name',)
     readonly_fields = ('age_group_id', 'age_group_created_at', 'age_group_updated_at')
-
-
-@admin.register(Module)
-class ModuleAdmin(admin.ModelAdmin):
-    list_display = ('module_id', 'title', 'category', 'age_group', 'language', 'created_at')
-    list_filter = ('category', 'age_group', 'language', 'created_at')
-    search_fields = ('title', 'description', 'text_content')
-    readonly_fields = ('module_id', 'created_at')
-    raw_id_fields = ('category', 'age_group', 'language')
 
 
 @admin.register(Post)

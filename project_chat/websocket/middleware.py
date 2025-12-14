@@ -69,6 +69,12 @@ class JWTAuthMiddleware(BaseMiddleware):
             # Validate token and get user
             user = await get_user_from_token(token)
             scope['user'] = user
+            # If user is None, token was invalid or user not found
+            if not user:
+                # Log for debugging (optional)
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"WebSocket connection rejected: Invalid token or user not found")
         
         return await super().__call__(scope, receive, send)
 

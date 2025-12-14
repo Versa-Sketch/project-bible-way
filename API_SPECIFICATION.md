@@ -312,14 +312,16 @@ Authorization: Bearer <access_token>
       "user_name": "venugopal",
       "profile_picture_url": "https://s3.amazonaws.com/bucket/profile.jpg",
       "followers_count": 150,
-      "is_following": false
+      "is_following": false,
+      "conversation_id": "1"
     },
     {
       "user_id": "def-456-uuid",
       "user_name": "venkat",
       "profile_picture_url": "https://s3.amazonaws.com/bucket/profile2.jpg",
       "followers_count": 89,
-      "is_following": true
+      "is_following": true,
+      "conversation_id": null
     }
   ],
   "total_count": 15,
@@ -333,6 +335,7 @@ Authorization: Bearer <access_token>
 - `profile_picture_url` (string) - URL to user's profile picture (empty string if not set)
 - `followers_count` (integer) - Number of followers
 - `is_following` (boolean) - Whether the authenticated user is following this user
+- `conversation_id` (string or null) - The ID of the DIRECT conversation between the authenticated user and this user. Returns `null` if no conversation exists yet
 - `total_count` (integer) - Total number of matching users (may be more than returned results)
 - `query` (string) - The original search query
 
@@ -404,6 +407,8 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**Note:** Following a user does not create a conversation. Conversations are created automatically when the first message is sent.
+
 **Error Responses:**
 
 - **400 Bad Request** - Already following:
@@ -453,6 +458,8 @@ Authorization: Bearer <access_token>
   "message": "Unfollowed successfully"
 }
 ```
+
+**Note:** Unfollowing a user does not deactivate or remove existing conversations. Users can still message each other even after unfollowing.
 
 **Error Responses:**
 

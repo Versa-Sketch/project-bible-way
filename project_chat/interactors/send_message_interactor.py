@@ -26,7 +26,8 @@ class SendMessageInteractor:
     def send_message_interactor(
         self,
         user_id: str,
-        conversation_id: str,
+        conversation_id: Optional[str] = None,
+        receiver_id: Optional[str] = None,
         text: str = "",
         file_url: Optional[str] = None,  # S3 URL from HTTP upload
         file_type: Optional[str] = None,  # IMAGE, VIDEO, or AUDIO
@@ -41,7 +42,8 @@ class SendMessageInteractor:
         
         Args:
             user_id: ID of the user sending the message
-            conversation_id: ID of the conversation
+            conversation_id: Optional ID of the conversation (if existing)
+            receiver_id: Optional ID of receiver (required if conversation_id not provided)
             text: Message text content
             file_url: Optional S3 URL of uploaded file (from HTTP upload endpoint)
             file_type: Optional file type (IMAGE, VIDEO, AUDIO)
@@ -55,24 +57,56 @@ class SendMessageInteractor:
             Dictionary response for WebSocket
         """
         try:
-            # Validate conversation exists
-            conversation = self.storage.get_conversation_by_id(conversation_id)
-            if not conversation:
-                return self.error_response.conversation_not_found(request_id)
+            conversation = None
             
-            # Check user is a member
-            if not self.storage.check_user_membership(user_id, conversation_id):
-                return self.error_response.not_member(request_id)
-            
-            # Check follow relationship for DIRECT conversations
-            if conversation.type == ConversationTypeChoices.DIRECT:
-                # Get conversation members (should be 2 for DIRECT)
-                members = self.storage.get_conversation_members(conversation_id)
-                if len(members) == 2:
-                    receiver_id = str(members[0].user_id) if str(members[0].user_id) != user_id else str(members[1].user_id)
-                    # Check if sender follows receiver (one-way follow check)
-                    if not self.storage.check_follow_relationship(user_id, receiver_id):
-                        return self.error_response.no_follow_relationship(request_id)
+            # Handle conversation creation if conversation_id not provided
+            if not conversation_id:
+                # Need receiver_id to create new conversation
+                if not receiver_id:
+                    return self.error_response.validation_error("Either conversation_id or receiver_id is required", request_id)
+                
+                # Validate receiver exists
+                from bible_way.storage import UserDB
+                user_db = UserDB()
+                receiver = user_db.get_user_by_user_id(receiver_id)
+                if not receiver:
+                    return self.error_response.validation_error("Receiver user not found", request_id)
+                
+                # Cannot message yourself
+                if user_id == receiver_id:
+                    return self.error_response.validation_error("Cannot send message to yourself", request_id)
+                
+                # Create or get DIRECT conversation
+                try:
+                    conversation = self.storage.get_or_create_direct_conversation(user_id, receiver_id)
+                    if not conversation:
+                        return self.error_response.validation_error(
+                            "Failed to create conversation. Please ensure database migrations are run.",
+                            request_id
+                        )
+                except Exception as e:
+                    error_msg = str(e).lower()
+                    if "no such table" in error_msg or "does not exist" in error_msg:
+                        return self.error_response.validation_error(
+                            "Chat tables not found. Please run migrations: python manage.py migrate project_chat",
+                            request_id
+                        )
+                    return self.error_response.server_error(request_id)
+                
+                conversation_id = str(conversation.id)
+                
+                # Ensure both users are members
+                self.storage.ensure_user_membership(user_id, conversation_id)
+                self.storage.ensure_user_membership(receiver_id, conversation_id)
+            else:
+                # Validate existing conversation
+                conversation = self.storage.get_conversation_by_id(conversation_id)
+                if not conversation:
+                    return self.error_response.conversation_not_found(request_id)
+                
+                # Check user is a member
+                if not self.storage.check_user_membership(user_id, conversation_id):
+                    return self.error_response.not_member(request_id)
             
             # Validate post if shared_post_id is provided
             if shared_post_id:

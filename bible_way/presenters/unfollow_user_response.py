@@ -5,15 +5,12 @@ from rest_framework import status
 class UnfollowUserResponse:
 
     @staticmethod
-    def unfollow_success_response(conversation_id: str = None) -> Response:
-        data = {
-            "success": True,
-            "message": "Unfollowed successfully"
-        }
-        if conversation_id:
-            data["conversation_id"] = conversation_id
+    def unfollow_success_response() -> Response:
         return Response(
-            data,
+            {
+                "success": True,
+                "message": "Unfollowed successfully"
+            },
             status=status.HTTP_200_OK
         )
 

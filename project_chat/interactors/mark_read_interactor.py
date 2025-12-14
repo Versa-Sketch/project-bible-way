@@ -49,7 +49,7 @@ class MarkReadInteractor:
         # Update read receipt
         if message_id:
             # Mark specific message as read
-            receipt = self.storage.create_message_read_receipt(user_id, message_id)
+            receipt = self.storage.create_message_read_receipt(user_id, message_id, conversation_id)
             if not receipt:
                 return self.error_response.message_not_found(request_id)
         else:

@@ -173,7 +173,7 @@ All client requests must follow this format:
 
 Send a text message, reply, share a post, or send a file (image, video, audio) in a conversation.
 
-**Request:**
+**Request (Existing Conversation):**
 ```json
 {
   "action": "send_message",
@@ -189,8 +189,26 @@ Send a text message, reply, share a post, or send a file (image, video, audio) i
 }
 ```
 
+**Request (New Conversation):**
+```json
+{
+  "action": "send_message",
+  "request_id": "uuid",
+  "receiver_id": "user-uuid",
+  "content": "Hello! This is my message.",
+  "parent_message_id": "123",  // Optional: for replies
+  "shared_post_id": "post-uuid",  // Optional: to share a post
+  "file_url": "https://bucket.s3.region.amazonaws.com/chat/files/user-uuid/uuid/photo.jpg",  // Optional: S3 URL from HTTP upload
+  "file_type": "IMAGE",  // Optional: IMAGE, VIDEO, or AUDIO
+  "file_size": 245678,  // Optional: File size in bytes
+  "file_name": "photo.jpg"  // Optional: Original filename
+}
+```
+
 **Required Fields:**
-- `conversation_id` (integer): ID of the conversation
+- Either `conversation_id` (integer) OR `receiver_id` (string): 
+  - `conversation_id`: ID of existing conversation
+  - `receiver_id`: User ID to create new DIRECT conversation with
 - `content` (string): Message text (can be empty if `file_url` or `shared_post_id` is provided)
 
 **Optional Fields:**
@@ -272,14 +290,16 @@ Send a text message, reply, share a post, or send a file (image, video, audio) i
   - `name` (string): Original filename
 
 **Validation Rules:**
-- `conversation_id` must be a valid integer
+- Either `conversation_id` (integer) OR `receiver_id` (string) must be provided
+- If `receiver_id` is provided, it must be a valid user UUID
+- Cannot send message to yourself
 - `content` cannot be empty unless `file_url` or `shared_post_id` is provided
 - `parent_message_id` must exist in the conversation
 - `shared_post_id` must be a valid UUID and post must exist
 - `file_url` must be a valid HTTP/HTTPS URL if provided
-- User must be a member of the conversation
-- For DIRECT conversations, sender must follow receiver (one-way follow check)
-- Conversation must be active
+- User must be a member of the conversation (or will be added automatically for new conversations)
+- **No follow requirement**: Users can message anyone, even without following
+- Conversation must be active (or will be created automatically for new conversations)
 
 **File Upload Rules:**
 - Files must be uploaded via HTTP POST to `/api/chat/upload/` before sending message
@@ -288,15 +308,20 @@ Send a text message, reply, share a post, or send a file (image, video, audio) i
 - File type must be one of: IMAGE, VIDEO, or AUDIO
 
 **Error Codes:**
-- `VALIDATION_ERROR`: Missing or invalid fields
-- `CONVERSATION_NOT_FOUND`: Conversation doesn't exist
+- `VALIDATION_ERROR`: Missing or invalid fields (e.g., missing both conversation_id and receiver_id, invalid receiver_id, trying to message yourself)
+- `CONVERSATION_NOT_FOUND`: Conversation doesn't exist (when using conversation_id)
 - `NOT_MEMBER`: User is not a member of the conversation
-- `NO_FOLLOW_RELATIONSHIP`: Sender doesn't follow receiver (DIRECT conversations)
 - `POST_NOT_FOUND`: Shared post doesn't exist
 - `RATE_LIMIT_EXCEEDED`: Too many messages sent
 - `FILE_TOO_LARGE`: File size exceeds 10 MB limit
 - `INVALID_FILE_TYPE`: File type not supported
 - `FILE_UPLOAD_FAILED`: Failed to upload file to S3
+
+**Notes:**
+- When `receiver_id` is provided, a new DIRECT conversation is automatically created if one doesn't exist
+- Both users are automatically added as members of the conversation
+- No follow relationship is required to send messages
+- Conversations are created lazily (only when first message is sent)
 
 ---
 

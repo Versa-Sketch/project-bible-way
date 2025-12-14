@@ -60,7 +60,12 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         """Handle WebSocket connection."""
         self.user = self.scope.get('user')
         
-        if not self.user or not self.user.is_authenticated:
+        # Check if user exists and is not None (middleware validates token)
+        if not self.user:
+            # Log rejection reason
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning("WebSocket connection rejected: User not authenticated")
             await self.close(code=4008)  # Policy violation - authentication required
             return
         
@@ -150,6 +155,7 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         """Handle send_message action."""
         try:
             conversation_id = data.get('conversation_id')
+            receiver_id = data.get('receiver_id')  # For new conversations
             text = data.get('content', '')
             reply_to_id = data.get('parent_message_id')
             shared_post_id = data.get('shared_post_id')
@@ -158,9 +164,10 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             file_size = data.get('file_size')  # File size in bytes
             file_name = data.get('file_name')  # Original filename
             
-            if not conversation_id:
+            # Either conversation_id or receiver_id must be provided
+            if not conversation_id and not receiver_id:
                 await self.send(text_data=json.dumps(
-                    self.error_response.validation_error("conversation_id is required", request_id)
+                    self.error_response.validation_error("Either conversation_id or receiver_id is required", request_id)
                 ))
                 return
             
@@ -180,6 +187,7 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             )(
                 user_id=self.user_id,
                 conversation_id=conversation_id,
+                receiver_id=receiver_id,
                 text=text,
                 file_url=file_url,
                 file_type=file_type,
@@ -499,11 +507,11 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         # Build presence status for each member
         presence_data = []
         for member in members:
-            member_id = str(member.user_id)
+            member_id = str(member.user.user_id)
             is_online = member_id in _online_users
             presence_data.append({
                 "user_id": member_id,
-                "user_name": member.user_name,
+                "user_name": member.user.user_name,
                 "is_online": is_online,
                 "last_seen": _online_users[member_id].isoformat() if is_online else None
             })

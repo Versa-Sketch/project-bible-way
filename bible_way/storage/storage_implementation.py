@@ -20,6 +20,12 @@ class UserDB:
         except User.DoesNotExist:
             return None
     
+    def get_user_by_username(self, username: str) -> User | None:
+        try:
+            return User.objects.get(username=username)
+        except User.DoesNotExist:
+            return None
+    
     def create_user(self, username: str, user_name: str, email: str, password: str, 
                     country: str, age: int, preferred_language: str, 
                     profile_picture_url: str = None) -> User:
@@ -129,12 +135,15 @@ class UserDB:
         # Search with priority: exact match > starts with > contains
         from django.db.models import Case, When, IntegerField, Count
         
+        # Build base query
+        base_query = Q(user_name__iexact=query) | Q(user_name__istartswith=query) | Q(user_name__icontains=query)
+        
+        # Exclude current user from results
+        if current_user_uuid:
+            base_query = base_query & ~Q(user_id=current_user_uuid)
+        
         # Build query with priority ordering
-        users = User.objects.filter(
-            Q(user_name__iexact=query) |
-            Q(user_name__istartswith=query) |
-            Q(user_name__icontains=query)
-        ).annotate(
+        users = User.objects.filter(base_query).annotate(
             priority=Case(
                 When(user_name__iexact=query, then=1),
                 When(user_name__istartswith=query, then=2),
@@ -145,12 +154,8 @@ class UserDB:
             followers_count=Count('followed', distinct=True)
         ).order_by('priority', 'user_name')[:limit]
         
-        # Get total count (without limit)
-        total_count = User.objects.filter(
-            Q(user_name__iexact=query) |
-            Q(user_name__istartswith=query) |
-            Q(user_name__icontains=query)
-        ).count()
+        # Get total count (without limit, excluding current user)
+        total_count = User.objects.filter(base_query).count()
         
         users_data = []
         for user in users:
@@ -161,15 +166,29 @@ class UserDB:
                 'followers_count': user.followers_count
             }
             
-            # Add follow status if current_user_id provided
+            # Add follow status and conversation_id if current_user_id provided
             if current_user_uuid:
                 is_following = UserFollowers.objects.filter(
                     follower_id__user_id=current_user_uuid,
                     followed_id__user_id=user.user_id
                 ).exists()
                 user_data['is_following'] = is_following
+                
+                # Check if conversation exists between current user and searched user
+                try:
+                    from project_chat.storage import ChatDB
+                    chat_db = ChatDB()
+                    conversation = chat_db.find_conversation_between_users(
+                        current_user_id,
+                        str(user.user_id)
+                    )
+                    user_data['conversation_id'] = str(conversation.id) if conversation else None
+                except Exception as e:
+                    # If conversation table doesn't exist or other error, set to None
+                    user_data['conversation_id'] = None
             else:
                 user_data['is_following'] = False
+                user_data['conversation_id'] = None
             
             users_data.append(user_data)
         
@@ -747,6 +766,47 @@ class UserDB:
         total_count = PrayerRequest.objects.count()
         
         prayer_requests = PrayerRequest.objects.select_related('user').annotate(
+            comments_count=Count('comments'),
+            reactions_count=Count('reactions')
+        ).order_by('-created_at')[offset:offset + limit]
+        
+        prayer_requests_data = []
+        for prayer_request in prayer_requests:
+            prayer_requests_data.append({
+                'prayer_request_id': str(prayer_request.prayer_request_id),
+                'user': {
+                    'user_id': str(prayer_request.user.user_id),
+                    'user_name': prayer_request.user.user_name,
+                    'profile_picture_url': prayer_request.user.profile_picture_url or ''
+                },
+                'name': prayer_request.name,
+                'email': prayer_request.email,
+                'phone_number': prayer_request.phone_number,
+                'description': prayer_request.description,
+                'comments_count': prayer_request.comments_count,
+                'reactions_count': prayer_request.reactions_count,
+                'created_at': prayer_request.created_at.isoformat(),
+                'updated_at': prayer_request.updated_at.isoformat()
+            })
+        
+        has_next = (offset + limit) < total_count
+        has_previous = offset > 0
+        
+        return {
+            'prayer_requests': prayer_requests_data,
+            'limit': limit,
+            'offset': offset,
+            'total_count': total_count,
+            'has_next': has_next,
+            'has_previous': has_previous
+        }
+    
+    def get_user_prayer_requests(self, user_id: str, limit: int = 10, offset: int = 0) -> dict:
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        total_count = PrayerRequest.objects.filter(user__user_id=user_uuid).count()
+        
+        prayer_requests = PrayerRequest.objects.filter(user__user_id=user_uuid).select_related('user').annotate(
             comments_count=Count('comments'),
             reactions_count=Count('reactions')
         ).order_by('-created_at')[offset:offset + limit]

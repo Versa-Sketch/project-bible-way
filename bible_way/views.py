@@ -33,6 +33,7 @@ from bible_way.interactors.create_prayer_request_interactor import CreatePrayerR
 from bible_way.interactors.update_prayer_request_interactor import UpdatePrayerRequestInteractor
 from bible_way.interactors.delete_prayer_request_interactor import DeletePrayerRequestInteractor
 from bible_way.interactors.get_all_prayer_requests_interactor import GetAllPrayerRequestsInteractor
+from bible_way.interactors.get_user_prayer_requests_interactor import GetUserPrayerRequestsInteractor
 from bible_way.interactors.create_prayer_request_comment_interactor import CreatePrayerRequestCommentInteractor
 from bible_way.interactors.get_prayer_request_comments_interactor import GetPrayerRequestCommentsInteractor
 from bible_way.interactors.like_prayer_request_interactor import LikePrayerRequestInteractor
@@ -63,6 +64,7 @@ from bible_way.presenters.create_prayer_request_response import CreatePrayerRequ
 from bible_way.presenters.update_prayer_request_response import UpdatePrayerRequestResponse
 from bible_way.presenters.delete_prayer_request_response import DeletePrayerRequestResponse
 from bible_way.presenters.get_all_prayer_requests_response import GetAllPrayerRequestsResponse
+from bible_way.presenters.get_user_prayer_requests_response import GetUserPrayerRequestsResponse
 from bible_way.presenters.create_prayer_request_comment_response import CreatePrayerRequestCommentResponse
 from bible_way.presenters.get_prayer_request_comments_response import GetPrayerRequestCommentsResponse
 from bible_way.presenters.like_prayer_request_response import LikePrayerRequestResponse
@@ -361,6 +363,26 @@ def get_all_prayer_requests_view(request):
     
     response = GetAllPrayerRequestsInteractor(storage=UserDB(), response=GetAllPrayerRequestsResponse()).\
         get_all_prayer_requests_interactor(limit=limit, offset=offset)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_user_prayer_requests_view(request):
+    user_id = str(request.user.user_id)
+    
+    try:
+        limit = int(request.query_params.get('limit', 10))
+    except (ValueError, TypeError):
+        limit = 10
+    
+    try:
+        offset = int(request.query_params.get('offset', 0))
+    except (ValueError, TypeError):
+        offset = 0
+    
+    response = GetUserPrayerRequestsInteractor(storage=UserDB(), response=GetUserPrayerRequestsResponse()).\
+        get_user_prayer_requests_interactor(user_id=user_id, limit=limit, offset=offset)
     return response
 
 @api_view(['POST'])

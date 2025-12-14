@@ -3,6 +3,7 @@ from bible_way.storage import UserDB, SignupResponseDTO
 from bible_way.presenters.singup_response import SignupResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from rest_framework.response import Response
+from django.db import IntegrityError
 
 
 class SignupInteractor:
@@ -44,16 +45,29 @@ class SignupInteractor:
         
         username = user_name
         
-        user = self.storage.create_user(
-            username=username,      # Required by Django's AbstractUser
-            user_name=user_name,    # Our custom field
-            email=email,
-            password=password,
-            country=country,
-            age=age,
-            preferred_language=preferred_language,
-            profile_picture_url=profile_picture_url
-        )
+        # Check if Django's built-in username field already exists
+        if self.storage.get_user_by_username(username):
+            return self.response.user_username_exists_response()
+        
+        try:
+            user = self.storage.create_user(
+                username=username,      # Required by Django's AbstractUser
+                user_name=user_name,    # Our custom field
+                email=email,
+                password=password,
+                country=country,
+                age=age,
+                preferred_language=preferred_language,
+                profile_picture_url=profile_picture_url
+            )
+        except IntegrityError as e:
+            # Handle race condition or any other integrity constraint violations
+            if 'username' in str(e) or 'user_name' in str(e):
+                return self.response.user_username_exists_response()
+            elif 'email' in str(e):
+                return self.response.user_email_exists_response()
+            else:
+                return self.response.internal_server_error_response()
     
         tokens = self.authentication.create_tokens(user=user)
         

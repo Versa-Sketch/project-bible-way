@@ -19,17 +19,7 @@ class UnfollowUserInteractor:
         if not self.storage.check_follow_exists(follower_id, followed_id):
             return self.response.not_following_response()
         
-        # Find and deactivate conversation before unfollowing
-        from project_chat.storage import ChatDB
-        chat_db = ChatDB()
-        conversation = chat_db.find_conversation_between_users(follower_id, followed_id)
-        
-        conversation_id = None
-        if conversation:
-            chat_db.deactivate_conversation(conversation.id)
-            conversation_id = str(conversation.id)
-        
         self.storage.unfollow_user(follower_id, followed_id)
         
-        return self.response.unfollow_success_response(conversation_id=conversation_id)
+        return self.response.unfollow_success_response()
 

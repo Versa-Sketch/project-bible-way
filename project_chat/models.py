@@ -98,7 +98,7 @@ class Message(models.Model):
     
     shared_post = models.ForeignKey(
         'bible_way.Post',  # String reference to avoid circular import
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,  # If post deleted, delete the message too
         null=True,
         blank=True,
         related_name='shared_in_messages'

@@ -1,16 +1,23 @@
 """
-HTTP views for chat file uploads.
+HTTP views for chat file uploads and conversation operations.
 
-Handles file uploads via REST API endpoints.
+Handles file uploads and conversation retrieval via REST API endpoints.
 """
 
 from rest_framework.views import APIView
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from project_chat.storage.s3_utils import upload_chat_file_to_s3
 from project_chat.websocket.utils import validate_uploaded_file, determine_file_type_from_filename, ErrorCodes
+from project_chat.storage import ChatDB
+from project_chat.interactors.get_conversation_interactor import GetConversationInteractor
+from project_chat.interactors.get_inbox_interactor import GetInboxInteractor
+from project_chat.presenters.conversation_response import ConversationResponse
+from project_chat.presenters.inbox_response import InboxResponse
+from project_chat.presenters.chat_error_response import ChatErrorResponse
 import uuid
 from datetime import datetime
 
@@ -103,3 +110,72 @@ class ChatFileUploadView(APIView):
                 "error": f"An error occurred: {str(e)}",
                 "error_code": ErrorCodes.SERVER_ERROR
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_conversation_view(request, conversation_id):
+    """
+    Get conversation details by ID.
+    
+    GET /api/chat/conversation/<conversation_id>/
+    """
+    user_id = str(request.user.user_id)
+    
+    interactor = GetConversationInteractor(
+        storage=ChatDB(),
+        response=ConversationResponse(),
+        error_response=ChatErrorResponse()
+    )
+    
+    result = interactor.get_conversation_interactor(
+        conversation_id=conversation_id,
+        user_id=user_id
+    )
+    
+    # Convert dict response to Response object
+    if result.get('success'):
+        return Response(result, status=status.HTTP_200_OK)
+    else:
+        # Extract error details from WebSocket format
+        error_code = result.get('error_code', 'INTERNAL_ERROR')
+        error_message = result.get('error', 'An error occurred')
+        
+        # Format REST API error response
+        error_response = {
+            "success": False,
+            "error": error_message,
+            "error_code": error_code
+        }
+        
+        if error_code == 'CONVERSATION_NOT_FOUND':
+            return Response(error_response, status=status.HTTP_404_NOT_FOUND)
+        elif error_code == 'NOT_MEMBER':
+            return Response(error_response, status=status.HTTP_403_FORBIDDEN)
+        else:
+            return Response(error_response, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_inbox_view(request):
+    """
+    Get inbox (all conversations) for current user.
+    
+    GET /api/chat/inbox/
+    """
+    user_id = str(request.user.user_id)
+    
+    interactor = GetInboxInteractor(
+        storage=ChatDB(),
+        response=InboxResponse()
+    )
+    
+    result = interactor.get_inbox_interactor(user_id=user_id)
+    
+    if result.get('success'):
+        return Response(result, status=status.HTTP_200_OK)
+    else:
+        return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

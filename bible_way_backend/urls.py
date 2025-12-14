@@ -31,6 +31,7 @@ urlpatterns = [
     path("prayer-request/update", update_prayer_request_view),
     path("prayer-request/delete", delete_prayer_request_view),
     path("prayer-request/all", get_all_prayer_requests_view),
+    path("prayer-request/user/me", get_user_prayer_requests_view),
     path("prayer-request/comment/create", create_prayer_request_comment_view),
     path("prayer-request/comment/details/<str:prayer_request_id>/v1", get_prayer_request_comments_view),
     path("prayer-request/reaction/like", like_prayer_request_view),
