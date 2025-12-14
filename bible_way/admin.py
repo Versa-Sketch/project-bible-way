@@ -192,9 +192,9 @@ class PromotionImageAdmin(admin.ModelAdmin):
 
 @admin.register(PrayerRequest)
 class PrayerRequestAdmin(admin.ModelAdmin):
-    list_display = ('prayer_request_id', 'user', 'title', 'created_at', 'updated_at')
+    list_display = ('prayer_request_id', 'user', 'name', 'email', 'phone_number', 'created_at', 'updated_at')
     list_filter = ('created_at', 'updated_at')
-    search_fields = ('title', 'description', 'user__user_name')
+    search_fields = ('name', 'email', 'phone_number', 'description', 'user__user_name')
     readonly_fields = ('prayer_request_id', 'created_at', 'updated_at')
     raw_id_fields = ('user',)
 

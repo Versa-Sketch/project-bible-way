@@ -8,9 +8,12 @@ class CreatePrayerRequestInteractor:
         self.storage = storage
         self.response = response
 
-    def create_prayer_request_interactor(self, user_id: str, title: str, description: str) -> Response:
-        if not title or not title.strip():
-            return self.response.validation_error_response("Title is required")
+    def create_prayer_request_interactor(self, user_id: str, name: str, email: str, description: str, phone_number: str = None) -> Response:
+        if not name or not name.strip():
+            return self.response.validation_error_response("Name is required")
+        
+        if not email or not email.strip():
+            return self.response.validation_error_response("Email is required")
         
         if not description or not description.strip():
             return self.response.validation_error_response("Description is required")
@@ -18,7 +21,9 @@ class CreatePrayerRequestInteractor:
         try:
             prayer_request = self.storage.create_prayer_request(
                 user_id=user_id,
-                title=title,
+                name=name,
+                email=email,
+                phone_number=phone_number.strip() if phone_number and phone_number.strip() else None,
                 description=description
             )
             

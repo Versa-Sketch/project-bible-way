@@ -8,7 +8,7 @@ class UpdatePrayerRequestInteractor:
         self.storage = storage
         self.response = response
 
-    def update_prayer_request_interactor(self, prayer_request_id: str, user_id: str, title: str = None, description: str = None) -> Response:
+    def update_prayer_request_interactor(self, prayer_request_id: str, user_id: str, name: str = None, email: str = None, phone_number: str = None, description: str = None) -> Response:
         if not prayer_request_id:
             return self.response.validation_error_response("Prayer request ID is required")
         
@@ -16,7 +16,9 @@ class UpdatePrayerRequestInteractor:
             self.storage.update_prayer_request(
                 prayer_request_id=prayer_request_id,
                 user_id=user_id,
-                title=title,
+                name=name,
+                email=email,
+                phone_number=phone_number,
                 description=description
             )
             

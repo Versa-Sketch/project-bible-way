@@ -609,18 +609,19 @@ class UserDB:
         
         return promotions_data
     
-    def create_prayer_request(self, user_id: str, title: str, description: str) -> PrayerRequest:
+    def create_prayer_request(self, user_id: str, name: str, email: str, description: str, phone_number: str = None) -> PrayerRequest:
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         user = User.objects.get(user_id=user_uuid)
-        
         prayer_request = PrayerRequest.objects.create(
             user=user,
-            title=title.strip(),
+            name=name.strip(),
+            email=email.strip(),
+            phone_number=phone_number.strip() if phone_number else None,
             description=description.strip()
         )
         return prayer_request
     
-    def update_prayer_request(self, prayer_request_id: str, user_id: str, title: str = None, description: str = None) -> PrayerRequest:
+    def update_prayer_request(self, prayer_request_id: str, user_id: str, name: str = None, email: str = None, phone_number: str = None, description: str = None) -> PrayerRequest:
         prayer_request_uuid = uuid.UUID(prayer_request_id) if isinstance(prayer_request_id, str) else prayer_request_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -632,8 +633,12 @@ class UserDB:
         if prayer_request.user.user_id != user_uuid:
             raise Exception("You are not authorized to update this prayer request")
         
-        if title is not None:
-            prayer_request.title = title.strip()
+        if name is not None:
+            prayer_request.name = name.strip()
+        if email is not None:
+            prayer_request.email = email.strip()
+        if phone_number is not None:
+            prayer_request.phone_number = phone_number.strip()
         if description is not None:
             prayer_request.description = description.strip()
         
@@ -672,7 +677,9 @@ class UserDB:
                     'user_name': prayer_request.user.user_name,
                     'profile_picture_url': prayer_request.user.profile_picture_url or ''
                 },
-                'title': prayer_request.title,
+                'name': prayer_request.name,
+                'email': prayer_request.email,
+                'phone_number': prayer_request.phone_number,
                 'description': prayer_request.description,
                 'comments_count': prayer_request.comments_count,
                 'reactions_count': prayer_request.reactions_count,

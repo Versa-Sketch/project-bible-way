@@ -34,7 +34,9 @@ class Verse(models.Model):
 class PrayerRequest(models.Model):
     prayer_request_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="prayer_requests")
-    title = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, default="Anonymous")
+    email = models.EmailField(default="anonymous@example.com")
+    phone_number = models.CharField(max_length=20, null=True, blank=True)
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -77,7 +79,7 @@ class Media(models.Model):
 
 class Comment(models.Model):
     comment_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments")
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="comments", null=True, blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="comments")
     prayer_request = models.ForeignKey(PrayerRequest, on_delete=models.CASCADE, related_name="comments", null=True, blank=True)
     description = models.TextField()
