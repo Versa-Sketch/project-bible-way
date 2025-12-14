@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from bible_way.views import *
 
 urlpatterns = [
@@ -39,4 +39,5 @@ urlpatterns = [
     ################# admin side api's ################ 
     path("admin/verse/create", admin_create_verse_view),
     path("admin/promotion/create", admin_create_promotion_view),
+    path('', include('project_chat.urls')),
 ]

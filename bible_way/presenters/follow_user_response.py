@@ -5,12 +5,15 @@ from rest_framework import status
 class FollowUserResponse:
 
     @staticmethod
-    def follow_success_response() -> Response:
+    def follow_success_response(conversation_id: str = None) -> Response:
+        data = {
+            "success": True,
+            "message": "Followed successfully"
+        }
+        if conversation_id:
+            data["conversation_id"] = conversation_id
         return Response(
-            {
-                "success": True,
-                "message": "Followed successfully"
-            },
+            data,
             status=status.HTTP_200_OK
         )
 

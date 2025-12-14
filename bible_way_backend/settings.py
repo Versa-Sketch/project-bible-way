@@ -22,18 +22,21 @@ ALLOWED_HOSTS = ["*"]  # DEV ONLY
 # APPLICATIONS
 # -------------------------------------------------------------------
 INSTALLED_APPS = [
+    'daphne',  # Must be FIRST for ASGI support
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'rest_framework',
     'corsheaders',
     'storages',
-
     'bible_way',
+    "bible_way",
+    "project_chat",  
+    "storages",
 ]
 
 # -------------------------------------------------------------------
@@ -99,6 +102,13 @@ WSGI_APPLICATION = 'bible_way_backend.wsgi.application'
 # -------------------------------------------------------------------
 # DATABASE
 # -------------------------------------------------------------------
+# ASGI Application for WebSocket support
+ASGI_APPLICATION = 'bible_way_backend.asgi.application'
+
+
+# Database
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -109,6 +119,28 @@ DATABASES = {
 # -------------------------------------------------------------------
 # AUTH
 # -------------------------------------------------------------------
+# Default primary key field type
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Password validation
+# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# Custom User Model
 AUTH_USER_MODEL = 'bible_way.User'
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -164,3 +196,32 @@ if not firebase_admin._apps:
         print("Firebase initialized")
     except Exception as e:
         print("Firebase init error:", e)
+# Optional AWS Settings
+# AWS_S3_OBJECT_PARAMETERS = {
+#     'CacheControl': 'max-age=86400',
+# }
+# AWS_QUERYSTRING_AUTH = False
+# AWS_S3_VERIFY = True
+
+# Channel Layers Configuration for WebSocket support
+USE_REDIS = os.getenv('USE_REDIS', 'false').lower() == 'true'
+
+if USE_REDIS:
+    # Production: Redis channel layer
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("127.0.0.1", 6379)],
+                "capacity": 1500,
+                "expiry": 60,
+            },
+        },
+    }
+else:
+    # Development: InMemory channel layer (no Redis required)
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
