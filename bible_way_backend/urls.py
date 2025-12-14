@@ -41,5 +41,16 @@ urlpatterns = [
     ################# admin side api's ################ 
     path("admin/verse/create", admin_create_verse_view),
     path("admin/promotion/create", admin_create_promotion_view),
+    path("admin/category/create", admin_create_category_view),
+    path("admin/age-group/create", admin_create_age_group_view),
+    path("admin/book/create", admin_create_book_view),
+    
+    ################# books api's ################
+    path("books/categories/", get_categories_view),
+    path("books/age-groups/", get_age_groups_view),
+    path("books/category/<str:category_id>/age-group/<str:age_group_id>/books/", get_books_by_category_view),
+    path("books/<str:book_id>/", get_book_details_view),
+
+    ####project chat api's ###############
     path('', include('project_chat.urls')),
 ]

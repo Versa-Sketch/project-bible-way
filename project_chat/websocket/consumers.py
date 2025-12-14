@@ -69,7 +69,7 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             await self.close(code=4008)  # Policy violation - authentication required
             return
         
-        self.user_id = str(self.user.user_id)
+        self.user_id = str(self.user.user_id).lower()  # Normalize to lowercase for consistency
         
         # Join user's personal group for notifications
         user_group = f"user_{self.user_id}"
@@ -82,6 +82,12 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         # Update presence status (user is now online)
         _online_users[self.user_id] = datetime.now()
         
+        # Debug: Log when user comes online
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"User {self.user_id} connected and marked as online. Total online users: {len(_online_users)}")
+        logger.debug(f"All online users: {list(_online_users.keys())}")
+        
         # Send connection established message
         await self.send(text_data=json.dumps(
             self.message_response.connection_established(self.user_id)
@@ -90,8 +96,12 @@ class UserChatConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         """Handle WebSocket disconnection."""
         # Update presence status (user is now offline)
-        if self.user_id in _online_users:
+        if self.user_id and self.user_id in _online_users:
             del _online_users[self.user_id]
+            # Debug: Log when user goes offline
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"User {self.user_id} disconnected and marked as offline. Total online users: {len(_online_users)}")
         
         # Leave all groups
         for group in self.user_groups:
@@ -505,15 +515,41 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         )(conversation_id)
         
         # Build presence status for each member
+        # Normalize current user_id for comparison
+        current_user_id_normalized = str(self.user_id).lower() if self.user_id else None
+        
+        # Debug: Log all online users for troubleshooting
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Online users in _online_users: {list(_online_users.keys())}")
+        logger.debug(f"Checking presence for conversation {conversation_id}")
+        
         presence_data = []
         for member in members:
-            member_id = str(member.user.user_id)
-            is_online = member_id in _online_users
+            # Normalize user_id to lowercase for consistent lookup
+            member_id = str(member.user.user_id).lower()
+            original_user_id = str(member.user.user_id)
+            
+            # Check if user is online (always true for the requesting user since they're connected)
+            if current_user_id_normalized and member_id == current_user_id_normalized:
+                is_online = True
+                last_seen = datetime.now()
+                logger.debug(f"User {original_user_id} is the requesting user - marking as online")
+            else:
+                is_online = member_id in _online_users
+                if is_online:
+                    last_seen = _online_users[member_id]
+                    logger.debug(f"User {original_user_id} (normalized: {member_id}) found in _online_users - ONLINE")
+                else:
+                    last_seen = None
+                    logger.debug(f"User {original_user_id} (normalized: {member_id}) NOT found in _online_users - OFFLINE")
+                    logger.debug(f"Available keys: {list(_online_users.keys())}")
+            
             presence_data.append({
-                "user_id": member_id,
+                "user_id": original_user_id,  # Return original format
                 "user_name": member.user.user_name,
                 "is_online": is_online,
-                "last_seen": _online_users[member_id].isoformat() if is_online else None
+                "last_seen": last_seen.isoformat() if last_seen else None
             })
         
         # Send presence status

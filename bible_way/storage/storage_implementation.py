@@ -2,7 +2,7 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Count, Q
 import uuid
 import os
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, BookContent, Language
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
@@ -997,3 +997,108 @@ class UserDB:
             )
             promotion_images.append(promotion_image)
         return promotion_images
+    
+    def create_category(self, category_name: str, cover_image_url: str = None, description: str = None, display_order: int = 0) -> Category:
+        category = Category.objects.create(
+            category_name=category_name,
+            cover_image_url=cover_image_url,
+            description=description or '',
+            display_order=display_order
+        )
+        return category
+    
+    def get_all_categories(self):
+        return Category.objects.all().order_by('display_order', 'category_name')
+    
+    def create_age_group(self, age_group_name: str, cover_image_url: str = None, description: str = None, display_order: int = 0) -> AgeGroup:
+        age_group = AgeGroup.objects.create(
+            age_group_name=age_group_name,
+            cover_image_url=cover_image_url,
+            description=description or '',
+            display_order=display_order
+        )
+        return age_group
+    
+    def get_all_age_groups(self):
+        return AgeGroup.objects.all().order_by('display_order', 'age_group_name')
+    
+    def get_books_by_category_and_age_group(self, category_id: str, age_group_id: str, language_id: str = None):
+        queryset = Book.objects.filter(
+            category__category_id=category_id,
+            age_group__age_group_id=age_group_id,
+            is_active=True
+        )
+        
+        if language_id:
+            queryset = queryset.filter(language__language_id=language_id)
+        
+        return queryset.order_by('book_order', 'title')
+    
+    def get_book_by_id(self, book_id: str):
+        return Book.objects.select_related('category', 'age_group', 'language').get(book_id=book_id)
+    
+    def get_book_chapters(self, book_id: str):
+        return BookContent.objects.filter(book__book_id=book_id).order_by('content_order', 'chapter_number')
+    
+    def create_book(self, title: str, category_id: str, age_group_id: str, language_id: str,
+                   cover_image_url: str = None, description: str = None, author: str = None,
+                   book_order: int = 0, source_file_name: str = None, source_file_url: str = None,
+                   metadata: dict = None) -> Book:
+        category = Category.objects.get(category_id=category_id)
+        age_group = AgeGroup.objects.get(age_group_id=age_group_id)
+        language = Language.objects.get(language_id=language_id)
+        
+        book = Book.objects.create(
+            title=title,
+            category=category,
+            age_group=age_group,
+            language=language,
+            cover_image_url=cover_image_url,
+            description=description or '',
+            author=author or '',
+            book_order=book_order,
+            source_file_name=source_file_name,
+            source_file_url=source_file_url,
+            metadata=metadata or {}
+        )
+        return book
+    
+    def create_book_content(self, book: Book, chapter_number: int, chapter_title: str,
+                           content: str, content_order: int, metadata: dict = None) -> BookContent:
+        book_content = BookContent.objects.create(
+            book=book,
+            chapter_number=chapter_number,
+            chapter_title=chapter_title,
+            content=content,
+            content_order=content_order,
+            metadata=metadata or {}
+        )
+        return book_content
+    
+    def bulk_create_book_contents(self, book: Book, chapters_data: list) -> list:
+        book_contents = []
+        for chapter_data in chapters_data:
+            book_content = BookContent(
+                book=book,
+                chapter_number=chapter_data['chapter_number'],
+                chapter_title=chapter_data['chapter_title'],
+                content=chapter_data['content'],
+                content_order=chapter_data.get('content_order', chapter_data['chapter_number']),
+                metadata=chapter_data.get('metadata', {})
+            )
+            book_contents.append(book_content)
+        
+        BookContent.objects.bulk_create(book_contents)
+        return book_contents
+    
+    def update_book_parsed_status(self, book_id: str, total_chapters: int, parsed_at=None) -> Book:
+        from django.utils import timezone
+        book = Book.objects.get(book_id=book_id)
+        book.is_parsed = True
+        book.total_chapters = total_chapters
+        if parsed_at:
+            book.parsed_at = parsed_at
+        else:
+            book.parsed_at = timezone.now()
+        book.save()
+        return book

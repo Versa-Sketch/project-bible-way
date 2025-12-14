@@ -41,6 +41,13 @@ from bible_way.interactors.unlike_prayer_request_interactor import UnlikePrayerR
 from bible_way.interactors.get_verse_interactor import GetVerseInteractor
 from bible_way.interactors.admin.create_verse_interactor import CreateVerseInteractor
 from bible_way.interactors.admin.create_promotion_interactor import CreatePromotionInteractor
+from bible_way.interactors.admin.create_category_interactor import CreateCategoryInteractor
+from bible_way.interactors.get_categories_interactor import GetCategoriesInteractor
+from bible_way.interactors.admin.create_age_group_interactor import CreateAgeGroupInteractor
+from bible_way.interactors.get_age_groups_interactor import GetAgeGroupsInteractor
+from bible_way.interactors.admin.create_book_interactor import CreateBookInteractor
+from bible_way.interactors.get_books_by_category_interactor import GetBooksByCategoryInteractor
+from bible_way.interactors.get_book_details_interactor import GetBookDetailsInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
 from bible_way.presenters.search_users_response import SearchUsersResponse
 from bible_way.presenters.follow_user_response import FollowUserResponse
@@ -72,6 +79,13 @@ from bible_way.presenters.unlike_prayer_request_response import UnlikePrayerRequ
 from bible_way.presenters.get_verse_response import GetVerseResponse
 from bible_way.presenters.admin.create_verse_response import CreateVerseResponse
 from bible_way.presenters.admin.create_promotion_response import CreatePromotionResponse
+from bible_way.presenters.admin.create_category_response import CreateCategoryResponse
+from bible_way.presenters.get_categories_response import GetCategoriesResponse
+from bible_way.presenters.admin.create_age_group_response import CreateAgeGroupResponse
+from bible_way.presenters.get_age_groups_response import GetAgeGroupsResponse
+from bible_way.presenters.admin.create_book_response import CreateBookResponse
+from bible_way.presenters.get_books_by_category_response import GetBooksByCategoryResponse
+from bible_way.presenters.get_book_details_response import GetBookDetailsResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 
@@ -471,6 +485,110 @@ def admin_create_promotion_view(request):
             meta_data_str=meta_data,
             media_file=media_file,
             image_files=image_files
+        )
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_create_category_view(request):
+    category_name = request.data.get('category_name')
+    cover_image_file = request.FILES.get('cover_image')
+    description = request.data.get('description')
+    display_order = request.data.get('display_order', 0)
+    
+    response = CreateCategoryInteractor(storage=UserDB(), response=CreateCategoryResponse()).\
+        create_category_interactor(
+            category_name=category_name,
+            cover_image_file=cover_image_file,
+            description=description,
+            display_order=display_order
+        )
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_categories_view(request):
+    response = GetCategoriesInteractor(storage=UserDB(), response=GetCategoriesResponse()).\
+        get_categories_interactor()
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_create_age_group_view(request):
+    age_group_name = request.data.get('age_group_name')
+    cover_image_file = request.FILES.get('cover_image')
+    description = request.data.get('description')
+    display_order = request.data.get('display_order', 0)
+    
+    response = CreateAgeGroupInteractor(storage=UserDB(), response=CreateAgeGroupResponse()).\
+        create_age_group_interactor(
+            age_group_name=age_group_name,
+            cover_image_file=cover_image_file,
+            description=description,
+            display_order=display_order
+        )
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_age_groups_view(request):
+    response = GetAgeGroupsInteractor(storage=UserDB(), response=GetAgeGroupsResponse()).\
+        get_age_groups_interactor()
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_books_by_category_view(request, category_id: str, age_group_id: str):
+    language_id = request.query_params.get('language_id')
+    
+    response = GetBooksByCategoryInteractor(storage=UserDB(), response=GetBooksByCategoryResponse()).\
+        get_books_by_category_interactor(
+            category_id=category_id,
+            age_group_id=age_group_id,
+            language_id=language_id
+        )
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_book_details_view(request, book_id: str):
+    response = GetBookDetailsInteractor(storage=UserDB(), response=GetBookDetailsResponse()).\
+        get_book_details_interactor(book_id=book_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_create_book_view(request):
+    markdown_file = request.FILES.get('markdown_file')
+    category_id = request.data.get('category_id')
+    age_group_id = request.data.get('age_group_id')
+    language_id = request.data.get('language_id')
+    title = request.data.get('title')
+    cover_image_file = request.FILES.get('cover_image')
+    description = request.data.get('description')
+    author = request.data.get('author')
+    book_order = request.data.get('book_order', 0)
+    metadata_str = request.data.get('metadata')
+    
+    response = CreateBookInteractor(storage=UserDB(), response=CreateBookResponse()).\
+        create_book_interactor(
+            markdown_file=markdown_file,
+            category_id=category_id,
+            age_group_id=age_group_id,
+            language_id=language_id,
+            title=title,
+            cover_image_file=cover_image_file,
+            description=description,
+            author=author,
+            book_order=book_order,
+            metadata_str=metadata_str
         )
     return response
 
