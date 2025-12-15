@@ -163,14 +163,17 @@ class MessageResponse:
         }
     
     @staticmethod
-    def presence_status_broadcast(user_id: str, is_online: bool, conversation_id: str) -> Dict[str, Any]:
+    def presence_status_broadcast(user_id: str, is_online: bool, conversation_id: str, last_seen: Optional[str] = None) -> Dict[str, Any]:
         """Format a presence status broadcast."""
+        data = {
+            "user_id": user_id,
+            "conversation_id": conversation_id,
+            "is_online": is_online
+        }
+        if last_seen:
+            data["last_seen"] = last_seen
         return {
             "type": "presence.updated",
-            "data": {
-                "user_id": user_id,
-                "conversation_id": conversation_id,
-                "is_online": is_online
-            }
+            "data": data
         }
 
