@@ -1,3 +1,6 @@
+# System dependencies (install via OS package manager, not pip)
+# - Redis server (Ubuntu): sudo apt install redis-server
+
 # Django Core
 Django>=5.2.0,<6.0.0
 
@@ -8,8 +11,11 @@ djangorestframework-simplejwt>=5.2.0
 # WebSocket Support (Django Channels)
 channels>=4.0.0
 daphne>=4.0.0
-# Optional for production with Redis:
-# channels-redis>=4.0.0
+# Redis backend for Channels (required for production WebSockets)
+channels-redis>=4.0.0
+
+# Redis client for application-level state
+redis>=5.0.0
 
 # CORS Headers
 django-cors-headers>=4.0.0

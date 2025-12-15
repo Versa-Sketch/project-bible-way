@@ -42,23 +42,41 @@ ALLOWED_AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.w
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
-# Rate limiting storage (in-memory, per user)
+from django.conf import settings
+from project_chat.storage.redis_state import check_rate_limit_redis
+
+# Rate limiting storage (in-memory, per user) – used as a fallback when Redis
+# is not enabled or not desired.
 _rate_limit_storage: Dict[str, Dict] = {}
 
 
 def check_rate_limit(user_id: str, action: str, max_requests: int = 30, window_seconds: int = 30) -> tuple[bool, Optional[int]]:
     """
     Check if user has exceeded rate limit for an action.
-    
+
+    If Redis is enabled (`USE_REDIS=True`), this will use a Redis-backed sliding
+    window so rate limiting state is shared across workers and survives process
+    restarts. Otherwise, it falls back to the in-memory implementation.
+
     Args:
         user_id: User ID
         action: Action name (e.g., 'send_message')
         max_requests: Maximum requests allowed
         window_seconds: Time window in seconds
-        
+
     Returns:
         Tuple of (is_allowed, remaining_requests)
     """
+    # Prefer Redis-based rate limiting when enabled.
+    if getattr(settings, "USE_REDIS", False):
+        is_allowed, remaining = check_rate_limit_redis(
+            user_id=user_id,
+            action=action,
+            max_requests=max_requests,
+            window_seconds=window_seconds,
+        )
+        return is_allowed, remaining
+
     key = f"{user_id}:{action}"
     now = datetime.now()
     

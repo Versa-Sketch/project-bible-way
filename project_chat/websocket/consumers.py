@@ -12,6 +12,13 @@ from typing import Dict, Any, Set
 from datetime import datetime
 
 from project_chat.storage import ChatDB
+from project_chat.storage.redis_state import (
+    mark_user_online,
+    mark_user_offline,
+    get_last_seen,
+    get_all_online_users,
+    is_user_online,
+)
 from project_chat.presenters.message_response import MessageResponse
 from project_chat.presenters.chat_error_response import ChatErrorResponse
 from project_chat.interactors.send_message_interactor import SendMessageInteractor
@@ -22,9 +29,6 @@ from project_chat.websocket.utils import check_rate_limit, ErrorCodes
 from project_chat.websocket.middleware import JWTAuthMiddleware
 
 User = get_user_model()
-
-# In-memory presence tracking (shared across all consumer instances)
-_online_users: Dict[str, datetime] = {}
 
 
 def _normalize_user_id(user_id) -> str:
@@ -97,14 +101,18 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         # Accept connection
         await self.accept()
         
-        # Update presence status (user is now online)
-        _online_users[self.user_id] = datetime.now()
+        # Update presence status (user is now online, persisted in Redis)
+        mark_user_online(self.user_id)
         
         # Debug: Log when user comes online
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"User {self.user_id} connected and marked as online. Total online users: {len(_online_users)}")
-        logger.debug(f"All online users: {list(_online_users.keys())}")
+        online_users = get_all_online_users()
+        logger.info(
+            f"User {self.user_id} connected and marked as online. "
+            f"Total online users: {len(online_users)}"
+        )
+        logger.debug(f"All online users: {list(online_users.keys())}")
         
         # Broadcast online status to all conversations where user is a member
         await self._broadcast_presence_to_conversations(is_online=True)
@@ -121,12 +129,15 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             await self._broadcast_presence_to_conversations(is_online=False)
             
             # Update presence status (user is now offline)
-            if self.user_id in _online_users:
-                del _online_users[self.user_id]
-                # Debug: Log when user goes offline
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.info(f"User {self.user_id} disconnected and marked as offline. Total online users: {len(_online_users)}")
+            mark_user_offline(self.user_id)
+            # Debug: Log when user goes offline
+            import logging
+            logger = logging.getLogger(__name__)
+            online_users = get_all_online_users()
+            logger.info(
+                f"User {self.user_id} disconnected and marked as offline. "
+                f"Total online users: {len(online_users)}"
+            )
         
         # Leave all groups
         for group in self.user_groups:
@@ -540,8 +551,9 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             
             # Get last_seen timestamp if going offline
             last_seen = None
-            if not is_online and self.user_id in _online_users:
-                last_seen = _online_users[self.user_id].isoformat()
+            if not is_online:
+                last_seen_dt = get_last_seen(self.user_id)
+                last_seen = last_seen_dt.isoformat() if last_seen_dt else None
             
             # Get all conversations where user is a member
             conversations = await database_sync_to_async(
@@ -622,7 +634,8 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         # Debug: Log all online users for troubleshooting
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"Online users in _online_users: {list(_online_users.keys())}")
+        online_users = get_all_online_users()
+        logger.info(f"Online users in Redis: {list(online_users.keys())}")
         logger.info(f"Checking presence for conversation {conversation_id}")
         logger.info(f"Current user_id (normalized): {current_user_id_normalized}")
         
@@ -637,41 +650,31 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             
             # Check if user is online (always true for the requesting user since they're connected)
             if current_user_id_normalized and member_id == current_user_id_normalized:
-                is_online = True
-                last_seen = datetime.now()
+                is_online_flag = True
+                last_seen_dt = datetime.now()
                 logger.info(f"User {original_user_id} is the requesting user - marking as online")
             else:
-                # Check if member is in _online_users dictionary
-                is_online = member_id in _online_users
-                if is_online:
-                    last_seen = _online_users[member_id]
-                    logger.info(f"User {original_user_id} (normalized: {member_id}) found in _online_users - ONLINE")
+                # Check if member is in Redis-backed online users
+                is_online_flag = is_user_online(member_id)
+                if is_online_flag:
+                    last_seen_dt = get_last_seen(member_id) or datetime.now()
+                    logger.info(
+                        f"User {original_user_id} (normalized: {member_id}) "
+                        f"found in Redis online users - ONLINE"
+                    )
                 else:
-                    # Fallback: Try case-insensitive lookup (shouldn't be needed if normalization is consistent)
-                    matching_key = None
-                    for key in _online_users.keys():
-                        if _normalize_user_id(key) == member_id:
-                            matching_key = key
-                            break
-                    
-                    if matching_key:
-                        is_online = True
-                        last_seen = _online_users[matching_key]
-                        logger.warning(f"User {original_user_id} found with case-insensitive match (key: {matching_key}) - FIXING normalization issue!")
-                    else:
-                        is_online = False
-                        last_seen = None
-                        logger.warning(f"User {original_user_id} (normalized: '{member_id}') NOT found in _online_users - OFFLINE")
-                        logger.warning(f"Available keys in _online_users: {list(_online_users.keys())}")
-                        # Log the types to help debug
-                        logger.warning(f"member_id type: {type(member_id)}, value: '{member_id}'")
-                        logger.warning(f"Sample key type: {type(list(_online_users.keys())[0]) if _online_users else 'N/A'}, value: '{list(_online_users.keys())[0] if _online_users else 'N/A'}'")
+                    last_seen_dt = None
+                    logger.warning(
+                        f"User {original_user_id} (normalized: '{member_id}') "
+                        f"NOT found in Redis online users - OFFLINE"
+                    )
+                    logger.warning(f"Available keys in Redis online users: {list(online_users.keys())}")
             
             presence_data.append({
                 "user_id": original_user_id,  # Return original format
                 "user_name": member.user.user_name,
-                "is_online": is_online,
-                "last_seen": last_seen.isoformat() if last_seen else None
+                "is_online": is_online_flag,
+                "last_seen": last_seen_dt.isoformat() if last_seen_dt else None
             })
         
         # Send presence status

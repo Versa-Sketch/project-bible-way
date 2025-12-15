@@ -210,6 +210,7 @@ if not firebase_admin._apps:
 
 # Channel Layers Configuration for WebSocket support
 USE_REDIS = os.getenv('USE_REDIS', 'false').lower() == 'true'
+REDIS_URL = os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/0')
 
 if USE_REDIS:
     # Production: Redis channel layer
@@ -217,7 +218,8 @@ if USE_REDIS:
         "default": {
             "BACKEND": "channels_redis.core.RedisChannelLayer",
             "CONFIG": {
-                "hosts": [("127.0.0.1", 6379)],
+                # Use URL so host/port/db/password can be configured per environment
+                "hosts": [REDIS_URL],
                 "capacity": 1500,
                 "expiry": 60,
             },
