@@ -53,4 +53,7 @@ urlpatterns = [
 
     ####project chat api's ###############
     path('', include('project_chat.urls')),
+    
+    ####project notifications api's ###############
+    path('api/notifications/', include('project_notifications.urls')),
 ]

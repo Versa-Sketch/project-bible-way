@@ -41,13 +41,14 @@ INSTALLED_APPS = [
     'storages',
     'bible_way',
     "project_chat",
+    "project_notifications",
 ]
 
 # -------------------------------------------------------------------
 # MIDDLEWARE (ORDER MATTERS!)
 # -------------------------------------------------------------------
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # MUST BE FIRST
+    'corsheaders.middleware.CorsMiddleware',  
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

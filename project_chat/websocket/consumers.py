@@ -71,10 +71,15 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         
         self.user_id = str(self.user.user_id).lower()  # Normalize to lowercase for consistency
         
-        # Join user's personal group for notifications
+        # Join user's personal group for chat notifications
         user_group = f"user_{self.user_id}"
         await self.channel_layer.group_add(user_group, self.channel_name)
         self.user_groups.add(user_group)
+        
+        # Join notification group for notification broadcasts
+        notification_group = f"notification_{self.user_id}"
+        await self.channel_layer.group_add(notification_group, self.channel_name)
+        self.user_groups.add(notification_group)
         
         # Accept connection
         await self.accept()
@@ -479,6 +484,16 @@ class UserChatConsumer(AsyncWebsocketConsumer):
     async def message_deleted(self, event):
         """Handle message_deleted event from group."""
         await self.send(text_data=json.dumps(event['data']))
+    
+    async def notification_new(self, event):
+        """Handle new notification broadcast from group."""
+        # Forward notification to WebSocket
+        notification_data = event.get('data', {})
+        response = {
+            "type": "notification.new",
+            "data": notification_data
+        }
+        await self.send(text_data=json.dumps(response))
     
     async def read_receipt_updated(self, event):
         """Handle read_receipt_updated event from group."""
