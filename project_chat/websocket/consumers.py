@@ -27,6 +27,19 @@ User = get_user_model()
 _online_users: Dict[str, datetime] = {}
 
 
+def _normalize_user_id(user_id) -> str:
+    """
+    Normalize user_id to a consistent string format for dictionary lookups.
+    
+    Args:
+        user_id: User ID in any format (UUID, string, etc.)
+    
+    Returns:
+        Lowercase, stripped string representation of the user_id
+    """
+    return str(user_id).lower().strip()
+
+
 class UserChatConsumer(AsyncWebsocketConsumer):
     """
     Unified WebSocket consumer for user connections.
@@ -69,7 +82,7 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             await self.close(code=4008)  # Policy violation - authentication required
             return
         
-        self.user_id = str(self.user.user_id).lower()  # Normalize to lowercase for consistency
+        self.user_id = _normalize_user_id(self.user.user_id)  # Normalize to consistent format
         
         # Join user's personal group for notifications
         user_group = f"user_{self.user_id}"
@@ -88,6 +101,9 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         logger.info(f"User {self.user_id} connected and marked as online. Total online users: {len(_online_users)}")
         logger.debug(f"All online users: {list(_online_users.keys())}")
         
+        # Broadcast online status to all conversations where user is a member
+        await self._broadcast_presence_to_conversations(is_online=True)
+        
         # Send connection established message
         await self.send(text_data=json.dumps(
             self.message_response.connection_established(self.user_id)
@@ -95,13 +111,17 @@ class UserChatConsumer(AsyncWebsocketConsumer):
     
     async def disconnect(self, close_code):
         """Handle WebSocket disconnection."""
-        # Update presence status (user is now offline)
-        if self.user_id and self.user_id in _online_users:
-            del _online_users[self.user_id]
-            # Debug: Log when user goes offline
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.info(f"User {self.user_id} disconnected and marked as offline. Total online users: {len(_online_users)}")
+        # Broadcast offline status to all conversations before removing from online users
+        if self.user_id:
+            await self._broadcast_presence_to_conversations(is_online=False)
+            
+            # Update presence status (user is now offline)
+            if self.user_id in _online_users:
+                del _online_users[self.user_id]
+                # Debug: Log when user goes offline
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.info(f"User {self.user_id} disconnected and marked as offline. Total online users: {len(_online_users)}")
         
         # Leave all groups
         for group in self.user_groups:
@@ -488,6 +508,73 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         """Handle typing_indicator event from group."""
         await self.send(text_data=json.dumps(event['data']))
     
+    async def presence_updated(self, event):
+        """Handle presence_updated event from group."""
+        await self.send(text_data=json.dumps(event['data']))
+    
+    async def _broadcast_presence_to_conversations(self, is_online: bool):
+        """
+        Broadcast presence status (online/offline) to all conversations where user is a member.
+        
+        Args:
+            is_online: True if user is coming online, False if going offline
+        """
+        try:
+            if not self.user_id:
+                return
+            
+            # Get last_seen timestamp if going offline
+            last_seen = None
+            if not is_online and self.user_id in _online_users:
+                last_seen = _online_users[self.user_id].isoformat()
+            
+            # Get all conversations where user is a member
+            conversations = await database_sync_to_async(
+                self.storage.get_user_conversations
+            )(self.user_id)
+            
+            if not conversations:
+                return
+            
+            # Broadcast presence update to each conversation group
+            for conversation_data in conversations:
+                conversation_id = str(conversation_data.get('conversation_id'))
+                if not conversation_id:
+                    continue
+                
+                # Format presence broadcast
+                presence_data = self.message_response.presence_status_broadcast(
+                    user_id=self.user_id,
+                    is_online=is_online,
+                    conversation_id=conversation_id,
+                    last_seen=last_seen
+                )
+                
+                # Broadcast to conversation group
+                conv_group = f"conversation_{conversation_id}"
+                await self.channel_layer.group_send(
+                    conv_group,
+                    {
+                        'type': 'presence_updated',
+                        'data': presence_data
+                    }
+                )
+                
+                # Debug logging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.debug(
+                    f"Broadcasted presence update: user {self.user_id} is "
+                    f"{'online' if is_online else 'offline'} in conversation {conversation_id}"
+                )
+        except Exception as e:
+            # Log error but don't break connection/disconnection
+            import logging
+            import traceback
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error broadcasting presence status: {e}")
+            logger.debug(traceback.format_exc())
+    
     async def handle_get_presence(self, data: Dict[str, Any], request_id: str):
         """Handle get_presence action."""
         conversation_id = data.get('conversation_id')
@@ -498,7 +585,6 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             ))
             return
         
-        # Check if user is a member
         is_member = await database_sync_to_async(
             self.storage.check_user_membership
         )(self.user_id, conversation_id)
@@ -515,35 +601,56 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         )(conversation_id)
         
         # Build presence status for each member
-        # Normalize current user_id for comparison
-        current_user_id_normalized = str(self.user_id).lower() if self.user_id else None
+        # Normalize current user_id for comparison (self.user_id is already normalized from connect)
+        current_user_id_normalized = _normalize_user_id(self.user_id) if self.user_id else None
         
         # Debug: Log all online users for troubleshooting
         import logging
         logger = logging.getLogger(__name__)
-        logger.debug(f"Online users in _online_users: {list(_online_users.keys())}")
-        logger.debug(f"Checking presence for conversation {conversation_id}")
+        logger.info(f"Online users in _online_users: {list(_online_users.keys())}")
+        logger.info(f"Checking presence for conversation {conversation_id}")
+        logger.info(f"Current user_id (normalized): {current_user_id_normalized}")
         
         presence_data = []
         for member in members:
-            # Normalize user_id to lowercase for consistent lookup
-            member_id = str(member.user.user_id).lower()
+            # Normalize user_id using the same function as everywhere else
+            member_id = _normalize_user_id(member.user.user_id)
             original_user_id = str(member.user.user_id)
+            
+            # Debug logging for each member
+            logger.info(f"Checking member: original={original_user_id}, normalized={member_id}")
             
             # Check if user is online (always true for the requesting user since they're connected)
             if current_user_id_normalized and member_id == current_user_id_normalized:
                 is_online = True
                 last_seen = datetime.now()
-                logger.debug(f"User {original_user_id} is the requesting user - marking as online")
+                logger.info(f"User {original_user_id} is the requesting user - marking as online")
             else:
+                # Check if member is in _online_users dictionary
                 is_online = member_id in _online_users
                 if is_online:
                     last_seen = _online_users[member_id]
-                    logger.debug(f"User {original_user_id} (normalized: {member_id}) found in _online_users - ONLINE")
+                    logger.info(f"User {original_user_id} (normalized: {member_id}) found in _online_users - ONLINE")
                 else:
-                    last_seen = None
-                    logger.debug(f"User {original_user_id} (normalized: {member_id}) NOT found in _online_users - OFFLINE")
-                    logger.debug(f"Available keys: {list(_online_users.keys())}")
+                    # Fallback: Try case-insensitive lookup (shouldn't be needed if normalization is consistent)
+                    matching_key = None
+                    for key in _online_users.keys():
+                        if _normalize_user_id(key) == member_id:
+                            matching_key = key
+                            break
+                    
+                    if matching_key:
+                        is_online = True
+                        last_seen = _online_users[matching_key]
+                        logger.warning(f"User {original_user_id} found with case-insensitive match (key: {matching_key}) - FIXING normalization issue!")
+                    else:
+                        is_online = False
+                        last_seen = None
+                        logger.warning(f"User {original_user_id} (normalized: '{member_id}') NOT found in _online_users - OFFLINE")
+                        logger.warning(f"Available keys in _online_users: {list(_online_users.keys())}")
+                        # Log the types to help debug
+                        logger.warning(f"member_id type: {type(member_id)}, value: '{member_id}'")
+                        logger.warning(f"Sample key type: {type(list(_online_users.keys())[0]) if _online_users else 'N/A'}, value: '{list(_online_users.keys())[0] if _online_users else 'N/A'}'")
             
             presence_data.append({
                 "user_id": original_user_id,  # Return original format
