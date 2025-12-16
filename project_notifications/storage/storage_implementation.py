@@ -1,7 +1,11 @@
+import logging
 from django.utils import timezone
+from django.core.exceptions import ObjectDoesNotExist
 from datetime import timedelta
 import uuid
 from project_notifications.models import Notification, NotificationFetchTracker
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationDB:
@@ -18,24 +22,45 @@ class NotificationDB:
         message_id: int = None
     ) -> Notification:
         """Create a new notification."""
-        actor_uuid = uuid.UUID(actor_id) if isinstance(actor_id, str) else actor_id
-        recipient_uuid = uuid.UUID(recipient_id) if isinstance(recipient_id, str) else recipient_id
-        
-        from bible_way.models import User
-        actor = User.objects.get(user_id=actor_uuid)
-        recipient = User.objects.get(user_id=recipient_uuid)
-        
-        notification = Notification.objects.create(
-            notification_type=notification_type,
-            target_id=target_id,
-            target_type=target_type,
-            actor=actor,
-            recipient=recipient,
-            metadata=metadata or {},
-            conversation_id=conversation_id,
-            message_id=message_id
-        )
-        return notification
+        try:
+            actor_uuid = uuid.UUID(actor_id) if isinstance(actor_id, str) else actor_id
+            recipient_uuid = uuid.UUID(recipient_id) if isinstance(recipient_id, str) else recipient_id
+            
+            from bible_way.models import User
+            try:
+                actor = User.objects.get(user_id=actor_uuid)
+            except User.DoesNotExist:
+                logger.error(f"Failed to create notification: Actor user not found: {actor_id}")
+                raise ValueError(f"Actor user not found: {actor_id}")
+            
+            try:
+                recipient = User.objects.get(user_id=recipient_uuid)
+            except User.DoesNotExist:
+                logger.error(f"Failed to create notification: Recipient user not found: {recipient_id}")
+                raise ValueError(f"Recipient user not found: {recipient_id}")
+            
+            notification = Notification.objects.create(
+                notification_type=notification_type,
+                target_id=target_id,
+                target_type=target_type,
+                actor=actor,
+                recipient=recipient,
+                metadata=metadata or {},
+                conversation_id=conversation_id,
+                message_id=message_id
+            )
+            logger.debug(
+                f"Notification created: type={notification_type}, target={target_id}, "
+                f"actor={actor_id}, recipient={recipient_id}"
+            )
+            return notification
+        except (ValueError, Exception) as e:
+            logger.error(
+                f"Failed to create notification: type={notification_type}, target={target_id}, "
+                f"actor={actor_id}, recipient={recipient_id}, error={str(e)}",
+                exc_info=True
+            )
+            raise
     
     def get_or_create_aggregated_notification(
         self,
@@ -86,27 +111,39 @@ class NotificationDB:
         actor_name: str
     ) -> Notification:
         """Update notification metadata with aggregation data."""
-        metadata = notification.metadata or {}
-        
-        # Initialize if needed
-        if 'actors' not in metadata:
-            metadata['actors'] = []
-        if 'actors_count' not in metadata:
-            metadata['actors_count'] = 0
-        
-        # Add actor if not already in list
-        actor_uuid = str(uuid.UUID(actor_id) if isinstance(actor_id, str) else actor_id)
-        if actor_uuid not in metadata['actors']:
-            metadata['actors'].append(actor_uuid)
-            metadata['actors_count'] = len(metadata['actors'])
-        
-        # Update last actor info
-        metadata['last_actor_id'] = actor_uuid
-        metadata['last_actor_name'] = actor_name
-        
-        notification.metadata = metadata
-        notification.save()
-        return notification
+        try:
+            metadata = notification.metadata or {}
+            
+            # Initialize if needed
+            if 'actors' not in metadata:
+                metadata['actors'] = []
+            if 'actors_count' not in metadata:
+                metadata['actors_count'] = 0
+            
+            # Add actor if not already in list
+            actor_uuid = str(uuid.UUID(actor_id) if isinstance(actor_id, str) else actor_id)
+            if actor_uuid not in metadata['actors']:
+                metadata['actors'].append(actor_uuid)
+                metadata['actors_count'] = len(metadata['actors'])
+            
+            # Update last actor info
+            metadata['last_actor_id'] = actor_uuid
+            metadata['last_actor_name'] = actor_name
+            
+            notification.metadata = metadata
+            notification.save()
+            logger.debug(
+                f"Notification metadata updated: notification_id={notification.notification_id}, "
+                f"actors_count={metadata['actors_count']}"
+            )
+            return notification
+        except Exception as e:
+            logger.error(
+                f"Failed to update notification metadata: notification_id={getattr(notification, 'notification_id', 'unknown')}, "
+                f"actor_id={actor_id}, error={str(e)}",
+                exc_info=True
+            )
+            raise
     
     def get_user_notifications(
         self,
