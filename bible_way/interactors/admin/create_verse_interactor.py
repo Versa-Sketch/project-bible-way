@@ -13,7 +13,6 @@ class CreateVerseInteractor:
             return self.response.validation_error_response("Description is required")
         
         try:
-            self.storage.clear_all_verses()
             
             verse = self.storage.create_verse(
                 title=title,

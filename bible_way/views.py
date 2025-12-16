@@ -473,7 +473,6 @@ def admin_create_promotion_view(request):
     price = request.data.get('price')
     redirect_link = request.data.get('redirect_link')
     meta_data = request.data.get('meta_data')
-    media_file = request.FILES.get('media')
     image_files = request.FILES.getlist('images')
     
     response = CreatePromotionInteractor(storage=UserDB(), response=CreatePromotionResponse()).\
@@ -483,7 +482,6 @@ def admin_create_promotion_view(request):
             price=price,
             redirect_link=redirect_link,
             meta_data_str=meta_data,
-            media_file=media_file,
             image_files=image_files
         )
     return response
@@ -566,31 +564,34 @@ def get_book_details_view(request, book_id: str):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def admin_create_book_view(request):
-    markdown_file = request.FILES.get('markdown_file')
-    category_id = request.data.get('category_id')
-    age_group_id = request.data.get('age_group_id')
-    language_id = request.data.get('language_id')
-    title = request.data.get('title')
-    cover_image_file = request.FILES.get('cover_image')
-    description = request.data.get('description')
-    author = request.data.get('author')
-    book_order = request.data.get('book_order', 0)
-    metadata_str = request.data.get('metadata')
-    
-    response = CreateBookInteractor(storage=UserDB(), response=CreateBookResponse()).\
-        create_book_interactor(
-            markdown_file=markdown_file,
-            category_id=category_id,
-            age_group_id=age_group_id,
-            language_id=language_id,
-            title=title,
-            cover_image_file=cover_image_file,
-            description=description,
-            author=author,
-            book_order=book_order,
-            metadata_str=metadata_str
-        )
-    return response
+    try:
+        markdown_file = request.FILES.get('markdown_file')
+        category_id = request.data.get('category_id')
+        age_group_id = request.data.get('age_group_id')
+        language_id = request.data.get('language_id')
+        title = request.data.get('title')
+        cover_image_file = request.FILES.get('cover_image')
+        description = request.data.get('description')
+        author = request.data.get('author')
+        book_order = request.data.get('book_order', 0)
+        metadata_str = request.data.get('metadata')
+        
+        response = CreateBookInteractor(storage=UserDB(), response=CreateBookResponse()).\
+            create_book_interactor(
+                markdown_file=markdown_file,
+                category_id=category_id,
+                age_group_id=age_group_id,
+                language_id=language_id,
+                title=title,
+                cover_image_file=cover_image_file,
+                description=description,
+                author=author,
+                book_order=book_order,
+                metadata_str=metadata_str
+            )
+        return response
+    except Exception as e:
+        return CreateBookResponse().error_response(f"Unexpected error: {str(e)}")
 
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])

@@ -1,9 +1,10 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.views.decorators.csrf import csrf_exempt
 from bible_way.views import *
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # API endpoints (before admin to avoid conflicts)
     path("user/signup", signup_view),
     path("user/login", login_view),
     path("user/google/authentication", google_authentication_view),

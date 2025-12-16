@@ -148,7 +148,8 @@ class Book(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.title} - {self.get_category_display()}"
+        category_name = str(self.category) if self.category else "No Category"
+        return f"{self.title} - {category_name}"
 
 
 class BookContent(models.Model):

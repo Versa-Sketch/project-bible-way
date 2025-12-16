@@ -19,11 +19,15 @@ class UserAuthentication:
         refresh['email'] = user.email
         refresh['user_id'] = str(user.user_id)
         refresh['user_name'] = user.user_name
+        refresh['is_staff'] = user.is_staff
+        refresh['is_superuser'] = user.is_superuser
         
         access_token = refresh.access_token
         access_token['email'] = user.email
         access_token['user_id'] = str(user.user_id)
         access_token['user_name'] = user.user_name
+        access_token['is_staff'] = user.is_staff
+        access_token['is_superuser'] = user.is_superuser
         
         return {
             'access': str(access_token),

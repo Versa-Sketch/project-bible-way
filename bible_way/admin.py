@@ -124,7 +124,6 @@ class PromotionAdmin(admin.ModelAdmin):
     list_filter = ('created_at', 'updated_at')
     search_fields = ('title', 'description', 'redirect_link')
     readonly_fields = ('promotion_id', 'created_at', 'updated_at')
-    raw_id_fields = ('media',)
 
 
 @admin.register(PromotionImage)

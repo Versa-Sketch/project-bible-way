@@ -163,7 +163,8 @@ class UserDB:
                 'user_id': str(user.user_id),
                 'user_name': user.user_name,
                 'profile_picture_url': user.profile_picture_url or '',
-                'followers_count': user.followers_count
+                'followers_count': user.followers_count,
+                'is_admin': user.is_staff
             }
             
             # Add follow status and conversation_id if current_user_id provided
@@ -675,25 +676,19 @@ class UserDB:
         return comments_data
     
     def get_all_promotions(self) -> list:
-        promotions = Promotion.objects.select_related('media').prefetch_related('promotion_images').order_by('-created_at')
+        promotions = Promotion.objects.prefetch_related('promotion_images').order_by('-created_at')
         
         promotions_data = []
         for promotion in promotions:
-            media_data = None
-            if promotion.media:
-                media_data = {
-                    'media_id': str(promotion.media.media_id),
-                    'media_type': promotion.media.media_type,
-                    'url': promotion.media.url
-                }
-            
             images_data = []
-            for image in promotion.promotion_images.all():
+            for image in promotion.promotion_images.all().order_by('order', 'created_at'):
                 images_data.append({
                     'promotion_image_id': str(image.promotion_image_id),
                     'image_url': image.image_url,
                     'image_type': image.image_type,
-                    'order': image.order
+                    'order': image.order,
+                    'created_at': image.created_at.isoformat(),
+                    'updated_at': image.updated_at.isoformat()
                 })
             
             promotions_data.append({
@@ -703,7 +698,6 @@ class UserDB:
                 'price': str(promotion.price),
                 'redirect_link': promotion.redirect_link,
                 'meta_data': promotion.meta_data or {},
-                'media': media_data,
                 'images': images_data,
                 'created_at': promotion.created_at.isoformat(),
                 'updated_at': promotion.updated_at.isoformat()
@@ -955,10 +949,6 @@ class UserDB:
         except Exception:
             return None
     
-    def clear_all_verses(self) -> int:
-        count = Verse.objects.count()
-        Verse.objects.all().delete()
-        return count
     
     def create_verse(self, title: str, description: str) -> Verse:
         verse = Verse.objects.create(
@@ -967,22 +957,13 @@ class UserDB:
         )
         return verse
     
-    def create_promotion(self, title: str, description: str, price, redirect_link: str, meta_data: dict = None, media_id: str = None) -> Promotion:
-        media = None
-        if media_id:
-            try:
-                media_uuid = uuid.UUID(media_id) if isinstance(media_id, str) else media_id
-                media = Media.objects.get(media_id=media_uuid)
-            except Media.DoesNotExist:
-                raise Exception("Media not found")
-        
+    def create_promotion(self, title: str, description: str, price, redirect_link: str, meta_data: dict = None) -> Promotion:
         promotion = Promotion.objects.create(
             title=title.strip(),
             description=description.strip() if description else '',
             price=price,
             redirect_link=redirect_link.strip(),
-            meta_data=meta_data,
-            media=media
+            meta_data=meta_data
         )
         return promotion
     

@@ -12,7 +12,7 @@ class CreatePromotionInteractor:
         self.storage = storage
         self.response = response
 
-    def create_promotion_interactor(self, title: str, description: str, price: str, redirect_link: str, meta_data_str: str = None, media_file=None, image_files: list = None) -> Response:
+    def create_promotion_interactor(self, title: str, description: str, price: str, redirect_link: str, meta_data_str: str = None, image_files: list = None) -> Response:
         if not title or not title.strip():
             return self.response.validation_error_response("Title is required")
         
@@ -34,34 +34,17 @@ class CreatePromotionInteractor:
             except json.JSONDecodeError:
                 return self.response.validation_error_response("Invalid JSON format for meta_data")
         
-        media_id = None
-        if media_file:
-            try:
-                media_type = self.storage.get_media_type_from_file(media_file)
-                media_key = f"promotions/media/{os.urandom(16).hex()}/{media_file.name}"
-                media_url = s3_upload_file(media_file, media_key)
-                
-                from bible_way.models import Media
-                media = Media.objects.create(
-                    media_type=media_type,
-                    url=media_url
-                )
-                media_id = str(media.media_id)
-            except Exception as e:
-                error_message = str(e)
-                return self.response.error_response(f"Failed to upload media: {error_message}")
-        
         try:
             promotion = self.storage.create_promotion(
                 title=title,
                 description=description or '',
                 price=price_decimal,
                 redirect_link=redirect_link,
-                meta_data=meta_data,
-                media_id=media_id
+                meta_data=meta_data
             )
             
             image_urls = []
+            # Upload image files
             if image_files:
                 for index, image_file in enumerate(image_files):
                     try:
@@ -77,7 +60,5 @@ class CreatePromotionInteractor:
             return self.response.promotion_created_successfully_response(str(promotion.promotion_id))
         except Exception as e:
             error_message = str(e)
-            if "Media not found" in error_message:
-                return self.response.validation_error_response("Media not found")
             return self.response.error_response(f"Failed to create promotion: {error_message}")
 

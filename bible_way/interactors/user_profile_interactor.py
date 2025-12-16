@@ -24,7 +24,8 @@ class UserProfileInteractor:
             country=user.country,
             age=user.age,
             preferred_language=user.preferred_language,
-            profile_picture_url=user.profile_picture_url
+            profile_picture_url=user.profile_picture_url,
+            is_admin=user.is_staff
         )
 
         return self.response.user_profile_success_response(response_dto=response_dto)

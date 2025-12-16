@@ -33,3 +33,4 @@ class UserProfileResponseDTO:
     age: int | None
     preferred_language: str | None
     profile_picture_url: str | None
+    is_admin: bool
