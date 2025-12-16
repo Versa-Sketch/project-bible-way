@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'storages',
     'bible_way',
     "project_chat",
+    "project_notifications",
 ]
 
 # -------------------------------------------------------------------

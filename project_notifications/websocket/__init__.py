@@ -1,0 +1,2 @@
+# WebSocket package for notifications
+
