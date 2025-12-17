@@ -92,7 +92,67 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 1.2 Get All Categories
+### 1.2 Admin Get All Categories
+**Endpoint:** `GET /admin/categories`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Description:**
+This endpoint allows admins to retrieve all categories. Returns all categories regardless of their status, ordered by `display_order` and then by `category_name`.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Categories retrieved successfully",
+  "data": [
+    {
+      "category_id": "uuid-string",
+      "category_name": "SEGREGATE_BIBLES",
+      "display_name": "Segregated Bibles",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/categories/cover_images/...",
+      "description": "Bibles with age-specific content",
+      "display_order": 0,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "category_id": "uuid-string",
+      "category_name": "NORMAL_BIBLES",
+      "display_name": "Normal Bibles",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/categories/cover_images/...",
+      "description": "Bibles with same content for all age groups",
+      "display_order": 1,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve categories: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Note:** Categories are ordered by `display_order` and then by `category_name`. This endpoint returns all categories, including those that may not be active.
+
+---
+
+### 1.3 Get All Categories
 **Endpoint:** `GET /books/categories/`  
 **Authentication:** Required (JWT)
 
@@ -227,7 +287,67 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 2.2 Get All Age Groups
+### 2.2 Admin Get All Age Groups
+**Endpoint:** `GET /admin/age-groups`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Description:**
+This endpoint allows admins to retrieve all age groups. Returns all age groups regardless of their status, ordered by `display_order` and then by `age_group_name`.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Age groups retrieved successfully",
+  "data": [
+    {
+      "age_group_id": "uuid-string",
+      "age_group_name": "CHILD",
+      "display_name": "Child",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/age_groups/cover_images/...",
+      "description": "Books for children",
+      "display_order": 0,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "age_group_id": "uuid-string",
+      "age_group_name": "TEEN",
+      "display_name": "Teen",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/age_groups/cover_images/...",
+      "description": "Books for teenagers",
+      "display_order": 1,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve age groups: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Note:** Age groups are ordered by `display_order` and then by `age_group_name`. This endpoint returns all age groups, including those that may not be active.
+
+---
+
+### 2.3 Get All Age Groups
 **Endpoint:** `GET /books/age-groups/`  
 **Authentication:** Required (JWT)
 
@@ -283,9 +403,66 @@ Authorization: Bearer <access_token>
 
 ---
 
-## 3. Book APIs
+## 3. Language APIs
 
-### 3.1 Admin Create Book
+### 3.1 Admin Get All Languages
+**Endpoint:** `GET /admin/languages`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Description:**
+This endpoint allows admins to retrieve all available languages. Languages are used to categorize books by their language.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Languages retrieved successfully",
+  "data": [
+    {
+      "language_id": "uuid-string",
+      "language_name": "EN",
+      "display_name": "English"
+    },
+    {
+      "language_id": "uuid-string",
+      "language_name": "ES",
+      "display_name": "Spanish"
+    },
+    {
+      "language_id": "uuid-string",
+      "language_name": "FR",
+      "display_name": "French"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve languages: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Note:** Languages are typically predefined in the system. This endpoint returns all available languages that can be used when creating books.
+
+---
+
+## 4. Book APIs
+
+### 4.1 Admin Create Book
 **Endpoint:** `POST /admin/book/create`  
 **Authentication:** Required (JWT)  
 **Permission:** Admin only (`is_staff=True`)  
@@ -408,7 +585,7 @@ This endpoint allows admins to create a book by uploading a source file (markdow
 
 ---
 
-### 3.2 Get Books by Category and Age Group
+### 4.2 Get Books by Category and Age Group
 **Endpoint:** `GET /books/category/<category_id>/age-group/<age_group_id>/books/`  
 **Authentication:** Required (JWT)
 
@@ -495,7 +672,7 @@ This endpoint allows admins to create a book by uploading a source file (markdow
 
 ---
 
-### 3.3 Get Book Details
+### 4.3 Get Book Details
 **Endpoint:** `GET /books/<book_id>/`  
 **Authentication:** Required (JWT)
 
@@ -591,7 +768,7 @@ This endpoint allows admins to create a book by uploading a source file (markdow
 
 ---
 
-### 3.4 Admin Update Book Metadata
+### 4.4 Admin Update Book Metadata
 **Endpoint:** `POST /admin/book/update-metadata`  
 **Authentication:** Required (JWT)  
 **Permission:** Admin only (`is_staff=True`)
