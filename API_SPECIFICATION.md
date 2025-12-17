@@ -386,6 +386,108 @@ Authorization: Bearer <access_token>
 
 ---
 
+### 2.4 Get Recommended Users
+**Endpoint:** `GET /user/recommended` or `POST /user/recommended`  
+**Authentication:** Required (JWT)
+
+**Description:**
+Get recommended users for a specific user. Returns users that the specified user is not already following, ordered by follower count (most popular first). Excludes the user themselves.
+
+**Request Parameters:**
+
+For **GET** requests:
+- `user_id` (string, required) - Query parameter: The user ID to get recommendations for
+- `limit` (integer, optional) - Query parameter: Maximum number of results (default: 20, maximum: 20)
+
+For **POST** requests:
+- `user_id` (string, required) - Request body: The user ID to get recommendations for
+- `limit` (integer, optional) - Request body: Maximum number of results (default: 20, maximum: 20)
+
+**Example GET Request:**
+```
+GET /user/recommended?user_id=abc-123-uuid&limit=20
+Authorization: Bearer <access_token>
+```
+
+**Example POST Request:**
+```
+POST /user/recommended
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "user_id": "abc-123-uuid",
+  "limit": 20
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "user_id": "def-456-uuid",
+      "user_name": "john_doe",
+      "profile_image": "https://s3.amazonaws.com/bucket/profile.jpg"
+    },
+    {
+      "user_id": "ghi-789-uuid",
+      "user_name": "jane_smith",
+      "profile_image": ""
+    }
+  ],
+  "total_count": 45
+}
+```
+
+**Response Fields:**
+- `success` (boolean) - Indicates if the request was successful
+- `data` (array) - Array of recommended user objects
+  - `user_id` (string) - Unique user identifier
+  - `user_name` (string) - Username
+  - `profile_image` (string) - URL to user's profile picture (empty string if not set)
+- `total_count` (integer) - Total number of recommended users available (may be more than returned results)
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "user_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - User not found:
+```json
+{
+  "success": false,
+  "error": "User not found",
+  "error_code": "USER_NOT_FOUND"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to get recommended users: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- Results exclude users that the specified user is already following
+- Results exclude the user themselves
+- Results are ordered by follower count (descending), then by username (ascending)
+- Maximum 20 results can be returned per request
+- If `limit` is less than 1 or greater than 20, it defaults to 20
+- If `limit` is not provided or invalid, it defaults to 20
+
+---
+
 ## 3. User Follow APIs
 
 ### 3.1 Follow User

@@ -188,6 +188,41 @@ class UserDB:
             'query': query
         }
     
+    def get_recommended_users(self, user_id: str, limit: int = 20) -> dict:
+        try:
+            user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        except (ValueError, TypeError):
+            raise Exception("Invalid user_id format")
+        
+        limit = min(max(1, int(limit)), 20)
+        
+        following_user_ids = UserFollowers.objects.filter(
+            follower_id__user_id=user_uuid
+        ).values_list('followed_id__user_id', flat=True)
+        
+        queryset = User.objects.exclude(user_id=user_uuid).exclude(
+            user_id__in=following_user_ids
+        )
+        
+        users = queryset.annotate(
+            followers_count=Count('followed', distinct=True)
+        ).order_by('-followers_count', 'user_name')[:limit]
+        
+        total_count = queryset.count()
+        
+        users_data = []
+        for user in users:
+            users_data.append({
+                'user_id': str(user.user_id),
+                'user_name': user.user_name,
+                'profile_image': user.profile_picture_url or ''
+            })
+        
+        return {
+            'users': users_data,
+            'total_count': total_count
+        }
+    
     def follow_user(self, follower_id: str, followed_id: str) -> UserFollowers:
         import uuid
         follower_uuid = uuid.UUID(follower_id) if isinstance(follower_id, str) else follower_id
@@ -216,6 +251,49 @@ class UserDB:
             return True
         except UserFollowers.DoesNotExist:
             return False
+    
+    def get_complete_user_profile(self, user_id: str, current_user_id: str | None = None):
+        from bible_way.storage.dtos import CompleteUserProfileResponseDTO
+        
+        try:
+            user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        except (ValueError, TypeError):
+            return None
+        
+        # Get user with follower and following counts
+        user = User.objects.filter(user_id=user_uuid).annotate(
+            followers_count=Count('followed', distinct=True),
+            following_count=Count('follower', distinct=True)
+        ).first()
+        
+        if not user:
+            return None
+        
+        # Check if current_user is following this user
+        is_following = False
+        if current_user_id:
+            try:
+                current_user_uuid = uuid.UUID(current_user_id) if isinstance(current_user_id, str) else current_user_id
+                is_following = UserFollowers.objects.filter(
+                    follower_id__user_id=current_user_uuid,
+                    followed_id__user_id=user_uuid
+                ).exists()
+            except (ValueError, TypeError):
+                is_following = False
+        
+        return CompleteUserProfileResponseDTO(
+            user_id=str(user.user_id),
+            user_name=user.user_name,
+            email=user.email,
+            country=user.country,
+            age=user.age,
+            preferred_language=user.preferred_language,
+            profile_picture_url=user.profile_picture_url,
+            is_admin=user.is_staff,
+            followers_count=user.followers_count,
+            following_count=user.following_count,
+            is_following=is_following
+        )
     
     def create_post(self, user_id: str, title: str = '', description: str = '') -> Post:
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
@@ -808,7 +886,7 @@ class UserDB:
             'has_previous': has_previous
         }
     
-    def get_user_prayer_requests(self, user_id: str, limit: int = 10, offset: int = 0) -> dict:
+    def get_user_prayer_requests(self, user_id: str, limit: int = 10, offset: int = 0, current_user_id: str = None) -> dict:
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
         total_count = PrayerRequest.objects.filter(user__user_id=user_uuid).count()
@@ -818,8 +896,24 @@ class UserDB:
             reactions_count=Count('reactions')
         ).order_by('-created_at')[offset:offset + limit]
         
+        current_user_uuid = None
+        if current_user_id:
+            try:
+                current_user_uuid = uuid.UUID(current_user_id) if isinstance(current_user_id, str) else current_user_id
+            except (ValueError, TypeError):
+                current_user_uuid = None
+        
         prayer_requests_data = []
         for prayer_request in prayer_requests:
+            is_liked = False
+            
+            if current_user_uuid:
+                is_liked = Reaction.objects.filter(
+                    prayer_request=prayer_request,
+                    user__user_id=current_user_uuid,
+                    reaction_type=Reaction.LIKE
+                ).exists()
+            
             prayer_requests_data.append({
                 'prayer_request_id': str(prayer_request.prayer_request_id),
                 'user': {
@@ -833,6 +927,7 @@ class UserDB:
                 'description': prayer_request.description,
                 'comments_count': prayer_request.comments_count,
                 'reactions_count': prayer_request.reactions_count,
+                'is_liked': is_liked,
                 'created_at': prayer_request.created_at.isoformat(),
                 'updated_at': prayer_request.updated_at.isoformat()
             })

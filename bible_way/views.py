@@ -12,6 +12,8 @@ from bible_way.presenters.google_auth_response import GoogleAuthResponse
 from bible_way.interactors.user_profile_interactor import UserProfileInteractor
 from bible_way.interactors.current_user_profile_interactor import CurrentUserProfileInteractor
 from bible_way.interactors.search_users_interactor import SearchUsersInteractor
+from bible_way.interactors.get_recommended_users_interactor import GetRecommendedUsersInteractor
+from bible_way.interactors.get_complete_user_profile_interactor import GetCompleteUserProfileInteractor
 from bible_way.interactors.follow_user_interactor import FollowUserInteractor
 from bible_way.interactors.unfollow_user_interactor import UnfollowUserInteractor
 from bible_way.interactors.create_post_interactor import CreatePostInteractor
@@ -27,6 +29,7 @@ from bible_way.interactors.like_comment_interactor import LikeCommentInteractor
 from bible_way.interactors.unlike_comment_interactor import UnlikeCommentInteractor
 from bible_way.interactors.get_all_posts_interactor import GetAllPostsInteractor
 from bible_way.interactors.get_user_posts_interactor import GetUserPostsInteractor
+from bible_way.interactors.get_specific_user_posts_interactor import GetSpecificUserPostsInteractor
 from bible_way.interactors.get_user_comments_interactor import GetUserCommentsInteractor
 from bible_way.interactors.get_promotions_interactor import GetPromotionsInteractor
 from bible_way.interactors.create_prayer_request_interactor import CreatePrayerRequestInteractor
@@ -34,6 +37,7 @@ from bible_way.interactors.update_prayer_request_interactor import UpdatePrayerR
 from bible_way.interactors.delete_prayer_request_interactor import DeletePrayerRequestInteractor
 from bible_way.interactors.get_all_prayer_requests_interactor import GetAllPrayerRequestsInteractor
 from bible_way.interactors.get_user_prayer_requests_interactor import GetUserPrayerRequestsInteractor
+from bible_way.interactors.get_specific_user_prayer_requests_interactor import GetSpecificUserPrayerRequestsInteractor
 from bible_way.interactors.create_prayer_request_comment_interactor import CreatePrayerRequestCommentInteractor
 from bible_way.interactors.get_prayer_request_comments_interactor import GetPrayerRequestCommentsInteractor
 from bible_way.interactors.like_prayer_request_interactor import LikePrayerRequestInteractor
@@ -54,6 +58,8 @@ from bible_way.interactors.get_books_by_category_interactor import GetBooksByCat
 from bible_way.interactors.get_book_details_interactor import GetBookDetailsInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
 from bible_way.presenters.search_users_response import SearchUsersResponse
+from bible_way.presenters.get_recommended_users_response import GetRecommendedUsersResponse
+from bible_way.presenters.get_complete_user_profile_response import GetCompleteUserProfileResponse
 from bible_way.presenters.follow_user_response import FollowUserResponse
 from bible_way.presenters.unfollow_user_response import UnfollowUserResponse
 from bible_way.presenters.create_post_response import CreatePostResponse
@@ -69,6 +75,7 @@ from bible_way.presenters.like_comment_response import LikeCommentResponse
 from bible_way.presenters.unlike_comment_response import UnlikeCommentResponse
 from bible_way.presenters.get_all_posts_response import GetAllPostsResponse
 from bible_way.presenters.get_user_posts_response import GetUserPostsResponse
+from bible_way.presenters.get_specific_user_posts_response import GetSpecificUserPostsResponse
 from bible_way.presenters.get_user_comments_response import GetUserCommentsResponse
 from bible_way.presenters.get_promotions_response import GetPromotionsResponse
 from bible_way.presenters.create_prayer_request_response import CreatePrayerRequestResponse
@@ -76,6 +83,7 @@ from bible_way.presenters.update_prayer_request_response import UpdatePrayerRequ
 from bible_way.presenters.delete_prayer_request_response import DeletePrayerRequestResponse
 from bible_way.presenters.get_all_prayer_requests_response import GetAllPrayerRequestsResponse
 from bible_way.presenters.get_user_prayer_requests_response import GetUserPrayerRequestsResponse
+from bible_way.presenters.get_specific_user_prayer_requests_response import GetSpecificUserPrayerRequestsResponse
 from bible_way.presenters.create_prayer_request_comment_response import CreatePrayerRequestCommentResponse
 from bible_way.presenters.get_prayer_request_comments_response import GetPrayerRequestCommentsResponse
 from bible_way.presenters.like_prayer_request_response import LikePrayerRequestResponse
@@ -167,6 +175,19 @@ def get_current_user_profile_view(request):
         get_current_user_profile_interactor(user_id=user_id)
     return response
 
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def get_complete_user_profile_view(request):
+    user_id = request.data.get('user_id', '').strip()
+    current_user = request.data.get('current_user', '').strip() or None
+    
+    response = GetCompleteUserProfileInteractor(
+        storage=UserDB(), 
+        response=GetCompleteUserProfileResponse()
+    ).get_complete_user_profile_interactor(user_id=user_id, current_user=current_user)
+    return response
+
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -182,6 +203,26 @@ def search_users_view(request):
     
     response = SearchUsersInteractor(storage=UserDB(), response=SearchUsersResponse()).\
         search_users_interactor(query=query, limit=limit, current_user_id=current_user_id)
+    return response
+
+@api_view(['GET', 'POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_recommended_users_view(request):
+    if request.method == 'GET':
+        user_id = request.query_params.get('user_id', '').strip()
+    else:
+        user_id = request.data.get('user_id', '').strip()
+    
+    limit = request.query_params.get('limit', 20) if request.method == 'GET' else request.data.get('limit', 20)
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 20
+    
+    response = GetRecommendedUsersInteractor(storage=UserDB(), response=GetRecommendedUsersResponse()).\
+        get_recommended_users_interactor(user_id=user_id, limit=limit)
     return response
 
 @api_view(['POST'])
@@ -301,6 +342,30 @@ def get_user_posts_view(request):
         get_user_posts_interactor(user_id=user_id, limit=limit, offset=offset, current_user_id=current_user_id)
     return response
 
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_specific_user_posts_view(request):
+    user_id = request.data.get('user_id', '').strip()
+    current_user_id = str(request.user.user_id)
+    
+    limit = request.query_params.get('limit', '10')
+    offset = request.query_params.get('offset', '0')
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
+    
+    try:
+        offset = int(offset)
+    except (ValueError, TypeError):
+        offset = 0
+    
+    response = GetSpecificUserPostsInteractor(storage=UserDB(), response=GetSpecificUserPostsResponse()).\
+        get_specific_user_posts_interactor(user_id=user_id, current_user_id=current_user_id, limit=limit, offset=offset)
+    return response
+
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -392,6 +457,7 @@ def get_all_prayer_requests_view(request):
 @permission_classes([IsAuthenticated])
 def get_user_prayer_requests_view(request):
     user_id = str(request.user.user_id)
+    current_user_id = str(request.user.user_id)
     
     try:
         limit = int(request.query_params.get('limit', 10))
@@ -404,7 +470,31 @@ def get_user_prayer_requests_view(request):
         offset = 0
     
     response = GetUserPrayerRequestsInteractor(storage=UserDB(), response=GetUserPrayerRequestsResponse()).\
-        get_user_prayer_requests_interactor(user_id=user_id, limit=limit, offset=offset)
+        get_user_prayer_requests_interactor(user_id=user_id, limit=limit, offset=offset, current_user_id=current_user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_specific_user_prayer_requests_view(request):
+    user_id = request.data.get('user_id', '').strip()
+    current_user_id = str(request.user.user_id)
+    
+    limit = request.query_params.get('limit', '10')
+    offset = request.query_params.get('offset', '0')
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
+    
+    try:
+        offset = int(offset)
+    except (ValueError, TypeError):
+        offset = 0
+    
+    response = GetSpecificUserPrayerRequestsInteractor(storage=UserDB(), response=GetSpecificUserPrayerRequestsResponse()).\
+        get_specific_user_prayer_requests_interactor(user_id=user_id, current_user_id=current_user_id, limit=limit, offset=offset)
     return response
 
 @api_view(['POST'])
