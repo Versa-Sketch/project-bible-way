@@ -2086,6 +2086,77 @@ Content-Type: application/json
 
 ---
 
+### 9.2 Get All Verses
+**Endpoint:** `GET /verse/all`  
+**Authentication:** Required (JWT)
+
+**Description:**
+This endpoint retrieves all verses with their like counts. For authenticated users, it also includes whether the user has liked each verse.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Verses retrieved successfully",
+  "data": [
+    {
+      "verse_id": "uuid-string",
+      "title": "Quote of the day",
+      "description": "string",
+      "likes_count": 15,
+      "is_liked": true,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ],
+  "total_count": 10
+}
+```
+
+**Response Fields:**
+- `verse_id` (string) - Unique verse identifier
+- `title` (string) - Verse title (default: "Quote of the day")
+- `description` (string) - Verse description/content
+- `likes_count` (integer) - Number of likes for this verse
+- `is_liked` (boolean) - Whether the authenticated user has liked this verse
+- `created_at` (string) - Creation timestamp in ISO 8601 format
+- `updated_at` (string) - Last update timestamp in ISO 8601 format
+- `total_count` (integer) - Total number of verses
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - User not found (if user_id validation fails):
+```json
+{
+  "success": false,
+  "error": "User not found",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve verses: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- Verses are ordered by creation date (newest first)
+- The `is_liked` field indicates if the authenticated user has liked each verse
+- All verses are returned (no pagination)
+
+---
+
 ## 10. Admin APIs
 
 ### 10.1 Admin Create Verse
@@ -2180,485 +2251,6 @@ Content-Type: application/json
   "success": false,
   "error": "Invalid JSON format for meta_data",
   "error_code": "VALIDATION_ERROR"
-}
-```
-
----
-
-### 10.3 Admin Create Category
-**Endpoint:** `POST /admin/category/create`  
-**Authentication:** Required (JWT)  
-**Permission:** Admin only (`is_staff=True`)  
-**Content-Type:** `multipart/form-data`
-
-**Request Body (Form Data):**
-- `category_name` (string, required) - Category name. Must be one of: `SEGREGATE_BIBLES`, `NORMAL_BIBLES`
-- `cover_image` (file, optional) - Cover image file for the category
-- `description` (string, optional) - Description of the category
-- `display_order` (integer, optional, default: 0) - Order for displaying categories in dashboard
-
-**Success Response (201 Created):**
-```json
-{
-  "success": true,
-  "message": "Category created successfully",
-  "data": {
-    "category_id": "uuid-string",
-    "category_name": "SEGREGATE_BIBLES",
-    "display_name": "Segregated Bibles",
-    "cover_image_url": "https://s3.amazonaws.com/bucket/categories/cover_images/...",
-    "description": "Bibles with age-specific content",
-    "display_order": 0,
-    "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-15T10:30:00Z"
-  }
-}
-```
-
-**Error Responses:**
-
-- **403 Forbidden** - Not admin:
-```json
-{
-  "detail": "You do not have permission to perform this action."
-}
-```
-
-- **400 Bad Request** - Validation error:
-```json
-{
-  "success": false,
-  "error": "Category name is required",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Invalid category name:
-```json
-{
-  "success": false,
-  "error": "Invalid category name. Must be one of: SEGREGATE_BIBLES, NORMAL_BIBLES",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Category already exists:
-```json
-{
-  "success": false,
-  "error": "Category 'SEGREGATE_BIBLES' already exists",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **500 Internal Server Error** - S3 upload error:
-```json
-{
-  "success": false,
-  "error": "Failed to upload cover image: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
----
-
-### 10.4 Admin Get All Categories
-**Endpoint:** `GET /admin/categories`  
-**Authentication:** Required (JWT)  
-**Permission:** Admin only (`is_staff=True`)
-
-**Description:**
-This endpoint allows admins to retrieve all categories. Returns all categories regardless of their status, ordered by `display_order` and then by `category_name`.
-
-**Success Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Categories retrieved successfully",
-  "data": [
-    {
-      "category_id": "uuid-string",
-      "category_name": "SEGREGATE_BIBLES",
-      "display_name": "Segregated Bibles",
-      "cover_image_url": "https://s3.amazonaws.com/bucket/categories/cover_images/...",
-      "description": "Bibles with age-specific content",
-      "display_order": 0,
-      "created_at": "2024-01-15T10:30:00Z",
-      "updated_at": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
-**Error Responses:**
-
-- **403 Forbidden** - Not admin:
-```json
-{
-  "detail": "You do not have permission to perform this action."
-}
-```
-
-- **500 Internal Server Error:**
-```json
-{
-  "success": false,
-  "error": "Failed to retrieve categories: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
----
-
-### 10.5 Admin Create Age Group
-**Endpoint:** `POST /admin/age-group/create`  
-**Authentication:** Required (JWT)  
-**Permission:** Admin only (`is_staff=True`)  
-**Content-Type:** `multipart/form-data`
-
-**Request Body (Form Data):**
-- `age_group_name` (string, required) - Age group name. Must be one of: `CHILD`, `TEEN`, `ADULT`, `SENIOR`, `ALL`
-- `cover_image` (file, optional) - Cover image file for the age group
-- `description` (string, optional) - Description of the age group
-- `display_order` (integer, optional, default: 0) - Order for displaying age groups in dashboard
-
-**Success Response (201 Created):**
-```json
-{
-  "success": true,
-  "message": "Age group created successfully",
-  "data": {
-    "age_group_id": "uuid-string",
-    "age_group_name": "CHILD",
-    "display_name": "Child",
-    "cover_image_url": "https://s3.amazonaws.com/bucket/age_groups/cover_images/...",
-    "description": "Books for children",
-    "display_order": 0,
-    "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-15T10:30:00Z"
-  }
-}
-```
-
-**Error Responses:**
-
-- **403 Forbidden** - Not admin:
-```json
-{
-  "detail": "You do not have permission to perform this action."
-}
-```
-
-- **400 Bad Request** - Validation error:
-```json
-{
-  "success": false,
-  "error": "Age group name is required",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Invalid age group name:
-```json
-{
-  "success": false,
-  "error": "Invalid age group name. Must be one of: CHILD, TEEN, ADULT, SENIOR, ALL",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Age group already exists:
-```json
-{
-  "success": false,
-  "error": "Age group 'CHILD' already exists",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **500 Internal Server Error** - S3 upload error:
-```json
-{
-  "success": false,
-  "error": "Failed to upload cover image: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
----
-
-### 10.6 Admin Get All Age Groups
-**Endpoint:** `GET /admin/age-groups`  
-**Authentication:** Required (JWT)  
-**Permission:** Admin only (`is_staff=True`)
-
-**Description:**
-This endpoint allows admins to retrieve all age groups. Returns all age groups regardless of their status, ordered by `display_order` and then by `age_group_name`.
-
-**Success Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Age groups retrieved successfully",
-  "data": [
-    {
-      "age_group_id": "uuid-string",
-      "age_group_name": "CHILD",
-      "display_name": "Child",
-      "cover_image_url": "https://s3.amazonaws.com/bucket/age_groups/cover_images/...",
-      "description": "Books for children",
-      "display_order": 0,
-      "created_at": "2024-01-15T10:30:00Z",
-      "updated_at": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
-**Error Responses:**
-
-- **403 Forbidden** - Not admin:
-```json
-{
-  "detail": "You do not have permission to perform this action."
-}
-```
-
-- **500 Internal Server Error:**
-```json
-{
-  "success": false,
-  "error": "Failed to retrieve age groups: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
----
-
-### 10.7 Admin Get All Languages
-**Endpoint:** `GET /admin/languages`  
-**Authentication:** Required (JWT)  
-**Permission:** Admin only (`is_staff=True`)
-
-**Description:**
-This endpoint allows admins to retrieve all available languages. Languages are used to categorize books by their language.
-
-**Success Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Languages retrieved successfully",
-  "data": [
-    {
-      "language_id": "uuid-string",
-      "language_name": "EN",
-      "display_name": "English"
-    },
-    {
-      "language_id": "uuid-string",
-      "language_name": "ES",
-      "display_name": "Spanish"
-    }
-  ]
-}
-```
-
-**Error Responses:**
-
-- **403 Forbidden** - Not admin:
-```json
-{
-  "detail": "You do not have permission to perform this action."
-}
-```
-
-- **500 Internal Server Error:**
-```json
-{
-  "success": false,
-  "error": "Failed to retrieve languages: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
----
-
-### 10.8 Admin Create Book
-**Endpoint:** `POST /admin/book/create`  
-**Authentication:** Required (JWT)  
-**Permission:** Admin only (`is_staff=True`)  
-**Content-Type:** `multipart/form-data`
-
-**Description:**
-This endpoint allows admins to create a book by uploading a source file (markdown file). The system uploads the source file and cover image to S3 and creates a book record in the database.
-
-**Request Body (Form Data):**
-- `title` (string, required) - Book title
-- `category` (string, required) - UUID of the category
-- `age_group` (string, required) - UUID of the age group
-- `language` (string, required) - UUID of the language
-- `source_file` (file, required) - Source file (.md markdown file) containing the book content
-- `cover_image` (file, optional) - Cover image file for the book
-- `description` (string, optional) - Description of the book
-- `book_order` (integer, optional, default: 0) - Order for displaying books
-
-**Success Response (201 Created):**
-```json
-{
-  "success": true,
-  "message": "Book created successfully",
-  "data": {
-    "book_id": "uuid-string",
-    "source_file_url": "https://s3.amazonaws.com/bucket/books/{book_id_preview}/source_files/...",
-    "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-15T10:30:00Z"
-  }
-}
-```
-
-**Error Responses:**
-
-- **403 Forbidden** - Not admin:
-```json
-{
-  "detail": "You do not have permission to perform this action."
-}
-```
-
-- **400 Bad Request** - Validation error:
-```json
-{
-  "success": false,
-  "error": "Title is required",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Source file required:
-```json
-{
-  "success": false,
-  "error": "Source file (.md file) is required",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Category not found:
-```json
-{
-  "success": false,
-  "error": "Category with id '<category_id>' does not exist",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Age group not found:
-```json
-{
-  "success": false,
-  "error": "Age group with id '<age_group_id>' does not exist",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Language not found:
-```json
-{
-  "success": false,
-  "error": "Language with id '<language_id>' does not exist",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **500 Internal Server Error** - S3 upload error:
-```json
-{
-  "success": false,
-  "error": "Failed to upload source file: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
----
-
-### 10.9 Admin Update Book Metadata
-**Endpoint:** `POST /admin/book/update-metadata`  
-**Authentication:** Required (JWT)  
-**Permission:** Admin only (`is_staff=True`)
-
-**Description:**
-This endpoint allows admins to update the metadata field of an existing book. The metadata field is a JSON object that can store additional information about the book.
-
-**Request Body:**
-```json
-{
-  "book_id": "uuid-string (required)",
-  "metadata": {
-    "key1": "value1",
-    "key2": "value2"
-  }
-}
-```
-
-**Success Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Book metadata updated successfully"
-}
-```
-
-**Error Responses:**
-
-- **403 Forbidden** - Not admin:
-```json
-{
-  "detail": "You do not have permission to perform this action."
-}
-```
-
-- **400 Bad Request** - Book ID required:
-```json
-{
-  "success": false,
-  "error": "Book ID is required",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Metadata required:
-```json
-{
-  "success": false,
-  "error": "Metadata is required",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Invalid metadata format:
-```json
-{
-  "success": false,
-  "error": "Metadata must be a valid JSON object",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Book not found:
-```json
-{
-  "success": false,
-  "error": "Book with id '<book_id>' does not exist",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **500 Internal Server Error:**
-```json
-{
-  "success": false,
-  "error": "Failed to update book metadata: <error_message>",
-  "error_code": "INTERNAL_ERROR"
 }
 ```
 
