@@ -292,32 +292,17 @@ Authorization: Bearer <access_token>
 **Content-Type:** `multipart/form-data`
 
 **Description:**
-This endpoint allows admins to create a book by uploading a markdown file. The system automatically:
-- Detects the book title from the markdown file (if not provided)
-- Parses chapters from the markdown file using multiple pattern detection
-- Extracts chapter numbers, titles, and content
-- Uploads the markdown file and cover image to S3
-- Creates book and chapter records in the database
+This endpoint allows admins to create a book by uploading a source file (markdown file). The system uploads the source file and cover image to S3 and creates a book record in the database.
 
 **Request Body (Form Data):**
-- `markdown_file` (file, required) - Markdown file (.md) containing the book content
-- `category_id` (string, required) - UUID of the category
-- `age_group_id` (string, required) - UUID of the age group
-- `language_id` (string, required) - UUID of the language
-- `title` (string, optional) - Book title (if not provided, will be auto-detected from markdown)
+- `title` (string, required) - Book title
+- `category` (string, required) - UUID of the category
+- `age_group` (string, required) - UUID of the age group
+- `language` (string, required) - UUID of the language
+- `source_file` (file, required) - Source file (.md markdown file) containing the book content
 - `cover_image` (file, optional) - Cover image file for the book
 - `description` (string, optional) - Description of the book
-- `author` (string, optional) - Author of the book
 - `book_order` (integer, optional, default: 0) - Order for displaying books
-- `metadata` (string, optional) - JSON string for additional metadata
-
-**Markdown File Format:**
-The parser supports multiple markdown formats and automatically detects:
-- Bible format: `__[Chapter Name]__ {verse:number} content...`
-- Standard headings: `# Chapter 1` or `## Chapter 1`
-- Numbered headings: `## 1. Chapter Title`
-- Bracketed format: `[Chapter 1]` or `[1] Chapter Title`
-- Generic numbered lists
 
 **Success Response (201 Created):**
 ```json
@@ -326,31 +311,9 @@ The parser supports multiple markdown formats and automatically detects:
   "message": "Book created successfully",
   "data": {
     "book_id": "uuid-string",
-    "title": "The Book of Genesis",
-    "description": "First book of the Bible",
-    "category_id": "uuid-string",
-    "category_name": "NORMAL_BIBLES",
-    "age_group_id": "uuid-string",
-    "age_group_name": "ALL",
-    "language_id": "uuid-string",
-    "language_name": "EN",
-    "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
-    "author": "Moses",
-    "book_order": 1,
-    "total_chapters": 50,
-    "is_parsed": true,
-    "is_active": true,
-    "source_file_name": "genesis.md",
-    "source_file_url": "https://s3.amazonaws.com/bucket/books/markdown/...",
-    "metadata": {},
+    "source_file_url": "https://s3.amazonaws.com/bucket/books/{book_id_preview}/source_files/...",
     "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-15T10:30:00Z",
-    "parsing_info": {
-      "detected_title": "The Book of Genesis",
-      "detected_pattern": "BIBLE_FORMAT",
-      "total_chapters": 50,
-      "parsing_method": "auto_detection"
-    }
+    "updated_at": "2024-01-15T10:30:00Z"
   }
 }
 ```
@@ -368,17 +331,122 @@ The parser supports multiple markdown formats and automatically detects:
 ```json
 {
   "success": false,
-  "error": "Markdown file is required",
+  "error": "Title is required",
   "error_code": "VALIDATION_ERROR"
 }
 ```
 
-- **400 Bad Request** - Invalid file type:
+- **400 Bad Request** - Source file required:
 ```json
 {
   "success": false,
-  "error": "File must be a .md (markdown) file",
+  "error": "Source file (.md file) is required",
   "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Category not found:
+```json
+{
+  "success": false,
+  "error": "Category with id '<category_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Age group not found:
+```json
+{
+  "success": false,
+  "error": "Age group with id '<age_group_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Language not found:
+```json
+{
+  "success": false,
+  "error": "Language with id '<language_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error** - S3 upload error:
+```json
+{
+  "success": false,
+  "error": "Failed to upload source file: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+- **500 Internal Server Error** - Cover image upload error:
+```json
+{
+  "success": false,
+  "error": "Failed to upload cover image: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+- **500 Internal Server Error** - Book creation error:
+```json
+{
+  "success": false,
+  "error": "Failed to create book: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- Source file and cover image are uploaded to S3
+- Source files are stored in: `books/{book_id_preview}/source_files/`
+- Cover images are stored in: `books/{book_id_preview}/cover_images/`
+- The `book_id_preview` is a randomly generated hex string used for S3 folder structure
+- After creation, you can update book metadata using the update metadata endpoint
+
+---
+
+### 3.2 Get Books by Category and Age Group
+**Endpoint:** `GET /books/category/<category_id>/age-group/<age_group_id>/books/`  
+**Authentication:** Required (JWT)
+
+**Path Parameters:**
+- `category_id` (string, required) - UUID of the category
+- `age_group_id` (string, required) - UUID of the age group
+
+**Query Parameters:**
+- `language_id` (string, optional) - UUID of the language (filters books by language)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Books retrieved successfully",
+  "data": [
+    {
+      "book_id": "uuid-string",
+      "title": "The Book of Genesis",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
+      "book_order": 1
+    },
+    {
+      "book_id": "uuid-string",
+      "title": "The Book of Exodus",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
+      "book_order": 2
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
 }
 ```
 
@@ -409,124 +477,6 @@ The parser supports multiple markdown formats and automatically detects:
 }
 ```
 
-- **400 Bad Request** - No chapters detected:
-```json
-{
-  "success": false,
-  "error": "No chapters detected in markdown file. Please ensure the file contains chapter markers.",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Invalid metadata JSON:
-```json
-{
-  "success": false,
-  "error": "Invalid JSON format for metadata",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **500 Internal Server Error** - S3 upload error:
-```json
-{
-  "success": false,
-  "error": "Failed to upload markdown file to S3: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
-- **500 Internal Server Error** - Parsing error:
-```json
-{
-  "success": false,
-  "error": "Failed to parse markdown file: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
-**Notes:**
-- The markdown parser automatically detects book title and chapter patterns
-- Chapters are extracted and stored as separate `BookContent` records
-- The book's `is_parsed` flag is set to `true` after successful parsing
-- `total_chapters` is automatically calculated and stored
-- Markdown file and cover image are stored in separate S3 folders
-
----
-
-### 3.2 Get Books by Category and Age Group
-**Endpoint:** `GET /books/category/<category_id>/age-group/<age_group_id>/books/`  
-**Authentication:** Required (JWT)
-
-**Path Parameters:**
-- `category_id` (string, required) - UUID of the category
-- `age_group_id` (string, required) - UUID of the age group
-
-**Query Parameters:**
-- `language_id` (string, optional) - UUID of the language (filters books by language)
-
-**Success Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Books retrieved successfully",
-  "data": [
-    {
-      "book_id": "uuid-string",
-      "title": "The Book of Genesis",
-      "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
-      "book_order": 1,
-      "total_chapters": 50,
-      "is_active": true
-    },
-    {
-      "book_id": "uuid-string",
-      "title": "The Book of Exodus",
-      "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
-      "book_order": 2,
-      "total_chapters": 40,
-      "is_active": true
-    }
-  ]
-}
-```
-
-**Error Responses:**
-
-- **401 Unauthorized** - Missing or invalid token:
-```json
-{
-  "detail": "Authentication credentials were not provided."
-}
-```
-
-- **400 Bad Request** - Category not found:
-```json
-{
-  "success": false,
-  "error": "Category not found",
-  "error_code": "CATEGORY_NOT_FOUND"
-}
-```
-
-- **400 Bad Request** - Age group not found:
-```json
-{
-  "success": false,
-  "error": "Age group not found",
-  "error_code": "AGE_GROUP_NOT_FOUND"
-}
-```
-
-- **400 Bad Request** - Language not found:
-```json
-{
-  "success": false,
-  "error": "Language not found",
-  "error_code": "LANGUAGE_NOT_FOUND"
-}
-```
-
 - **500 Internal Server Error:**
 ```json
 {
@@ -541,6 +491,7 @@ The parser supports multiple markdown formats and automatically detects:
 - Books are ordered by `book_order` and then by `title`
 - If `language_id` is provided, only books in that language are returned
 - Response does not include pagination
+- Response includes minimal book information; use Get Book Details endpoint for full information
 
 ---
 
@@ -640,6 +591,95 @@ The parser supports multiple markdown formats and automatically detects:
 
 ---
 
+### 3.4 Admin Update Book Metadata
+**Endpoint:** `POST /admin/book/update-metadata`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Description:**
+This endpoint allows admins to update the metadata field of an existing book. The metadata field is a JSON object that can store additional information about the book.
+
+**Request Body:**
+```json
+{
+  "book_id": "uuid-string (required)",
+  "metadata": {
+    "key1": "value1",
+    "key2": "value2"
+  }
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Book metadata updated successfully"
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Book ID required:
+```json
+{
+  "success": false,
+  "error": "Book ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Metadata required:
+```json
+{
+  "success": false,
+  "error": "Metadata is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid metadata format:
+```json
+{
+  "success": false,
+  "error": "Metadata must be a valid JSON object",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book with id '<book_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to update book metadata: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- The `metadata` field must be a valid JSON object (dictionary)
+- The metadata is stored as a JSON field in the database
+- This endpoint only updates the metadata field; other book fields are not modified
+- Use this endpoint to store additional structured information about the book
+
+---
+
 ## Common Error Codes
 
 | Error Code | Description |
@@ -662,15 +702,10 @@ The parser supports multiple markdown formats and automatically detects:
    ```
 
 2. **File Uploads:** 
-   - Cover images and markdown files are uploaded to S3
-   - Cover images are stored in: `categories/cover_images/`, `age_groups/cover_images/`, `books/cover_images/`
-   - Markdown files are stored in: `books/markdown/{book_id}/`
-
-3. **Markdown Parsing:**
-   - The parser automatically detects book titles and chapter patterns
-   - Supports multiple markdown formats (Bible format, standard headings, numbered headings, etc.)
-   - Chapters are extracted and stored as separate database records
-   - Book's `is_parsed` flag indicates successful parsing
+   - Cover images and source files are uploaded to S3
+   - Cover images are stored in: `categories/cover_images/`, `age_groups/cover_images/`, `books/{book_id_preview}/cover_images/`
+   - Source files are stored in: `books/{book_id_preview}/source_files/`
+   - The `book_id_preview` is a randomly generated hex string used for organizing files in S3
 
 4. **Category Types:**
    - `SEGREGATE_BIBLES`: Different content for different age groups (child, teen, adult, senior)
@@ -690,4 +725,8 @@ The parser supports multiple markdown formats and automatically detects:
 8. **Error Responses:** All error responses follow a consistent format with `success: false`, `error` message, and `error_code`.
 
 9. **Chapter Content:** The book details endpoint returns chapter metadata only. Use a separate endpoint (to be implemented) to fetch full chapter content by `book_content_id`.
+
+10. **Book Creation:** When creating a book, only the basic book record is created. The source file is uploaded to S3, but parsing and chapter extraction are handled separately (if needed).
+
+11. **Metadata Field:** The book metadata field is a JSON object that can store additional structured information. Use the Update Book Metadata endpoint to modify this field.
 
