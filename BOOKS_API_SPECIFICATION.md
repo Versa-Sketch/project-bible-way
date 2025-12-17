@@ -581,7 +581,9 @@ This endpoint allows admins to create a book by uploading a source file (markdow
 - Source files are stored in: `books/{book_id_preview}/source_files/`
 - Cover images are stored in: `books/{book_id_preview}/cover_images/`
 - The `book_id_preview` is a randomly generated hex string used for S3 folder structure
+- The `book_order` parameter is automatically converted to an integer (defaults to 0 if invalid)
 - After creation, you can update book metadata using the update metadata endpoint
+- The `source_file_name` field is automatically extracted from the uploaded file and stored in the database
 
 ---
 
@@ -668,107 +670,11 @@ This endpoint allows admins to create a book by uploading a source file (markdow
 - Books are ordered by `book_order` and then by `title`
 - If `language_id` is provided, only books in that language are returned
 - Response does not include pagination
-- Response includes minimal book information; use Get Book Details endpoint for full information
+- Response includes minimal book information (book_id, title, cover_image_url, book_order)
 
 ---
 
-### 4.3 Get Book Details
-**Endpoint:** `GET /books/<book_id>/`  
-**Authentication:** Required (JWT)
-
-**Path Parameters:**
-- `book_id` (string, required) - UUID of the book
-
-**Success Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Book details retrieved successfully",
-  "data": {
-    "book": {
-      "book_id": "uuid-string",
-      "title": "The Book of Genesis",
-      "description": "First book of the Bible",
-      "category_id": "uuid-string",
-      "category_name": "NORMAL_BIBLES",
-      "category_display_name": "Normal Bibles",
-      "age_group_id": "uuid-string",
-      "age_group_name": "ALL",
-      "age_group_display_name": "All",
-      "language_id": "uuid-string",
-      "language_name": "EN",
-      "language_display_name": "English",
-      "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
-      "author": "Moses",
-      "book_order": 1,
-      "total_chapters": 50,
-      "is_parsed": true,
-      "is_active": true,
-      "source_file_name": "genesis.md",
-      "source_file_url": "https://s3.amazonaws.com/bucket/books/markdown/...",
-      "metadata": {},
-      "created_at": "2024-01-15T10:30:00Z",
-      "updated_at": "2024-01-15T10:30:00Z"
-    },
-    "chapters": [
-      {
-        "book_content_id": "uuid-string",
-        "chapter_number": 1,
-        "chapter_title": "Genesis 1",
-        "content_order": 1,
-        "created_at": "2024-01-15T10:30:00Z",
-        "updated_at": "2024-01-15T10:30:00Z"
-      },
-      {
-        "book_content_id": "uuid-string",
-        "chapter_number": 2,
-        "chapter_title": "Genesis 2",
-        "content_order": 2,
-        "created_at": "2024-01-15T10:30:00Z",
-        "updated_at": "2024-01-15T10:30:00Z"
-      }
-    ]
-  }
-}
-```
-
-**Error Responses:**
-
-- **401 Unauthorized** - Missing or invalid token:
-```json
-{
-  "detail": "Authentication credentials were not provided."
-}
-```
-
-- **404 Not Found** - Book not found:
-```json
-{
-  "success": false,
-  "error": "Book not found",
-  "error_code": "BOOK_NOT_FOUND"
-}
-```
-
-- **500 Internal Server Error:**
-```json
-{
-  "success": false,
-  "error": "Failed to retrieve book details: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
-**Notes:**
-- Only active books are returned (inactive books return 404)
-- Chapters list includes metadata only (no full content)
-- Chapters are ordered by `content_order` and then by `chapter_number`
-- Use `book_content_id` from chapters to fetch individual chapter content (separate endpoint)
-- Related objects (category, age_group, language) are included with display names
-
----
-
-### 4.4 Admin Update Book Metadata
+### 4.3 Admin Update Book Metadata
 **Endpoint:** `POST /admin/book/update-metadata`  
 **Authentication:** Required (JWT)  
 **Permission:** Admin only (`is_staff=True`)
@@ -901,7 +807,7 @@ This endpoint allows admins to update the metadata field of an existing book. Th
 
 8. **Error Responses:** All error responses follow a consistent format with `success: false`, `error` message, and `error_code`.
 
-9. **Chapter Content:** The book details endpoint returns chapter metadata only. Use a separate endpoint (to be implemented) to fetch full chapter content by `book_content_id`.
+9. **Chapter Content:** Use a separate endpoint (to be implemented) to fetch full chapter content by `book_content_id`.
 
 10. **Book Creation:** When creating a book, only the basic book record is created. The source file is uploaded to S3, but parsing and chapter extraction are handled separately (if needed).
 

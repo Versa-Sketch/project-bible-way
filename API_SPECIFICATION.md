@@ -282,7 +282,84 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 2.3 Search Users
+### 2.3 Get Complete User Profile
+**Endpoint:** `POST /user/profile/complete`  
+**Authentication:** Not required
+
+**Request Body:**
+```json
+{
+  "user_id": "string (required)",
+  "current_user": "string (optional) - User ID of the authenticated user (for is_following field)"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "User profile retrieved successfully",
+  "data": {
+    "user_id": "string",
+    "user_name": "string",
+    "email": "string",
+    "country": "string",
+    "age": "integer",
+    "preferred_language": "string",
+    "profile_picture_url": "string",
+    "is_admin": "boolean",
+    "followers_count": "integer",
+    "following_count": "integer",
+    "is_following": "boolean"
+  }
+}
+```
+
+**Response Fields:**
+- `user_id` (string) - Unique user identifier
+- `user_name` (string) - Username
+- `email` (string) - User email
+- `country` (string) - User country
+- `age` (integer) - User age
+- `preferred_language` (string) - User's preferred language
+- `profile_picture_url` (string) - URL to user's profile picture
+- `is_admin` (boolean) - Whether the user is an admin
+- `followers_count` (integer) - Number of followers
+- `following_count` (integer) - Number of users this user is following
+- `is_following` (boolean) - Whether the `current_user` is following this user (only included if `current_user` is provided)
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "user_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid current_user:
+```json
+{
+  "success": false,
+  "error": "Invalid current_user",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "User not found",
+  "error_code": "USER_NOT_FOUND"
+}
+```
+
+---
+
+### 2.4 Search Users
 **Endpoint:** `GET /user/search`  
 **Authentication:** Required (JWT)
 
@@ -386,7 +463,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 2.4 Get Recommended Users
+### 2.5 Get Recommended Users
 **Endpoint:** `GET /user/recommended` or `POST /user/recommended`  
 **Authentication:** Required (JWT)
 
@@ -844,6 +921,109 @@ Content-Type: application/json
 
 ---
 
+### 4.6 Get Specific User's Posts
+**Endpoint:** `POST /post/user`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "user_id": "string (required)"
+}
+```
+
+**Query Parameters:**
+- `limit` (integer, optional, default: 10) - Number of posts to return
+- `offset` (integer, optional, default: 0) - Number of posts to skip
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "User posts retrieved successfully",
+  "data": [
+    {
+      "post_id": "uuid-string",
+      "title": "string",
+      "description": "string",
+      "media": [
+        {
+          "media_id": "uuid-string",
+          "media_type": "image|video|audio",
+          "url": "string"
+        }
+      ],
+      "likes_count": 5,
+      "comments_count": 3,
+      "is_liked": true,
+      "is_commented": false,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total_count": 25,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Note:** 
+- `is_liked`: Indicates if the current authenticated user has liked this post
+- `is_commented`: Indicates if the current authenticated user has commented on this post
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "user_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - User not found:
+```json
+{
+  "success": false,
+  "error": "User not found",
+  "error_code": "USER_NOT_FOUND"
+}
+```
+
+- **400 Bad Request** - Invalid limit:
+```json
+{
+  "success": false,
+  "error": "Limit must be greater than 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid offset:
+```json
+{
+  "success": false,
+  "error": "Offset must be greater than or equal to 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve user posts: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
 ## 5. Comment APIs
 
 ### 5.1 Create Comment
@@ -1271,8 +1451,10 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "title": "string (required)",
-  "description": "string (required)"
+  "name": "string (required)",
+  "email": "string (required)",
+  "description": "string (required)",
+  "phone_number": "string (optional)"
 }
 ```
 
@@ -1291,7 +1473,25 @@ Content-Type: application/json
 ```json
 {
   "success": false,
-  "error": "Title is required",
+  "error": "Name is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Email required:
+```json
+{
+  "success": false,
+  "error": "Email is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Description required:
+```json
+{
+  "success": false,
+  "error": "Description is required",
   "error_code": "VALIDATION_ERROR"
 }
 ```
@@ -1300,6 +1500,15 @@ Content-Type: application/json
 ```json
 {
   "detail": "Authentication credentials were not provided."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to create prayer request: <error_message>",
+  "error_code": "INTERNAL_ERROR"
 }
 ```
 
@@ -1313,7 +1522,9 @@ Content-Type: application/json
 ```json
 {
   "prayer_request_id": "uuid-string (required)",
-  "title": "string (optional)",
+  "name": "string (optional)",
+  "email": "string (optional)",
+  "phone_number": "string (optional)",
   "description": "string (optional)"
 }
 ```
@@ -1428,7 +1639,9 @@ Content-Type: application/json
         "user_name": "string",
         "profile_picture_url": "string"
       },
-      "title": "string",
+      "name": "string",
+      "email": "string",
+      "phone_number": "string",
       "description": "string",
       "comments_count": 5,
       "reactions_count": 10,
@@ -1468,7 +1681,191 @@ Content-Type: application/json
 
 ---
 
-### 8.5 Create Comment on Prayer Request
+### 8.5 Get User's Prayer Requests
+**Endpoint:** `GET /prayer-request/user/me`  
+**Authentication:** Required (JWT)
+
+**Query Parameters:**
+- `limit` (integer, optional, default: 10) - Number of prayer requests to return
+- `offset` (integer, optional, default: 0) - Number of prayer requests to skip
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Prayer requests retrieved successfully",
+  "data": [
+    {
+      "prayer_request_id": "uuid-string",
+      "user": {
+        "user_id": "uuid-string",
+        "user_name": "string",
+        "profile_picture_url": "string"
+      },
+      "name": "string",
+      "email": "string",
+      "phone_number": "string",
+      "description": "string",
+      "comments_count": 5,
+      "reactions_count": 10,
+      "is_liked": true,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total_count": 25,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Note:** 
+- `is_liked`: Indicates if the current authenticated user has liked this prayer request
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Invalid limit:
+```json
+{
+  "success": false,
+  "error": "Limit must be greater than 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid offset:
+```json
+{
+  "success": false,
+  "error": "Offset must be greater than or equal to 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve prayer requests: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 8.6 Get Specific User's Prayer Requests
+**Endpoint:** `POST /prayer-request/user`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "user_id": "string (required)"
+}
+```
+
+**Query Parameters:**
+- `limit` (integer, optional, default: 10) - Number of prayer requests to return
+- `offset` (integer, optional, default: 0) - Number of prayer requests to skip
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Prayer requests retrieved successfully",
+  "data": [
+    {
+      "prayer_request_id": "uuid-string",
+      "user": {
+        "user_id": "uuid-string",
+        "user_name": "string",
+        "profile_picture_url": "string"
+      },
+      "name": "string",
+      "email": "string",
+      "phone_number": "string",
+      "description": "string",
+      "comments_count": 5,
+      "reactions_count": 10,
+      "is_liked": true,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total_count": 25,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Note:** 
+- `is_liked`: Indicates if the current authenticated user has liked this prayer request
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "user_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - User not found:
+```json
+{
+  "success": false,
+  "error": "User not found",
+  "error_code": "USER_NOT_FOUND"
+}
+```
+
+- **400 Bad Request** - Invalid limit:
+```json
+{
+  "success": false,
+  "error": "Limit must be greater than 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid offset:
+```json
+{
+  "success": false,
+  "error": "Offset must be greater than or equal to 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve prayer requests: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 8.7 Create Comment on Prayer Request
 **Endpoint:** `POST /prayer-request/comment/create`  
 **Authentication:** Required (JWT)
 
@@ -1511,7 +1908,7 @@ Content-Type: application/json
 
 ---
 
-### 8.6 Get Comments for Prayer Request
+### 8.8 Get Comments for Prayer Request
 **Endpoint:** `GET /prayer-request/comment/details/<prayer_request_id>/v1`  
 **Authentication:** Required (JWT)
 
@@ -1563,7 +1960,7 @@ Content-Type: application/json
 
 ---
 
-### 8.7 Like Prayer Request
+### 8.9 Like Prayer Request
 **Endpoint:** `POST /prayer-request/reaction/like`  
 **Authentication:** Required (JWT)
 
@@ -1607,7 +2004,7 @@ Content-Type: application/json
 
 ---
 
-### 8.8 Unlike Prayer Request
+### 8.10 Unlike Prayer Request
 **Endpoint:** `POST /prayer-request/reaction/unlike`  
 **Authentication:** Required (JWT)
 
@@ -1783,6 +2180,649 @@ Content-Type: application/json
   "success": false,
   "error": "Invalid JSON format for meta_data",
   "error_code": "VALIDATION_ERROR"
+}
+```
+
+---
+
+### 10.3 Admin Create Category
+**Endpoint:** `POST /admin/category/create`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)  
+**Content-Type:** `multipart/form-data`
+
+**Request Body (Form Data):**
+- `category_name` (string, required) - Category name. Must be one of: `SEGREGATE_BIBLES`, `NORMAL_BIBLES`
+- `cover_image` (file, optional) - Cover image file for the category
+- `description` (string, optional) - Description of the category
+- `display_order` (integer, optional, default: 0) - Order for displaying categories in dashboard
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Category created successfully",
+  "data": {
+    "category_id": "uuid-string",
+    "category_name": "SEGREGATE_BIBLES",
+    "display_name": "Segregated Bibles",
+    "cover_image_url": "https://s3.amazonaws.com/bucket/categories/cover_images/...",
+    "description": "Bibles with age-specific content",
+    "display_order": 0,
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Category name is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid category name:
+```json
+{
+  "success": false,
+  "error": "Invalid category name. Must be one of: SEGREGATE_BIBLES, NORMAL_BIBLES",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Category already exists:
+```json
+{
+  "success": false,
+  "error": "Category 'SEGREGATE_BIBLES' already exists",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error** - S3 upload error:
+```json
+{
+  "success": false,
+  "error": "Failed to upload cover image: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.4 Admin Get All Categories
+**Endpoint:** `GET /admin/categories`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Description:**
+This endpoint allows admins to retrieve all categories. Returns all categories regardless of their status, ordered by `display_order` and then by `category_name`.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Categories retrieved successfully",
+  "data": [
+    {
+      "category_id": "uuid-string",
+      "category_name": "SEGREGATE_BIBLES",
+      "display_name": "Segregated Bibles",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/categories/cover_images/...",
+      "description": "Bibles with age-specific content",
+      "display_order": 0,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve categories: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.5 Admin Create Age Group
+**Endpoint:** `POST /admin/age-group/create`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)  
+**Content-Type:** `multipart/form-data`
+
+**Request Body (Form Data):**
+- `age_group_name` (string, required) - Age group name. Must be one of: `CHILD`, `TEEN`, `ADULT`, `SENIOR`, `ALL`
+- `cover_image` (file, optional) - Cover image file for the age group
+- `description` (string, optional) - Description of the age group
+- `display_order` (integer, optional, default: 0) - Order for displaying age groups in dashboard
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Age group created successfully",
+  "data": {
+    "age_group_id": "uuid-string",
+    "age_group_name": "CHILD",
+    "display_name": "Child",
+    "cover_image_url": "https://s3.amazonaws.com/bucket/age_groups/cover_images/...",
+    "description": "Books for children",
+    "display_order": 0,
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Age group name is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid age group name:
+```json
+{
+  "success": false,
+  "error": "Invalid age group name. Must be one of: CHILD, TEEN, ADULT, SENIOR, ALL",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Age group already exists:
+```json
+{
+  "success": false,
+  "error": "Age group 'CHILD' already exists",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error** - S3 upload error:
+```json
+{
+  "success": false,
+  "error": "Failed to upload cover image: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.6 Admin Get All Age Groups
+**Endpoint:** `GET /admin/age-groups`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Description:**
+This endpoint allows admins to retrieve all age groups. Returns all age groups regardless of their status, ordered by `display_order` and then by `age_group_name`.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Age groups retrieved successfully",
+  "data": [
+    {
+      "age_group_id": "uuid-string",
+      "age_group_name": "CHILD",
+      "display_name": "Child",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/age_groups/cover_images/...",
+      "description": "Books for children",
+      "display_order": 0,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve age groups: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.7 Admin Get All Languages
+**Endpoint:** `GET /admin/languages`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Description:**
+This endpoint allows admins to retrieve all available languages. Languages are used to categorize books by their language.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Languages retrieved successfully",
+  "data": [
+    {
+      "language_id": "uuid-string",
+      "language_name": "EN",
+      "display_name": "English"
+    },
+    {
+      "language_id": "uuid-string",
+      "language_name": "ES",
+      "display_name": "Spanish"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve languages: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.8 Admin Create Book
+**Endpoint:** `POST /admin/book/create`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)  
+**Content-Type:** `multipart/form-data`
+
+**Description:**
+This endpoint allows admins to create a book by uploading a source file (markdown file). The system uploads the source file and cover image to S3 and creates a book record in the database.
+
+**Request Body (Form Data):**
+- `title` (string, required) - Book title
+- `category` (string, required) - UUID of the category
+- `age_group` (string, required) - UUID of the age group
+- `language` (string, required) - UUID of the language
+- `source_file` (file, required) - Source file (.md markdown file) containing the book content
+- `cover_image` (file, optional) - Cover image file for the book
+- `description` (string, optional) - Description of the book
+- `book_order` (integer, optional, default: 0) - Order for displaying books
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Book created successfully",
+  "data": {
+    "book_id": "uuid-string",
+    "source_file_url": "https://s3.amazonaws.com/bucket/books/{book_id_preview}/source_files/...",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Title is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Source file required:
+```json
+{
+  "success": false,
+  "error": "Source file (.md file) is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Category not found:
+```json
+{
+  "success": false,
+  "error": "Category with id '<category_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Age group not found:
+```json
+{
+  "success": false,
+  "error": "Age group with id '<age_group_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Language not found:
+```json
+{
+  "success": false,
+  "error": "Language with id '<language_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error** - S3 upload error:
+```json
+{
+  "success": false,
+  "error": "Failed to upload source file: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.9 Admin Update Book Metadata
+**Endpoint:** `POST /admin/book/update-metadata`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Description:**
+This endpoint allows admins to update the metadata field of an existing book. The metadata field is a JSON object that can store additional information about the book.
+
+**Request Body:**
+```json
+{
+  "book_id": "uuid-string (required)",
+  "metadata": {
+    "key1": "value1",
+    "key2": "value2"
+  }
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Book metadata updated successfully"
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Book ID required:
+```json
+{
+  "success": false,
+  "error": "Book ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Metadata required:
+```json
+{
+  "success": false,
+  "error": "Metadata is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid metadata format:
+```json
+{
+  "success": false,
+  "error": "Metadata must be a valid JSON object",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book with id '<book_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to update book metadata: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+## 11. Books APIs
+
+### 11.1 Get All Categories
+**Endpoint:** `GET /books/categories/`  
+**Authentication:** Required (JWT)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Categories retrieved successfully",
+  "data": [
+    {
+      "category_id": "uuid-string",
+      "category_name": "SEGREGATE_BIBLES",
+      "display_name": "Segregated Bibles",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/categories/cover_images/...",
+      "description": "Bibles with age-specific content",
+      "display_order": 0,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve categories: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 11.2 Get All Age Groups
+**Endpoint:** `GET /books/age-groups/`  
+**Authentication:** Required (JWT)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Age groups retrieved successfully",
+  "data": [
+    {
+      "age_group_id": "uuid-string",
+      "age_group_name": "CHILD",
+      "display_name": "Child",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/age_groups/cover_images/...",
+      "description": "Books for children",
+      "display_order": 0,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve age groups: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 11.3 Get Books by Category and Age Group
+**Endpoint:** `GET /books/category/<category_id>/age-group/<age_group_id>/books/`  
+**Authentication:** Required (JWT)
+
+**Path Parameters:**
+- `category_id` (string, required) - UUID of the category
+- `age_group_id` (string, required) - UUID of the age group
+
+**Query Parameters:**
+- `language_id` (string, optional) - UUID of the language (filters books by language)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Books retrieved successfully",
+  "data": [
+    {
+      "book_id": "uuid-string",
+      "title": "The Book of Genesis",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
+      "book_order": 1
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Category not found:
+```json
+{
+  "success": false,
+  "error": "Category with id '<category_id>' not found",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Age group not found:
+```json
+{
+  "success": false,
+  "error": "Age group with id '<age_group_id>' not found",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Language not found:
+```json
+{
+  "success": false,
+  "error": "Language with id '<language_id>' not found",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve books: <error_message>",
+  "error_code": "INTERNAL_ERROR"
 }
 ```
 
