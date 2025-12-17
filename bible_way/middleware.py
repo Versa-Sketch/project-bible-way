@@ -12,6 +12,7 @@ class DisableCSRFForAPI(MiddlewareMixin):
         # List of URL patterns that should be exempt from CSRF
         api_paths = [
             '/admin/book/create',
+            '/admin/book/update-metadata',
             '/admin/promotion/create',
             '/admin/verse/create',
             '/admin/category/create',

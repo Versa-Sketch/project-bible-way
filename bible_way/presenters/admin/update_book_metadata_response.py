@@ -2,17 +2,16 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-class CreateBookResponse:
+class UpdateBookMetadataResponse:
 
     @staticmethod
-    def book_created_successfully_response(book_data: dict) -> Response:
+    def metadata_updated_successfully_response() -> Response:
         return Response(
             {
                 "success": True,
-                "message": "Book created successfully",
-                "data": book_data
+                "message": "Book metadata updated successfully"
             },
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_200_OK
         )
 
     @staticmethod
@@ -36,3 +35,4 @@ class CreateBookResponse:
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+

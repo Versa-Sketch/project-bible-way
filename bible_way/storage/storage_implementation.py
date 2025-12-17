@@ -1,8 +1,8 @@
 from django.contrib.auth.hashers import make_password, check_password
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, When, Value, IntegerField, Exists, OuterRef
 import uuid
 import os
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, BookContent, Language
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
@@ -104,18 +104,7 @@ class UserDB:
     
     def search_users(self, query: str, limit: int = 20, current_user_id: str = None) -> dict:
         """
-        Search users by username (partial match, case-insensitive).
-        
-        Args:
-            query: Search term (e.g., "ven")
-            limit: Maximum number of results
-            current_user_id: Optional - to include follow status and followers count
-            
-        Returns:
-            Dictionary with:
-            - users: List of user dictionaries
-            - total_count: Total matching users
-            - query: Original search query
+        Search users by username using Elasticsearch.
         """
         if not query or len(query.strip()) < 2:
             return {
@@ -523,17 +512,41 @@ class UserDB:
     def get_all_posts_with_counts(self, limit: int = 10, offset: int = 0, current_user_id: str = None) -> dict:
         total_count = Post.objects.count()
         
-        posts = Post.objects.select_related('user').prefetch_related('media').annotate(
-            likes_count=Count('reactions', filter=Q(reactions__post__isnull=False)),
-            comments_count=Count('comments')
-        ).order_by('-created_at')[offset:offset + limit]
-        
         current_user_uuid = None
         if current_user_id:
             try:
                 current_user_uuid = uuid.UUID(current_user_id) if isinstance(current_user_id, str) else current_user_id
             except (ValueError, TypeError):
                 current_user_uuid = None
+        
+        # Build queryset with annotations
+        queryset = Post.objects.select_related('user').prefetch_related('media').annotate(
+            likes_count=Count('reactions', filter=Q(reactions__post__isnull=False)),
+            comments_count=Count('comments')
+        )
+        
+        # Add following status annotation and ordering if user is authenticated
+        if current_user_uuid:
+            queryset = queryset.annotate(
+                is_following_author=Case(
+                    When(
+                        Exists(
+                            UserFollowers.objects.filter(
+                                follower_id__user_id=current_user_uuid,
+                                followed_id=OuterRef('user')
+                            )
+                        ),
+                        then=Value(1)
+                    ),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            ).order_by('-is_following_author', '-created_at')
+        else:
+            queryset = queryset.order_by('-created_at')
+        
+        # Apply pagination
+        posts = queryset[offset:offset + limit]
         
         posts_data = []
         for post in posts:
@@ -1003,6 +1016,9 @@ class UserDB:
     def get_all_age_groups(self):
         return AgeGroup.objects.all().order_by('display_order', 'age_group_name')
     
+    def get_all_languages(self):
+        return Language.objects.all().order_by('language_name')
+    
     def get_books_by_category_and_age_group(self, category_id: str, age_group_id: str, language_id: str = None):
         queryset = Book.objects.filter(
             category__category_id=category_id,
@@ -1019,10 +1035,12 @@ class UserDB:
         return Book.objects.select_related('category', 'age_group', 'language').get(book_id=book_id)
     
     def get_book_chapters(self, book_id: str):
-        return BookContent.objects.filter(book__book_id=book_id).order_by('content_order', 'chapter_number')
+        # BookContent model has been removed - return empty list
+        # This method is kept for compatibility but will need to be updated
+        return []
     
     def create_book(self, title: str, category_id: str, age_group_id: str, language_id: str,
-                   cover_image_url: str = None, description: str = None, author: str = None,
+                   cover_image_url: str = None, description: str = None,
                    book_order: int = 0, source_file_name: str = None, source_file_url: str = None,
                    metadata: dict = None) -> Book:
         category = Category.objects.get(category_id=category_id)
@@ -1036,41 +1054,12 @@ class UserDB:
             language=language,
             cover_image_url=cover_image_url,
             description=description or '',
-            author=author or '',
             book_order=book_order,
             source_file_name=source_file_name,
             source_file_url=source_file_url,
             metadata=metadata or {}
         )
         return book
-    
-    def create_book_content(self, book: Book, chapter_number: int, chapter_title: str,
-                           content: str, content_order: int, metadata: dict = None) -> BookContent:
-        book_content = BookContent.objects.create(
-            book=book,
-            chapter_number=chapter_number,
-            chapter_title=chapter_title,
-            content=content,
-            content_order=content_order,
-            metadata=metadata or {}
-        )
-        return book_content
-    
-    def bulk_create_book_contents(self, book: Book, chapters_data: list) -> list:
-        book_contents = []
-        for chapter_data in chapters_data:
-            book_content = BookContent(
-                book=book,
-                chapter_number=chapter_data['chapter_number'],
-                chapter_title=chapter_data['chapter_title'],
-                content=chapter_data['content'],
-                content_order=chapter_data.get('content_order', chapter_data['chapter_number']),
-                metadata=chapter_data.get('metadata', {})
-            )
-            book_contents.append(book_content)
-        
-        BookContent.objects.bulk_create(book_contents)
-        return book_contents
     
     def update_book_parsed_status(self, book_id: str, total_chapters: int, parsed_at=None) -> Book:
         from django.utils import timezone
@@ -1081,5 +1070,11 @@ class UserDB:
             book.parsed_at = parsed_at
         else:
             book.parsed_at = timezone.now()
+        book.save()
+        return book
+    
+    def update_book_metadata(self, book_id: str, metadata: dict) -> Book:
+        book = Book.objects.get(book_id=book_id)
+        book.metadata = metadata
         book.save()
         return book

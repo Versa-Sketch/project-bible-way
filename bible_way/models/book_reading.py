@@ -126,17 +126,13 @@ class Book(models.Model):
     age_group = models.ForeignKey(AgeGroup, on_delete=models.CASCADE, related_name='books')
     language = models.ForeignKey(Language, on_delete=models.CASCADE, related_name='books')
     cover_image_url = models.URLField(blank=True, null=True)
-    author = models.CharField(max_length=255, blank=True)
     book_order = models.IntegerField(default=0, help_text="Order for displaying books in list")
     is_active = models.BooleanField(default=True, help_text="Whether the book is active and visible")
-    total_chapters = models.IntegerField(default=0, help_text="Total number of chapters in the book (cached, updated after parsing)")
     source_file_url = models.URLField(blank=True, null=True, help_text="URL/path to the source markdown file")
-    source_file_name = models.CharField(max_length=255, blank=True, null=True, help_text="Name of the source markdown file")
-    is_parsed = models.BooleanField(default=False, help_text="Whether chapters have been extracted from markdown file")
-    parsed_at = models.DateTimeField(null=True, blank=True, help_text="When the markdown file was parsed")
     metadata = models.JSONField(blank=True, null=True, default=dict, help_text="Additional metadata (e.g., testament: Old/New)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    metadata = models.JSONField(blank=True, null=True, default=dict, help_text="Additional metadata (e.g., testament: Old/New)")
 
     class Meta:
         db_table = 'bible_way_book'
@@ -152,48 +148,11 @@ class Book(models.Model):
         return f"{self.title} - {category_name}"
 
 
-class BookContent(models.Model):
-    book_content_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='contents')
-    chapter_number = models.IntegerField(null=True, blank=True, help_text="Chapter number extracted from markdown (e.g., 1 from '[Genesis 1]')")
-    chapter_title = models.CharField(max_length=255, blank=True, help_text="Chapter title (e.g., 'Genesis 1')")
-    content = models.TextField(help_text="Full markdown content for this chapter, including all verses")
-    content_order = models.IntegerField(default=0, help_text="Order of chapter in the book (usually same as chapter_number)")
-    metadata = models.JSONField(
-        blank=True, 
-        null=True, 
-        default=dict,
-        help_text="Additional metadata (e.g., verse_range: '1:1-1:31', raw_markdown_title: '__[Genesis 1]__')"
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'bible_way_book_content'
-        ordering = ['content_order', 'chapter_number']
-        indexes = [
-            models.Index(fields=['book', 'chapter_number']),
-            models.Index(fields=['book', 'content_order']),
-        ]
-        unique_together = [('book', 'chapter_number')]  # Ensure one chapter per number per book
-
-    def __str__(self):
-        if self.chapter_number:
-            return f"{self.book.title} - Chapter {self.chapter_number}"
-        return f"{self.book.title} - {self.chapter_title}"
-
 
 class ReadingProgress(models.Model):
     reading_progress_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reading_progresses')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reading_progresses')
-    book_content = models.ForeignKey(
-        BookContent,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='reading_progresses'
-    )
     last_position = models.CharField(max_length=255, blank=True)  # e.g., "chapter:verse" or "section:paragraph"
     progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
     last_read_at = models.DateTimeField(auto_now=True)
@@ -212,11 +171,6 @@ class ReadingNote(models.Model):
     note_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reading_notes')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reading_notes')
-    book_content = models.ForeignKey(
-        BookContent,
-        on_delete=models.CASCADE,
-        related_name='reading_notes'
-    )
     note_text = models.TextField()
     position_reference = models.CharField(max_length=255, blank=True)  # Where in content
     created_at = models.DateTimeField(auto_now_add=True)
@@ -233,11 +187,6 @@ class Highlight(models.Model):
     highlight_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='highlights')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='highlights')
-    book_content = models.ForeignKey(
-        BookContent,
-        on_delete=models.CASCADE,
-        related_name='highlights'
-    )
     highlighted_text = models.TextField()
     start_position = models.CharField(max_length=255)
     end_position = models.CharField(max_length=255)

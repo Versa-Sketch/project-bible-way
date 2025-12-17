@@ -43,9 +43,13 @@ from bible_way.interactors.admin.create_verse_interactor import CreateVerseInter
 from bible_way.interactors.admin.create_promotion_interactor import CreatePromotionInteractor
 from bible_way.interactors.admin.create_category_interactor import CreateCategoryInteractor
 from bible_way.interactors.get_categories_interactor import GetCategoriesInteractor
+from bible_way.interactors.admin.get_categories_interactor import GetCategoriesInteractor as AdminGetCategoriesInteractor
 from bible_way.interactors.admin.create_age_group_interactor import CreateAgeGroupInteractor
 from bible_way.interactors.get_age_groups_interactor import GetAgeGroupsInteractor
+from bible_way.interactors.admin.get_age_groups_interactor import GetAgeGroupsInteractor as AdminGetAgeGroupsInteractor
+from bible_way.interactors.admin.get_languages_interactor import GetLanguagesInteractor
 from bible_way.interactors.admin.create_book_interactor import CreateBookInteractor
+from bible_way.interactors.admin.update_book_metadata_interactor import UpdateBookMetadataInteractor
 from bible_way.interactors.get_books_by_category_interactor import GetBooksByCategoryInteractor
 from bible_way.interactors.get_book_details_interactor import GetBookDetailsInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
@@ -81,9 +85,13 @@ from bible_way.presenters.admin.create_verse_response import CreateVerseResponse
 from bible_way.presenters.admin.create_promotion_response import CreatePromotionResponse
 from bible_way.presenters.admin.create_category_response import CreateCategoryResponse
 from bible_way.presenters.get_categories_response import GetCategoriesResponse
+from bible_way.presenters.admin.get_categories_response import GetCategoriesResponse as AdminGetCategoriesResponse
 from bible_way.presenters.admin.create_age_group_response import CreateAgeGroupResponse
 from bible_way.presenters.get_age_groups_response import GetAgeGroupsResponse
+from bible_way.presenters.admin.get_age_groups_response import GetAgeGroupsResponse as AdminGetAgeGroupsResponse
+from bible_way.presenters.admin.get_languages_response import GetLanguagesResponse
 from bible_way.presenters.admin.create_book_response import CreateBookResponse
+from bible_way.presenters.admin.update_book_metadata_response import UpdateBookMetadataResponse
 from bible_way.presenters.get_books_by_category_response import GetBooksByCategoryResponse
 from bible_way.presenters.get_book_details_response import GetBookDetailsResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
@@ -530,6 +538,46 @@ def admin_create_age_group_view(request):
         )
     return response
 
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_create_book_view(request):
+    title = request.data.get('title')
+    description = request.data.get('description')
+    category_id = request.data.get('category')
+    age_group_id = request.data.get('age_group')
+    language_id = request.data.get('language')
+    cover_image_file = request.FILES.get('cover_image')
+    source_file = request.FILES.get('source_file')
+    book_order = request.data.get('book_order', 0)
+    
+    response = CreateBookInteractor(storage=UserDB(), response=CreateBookResponse()).\
+        create_book_interactor(
+            title=title,
+            category_id=category_id,
+            age_group_id=age_group_id,
+            language_id=language_id,
+            source_file=source_file,
+            cover_image_file=cover_image_file,
+            description=description,
+            book_order=book_order
+        )
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_update_book_metadata_view(request):
+    book_id = request.data.get('book_id')
+    metadata = request.data.get('metadata')
+    
+    response = UpdateBookMetadataInteractor(storage=UserDB(), response=UpdateBookMetadataResponse()).\
+        update_book_metadata_interactor(
+            book_id=book_id,
+            metadata=metadata
+        )
+    return response
+
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -560,38 +608,29 @@ def get_book_details_view(request, book_id: str):
         get_book_details_interactor(book_id=book_id)
     return response
 
-@api_view(['POST'])
+@api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated, IsAdminUser])
-def admin_create_book_view(request):
-    try:
-        markdown_file = request.FILES.get('markdown_file')
-        category_id = request.data.get('category_id')
-        age_group_id = request.data.get('age_group_id')
-        language_id = request.data.get('language_id')
-        title = request.data.get('title')
-        cover_image_file = request.FILES.get('cover_image')
-        description = request.data.get('description')
-        author = request.data.get('author')
-        book_order = request.data.get('book_order', 0)
-        metadata_str = request.data.get('metadata')
-        
-        response = CreateBookInteractor(storage=UserDB(), response=CreateBookResponse()).\
-            create_book_interactor(
-                markdown_file=markdown_file,
-                category_id=category_id,
-                age_group_id=age_group_id,
-                language_id=language_id,
-                title=title,
-                cover_image_file=cover_image_file,
-                description=description,
-                author=author,
-                book_order=book_order,
-                metadata_str=metadata_str
-            )
-        return response
-    except Exception as e:
-        return CreateBookResponse().error_response(f"Unexpected error: {str(e)}")
+def admin_get_categories_view(request):
+    response = AdminGetCategoriesInteractor(storage=UserDB(), response=AdminGetCategoriesResponse()).\
+        get_categories_interactor()
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_get_languages_view(request):
+    response = GetLanguagesInteractor(storage=UserDB(), response=GetLanguagesResponse()).\
+        get_languages_interactor()
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_get_age_groups_view(request):
+    response = AdminGetAgeGroupsInteractor(storage=UserDB(), response=AdminGetAgeGroupsResponse()).\
+        get_age_groups_interactor()
+    return response
 
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])

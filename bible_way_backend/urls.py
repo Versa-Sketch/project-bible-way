@@ -43,8 +43,12 @@ urlpatterns = [
     path("admin/verse/create", admin_create_verse_view),
     path("admin/promotion/create", admin_create_promotion_view),
     path("admin/category/create", admin_create_category_view),
+    path("admin/categories", admin_get_categories_view),
     path("admin/age-group/create", admin_create_age_group_view),
+    path("admin/age-groups", admin_get_age_groups_view),
+    path("admin/languages", admin_get_languages_view),
     path("admin/book/create", admin_create_book_view),
+    path("admin/book/update-metadata", admin_update_book_metadata_view),
     
     ################# books api's ################
     path("books/categories/", get_categories_view),

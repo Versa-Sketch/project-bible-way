@@ -16,7 +16,6 @@ from .models import (
     Language,
     AgeGroup,
     Book,
-    BookContent,
     ReadingProgress,
     ReadingNote,
     Highlight,
@@ -160,20 +159,11 @@ class VerseAdmin(admin.ModelAdmin):
 
 @admin.register(Book)
 class BookAdmin(admin.ModelAdmin):
-    list_display = ('book_id', 'title', 'category', 'age_group', 'language', 'author', 'book_order', 'created_at')
-    list_filter = ('category', 'age_group', 'language', 'created_at')
-    search_fields = ('title', 'description', 'author')
+    list_display = ('book_id', 'title', 'category', 'age_group', 'language', 'book_order', 'is_active', 'created_at')
+    list_filter = ('category', 'age_group', 'language', 'is_active', 'created_at')
+    search_fields = ('title', 'description')
     readonly_fields = ('book_id', 'created_at', 'updated_at')
     raw_id_fields = ('category', 'age_group', 'language')
-
-
-@admin.register(BookContent)
-class BookContentAdmin(admin.ModelAdmin):
-    list_display = ('book_content_id', 'book', 'chapter_number', 'chapter_title', 'content_order', 'created_at')
-    list_filter = ('created_at', 'updated_at')
-    search_fields = ('chapter_title', 'content', 'book__title')
-    readonly_fields = ('book_content_id', 'created_at', 'updated_at')
-    raw_id_fields = ('book',)
 
 
 @admin.register(ReadingProgress)
@@ -182,16 +172,16 @@ class ReadingProgressAdmin(admin.ModelAdmin):
     list_filter = ('last_read_at', 'updated_at')
     search_fields = ('user__user_name', 'book__title')
     readonly_fields = ('reading_progress_id', 'created_at', 'updated_at')
-    raw_id_fields = ('user', 'book', 'book_content')
+    raw_id_fields = ('user', 'book')
 
 
 @admin.register(ReadingNote)
 class ReadingNoteAdmin(admin.ModelAdmin):
-    list_display = ('note_id', 'user', 'book', 'book_content', 'note_preview', 'created_at', 'updated_at')
+    list_display = ('note_id', 'user', 'book', 'note_preview', 'created_at', 'updated_at')
     list_filter = ('created_at', 'updated_at')
     search_fields = ('note_text', 'user__user_name', 'book__title')
     readonly_fields = ('note_id', 'created_at', 'updated_at')
-    raw_id_fields = ('user', 'book', 'book_content')
+    raw_id_fields = ('user', 'book')
     
     def note_preview(self, obj):
         return obj.note_text[:50] + '...' if len(obj.note_text) > 50 else obj.note_text
@@ -200,8 +190,8 @@ class ReadingNoteAdmin(admin.ModelAdmin):
 
 @admin.register(Highlight)
 class HighlightAdmin(admin.ModelAdmin):
-    list_display = ('highlight_id', 'user', 'book', 'book_content', 'color', 'created_at', 'updated_at')
+    list_display = ('highlight_id', 'user', 'book', 'color', 'created_at', 'updated_at')
     list_filter = ('color', 'created_at', 'updated_at')
     search_fields = ('highlighted_text', 'user__user_name', 'book__title')
     readonly_fields = ('highlight_id', 'created_at', 'updated_at')
-    raw_id_fields = ('user', 'book', 'book_content')
+    raw_id_fields = ('user', 'book')
