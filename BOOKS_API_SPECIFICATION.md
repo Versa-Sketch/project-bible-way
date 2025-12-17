@@ -899,6 +899,7 @@ This endpoint allows users to create a highlight for a specific book. Highlights
 ```json
 {
   "book_id": "uuid-string (required)",
+  "block_id": "uuid-string (optional)",
   "chapter_id": "uuid-string (optional)",
   "start_offset": "string (required)",
   "end_offset": "string (required)",
@@ -962,6 +963,7 @@ This endpoint allows users to create a highlight for a specific book. Highlights
 
 **Notes:**
 - The `user_id` is automatically extracted from the authenticated user's token
+- `block_id` is optional; highlights can be created without a specific block
 - `chapter_id` is optional; highlights can be created without a specific chapter
 - `color` defaults to "yellow" if not provided
 - `start_offset` and `end_offset` are required to mark the text range
@@ -980,6 +982,7 @@ This endpoint allows users to update an existing highlight. Only the highlight o
 {
   "highlight_id": "uuid-string (required)",
   "book_id": "uuid-string (required)",
+  "block_id": "uuid-string (optional)",
   "chapter_id": "uuid-string (optional)",
   "start_offset": "string (optional)",
   "end_offset": "string (optional)"
@@ -1043,7 +1046,8 @@ This endpoint allows users to update an existing highlight. Only the highlight o
 - The `user_id` is automatically extracted from the authenticated user's token
 - Only the highlight owner can update their highlights
 - All fields except `highlight_id` and `book_id` are optional
-- If `chapter_id` is provided and doesn't exist, it will be created
+- If `block_id` is provided and is not a valid UUID, a new UUID will be generated
+- If `chapter_id` is provided and is not a valid UUID, a new UUID will be generated
 - Only provided fields will be updated; omitted fields remain unchanged
 
 ---
@@ -1070,6 +1074,7 @@ This endpoint retrieves all highlights for a specific book. Optionally, you can 
     {
       "highlight_id": "uuid-string",
       "book_id": "uuid-string",
+      "block_id": "uuid-string",
       "chapter_id": "uuid-string",
       "start_offset": "string",
       "end_offset": "string",
@@ -1084,6 +1089,7 @@ This endpoint retrieves all highlights for a specific book. Optionally, you can 
 **Response Fields:**
 - `highlight_id` (string) - Unique highlight identifier
 - `book_id` (string) - UUID of the book
+- `block_id` (string or null) - UUID of the block (null if not associated with a block)
 - `chapter_id` (string or null) - UUID of the chapter (null if not associated with a chapter)
 - `start_offset` (string) - Start position of the highlighted text
 - `end_offset` (string) - End position of the highlighted text
@@ -1131,6 +1137,7 @@ This endpoint retrieves all highlights for a specific book. Optionally, you can 
 - Highlights are ordered by creation date (newest first)
 - If `user_id` query parameter is not provided, highlights for the authenticated user are returned
 - If `user_id` is provided, highlights for that specific user are returned
+- `block_id` may be null if the highlight is not associated with a specific block
 - `chapter_id` may be null if the highlight is not associated with a specific chapter
 
 ---

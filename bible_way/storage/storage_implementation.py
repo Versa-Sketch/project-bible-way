@@ -2,7 +2,7 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Count, Q, Case, When, Value, IntegerField, Exists, OuterRef
 import uuid
 import os
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
@@ -202,6 +202,10 @@ class UserDB:
         
         queryset = User.objects.exclude(user_id=user_uuid).exclude(
             user_id__in=following_user_ids
+        ).exclude(
+            is_staff=True
+        ).exclude(
+            is_superuser=True
         )
         
         users = queryset.annotate(
@@ -1057,6 +1061,51 @@ class UserDB:
         except Exception:
             return None
     
+    def get_all_verses_with_like_count(self, user_id: str = None):
+        try:
+            # Convert user_id to UUID if provided
+            user_uuid = None
+            if user_id:
+                try:
+                    user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+                except (ValueError, TypeError):
+                    user_uuid = None
+            
+            # Build queryset with like count annotation
+            verses_query = Verse.objects.annotate(
+                likes_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
+            )
+            
+            # Add is_liked annotation if user_id provided
+            if user_uuid:
+                verses_query = verses_query.annotate(
+                    is_liked=Exists(
+                        Reaction.objects.filter(
+                            verse=OuterRef('verse_id'),
+                            user__user_id=user_uuid,
+                            reaction_type='like'
+                        )
+                    )
+                )
+            
+            verses = verses_query.order_by('-created_at')
+            
+            verses_data = []
+            for verse in verses:
+                verses_data.append({
+                    'verse_id': str(verse.verse_id),
+                    'title': verse.title or 'Quote of the day',
+                    'description': verse.description or '',
+                    'likes_count': verse.likes_count or 0,
+                    'is_liked': getattr(verse, 'is_liked', False),
+                    'created_at': verse.created_at.isoformat() if verse.created_at else None,
+                    'updated_at': verse.updated_at.isoformat() if verse.updated_at else None
+                })
+            
+            return verses_data
+        except Exception as e:
+            raise Exception(f"Failed to retrieve verses: {str(e)}")
+    
     
     def create_verse(self, title: str, description: str) -> Verse:
         verse = Verse.objects.create(
@@ -1150,7 +1199,7 @@ class UserDB:
             cover_image_url=cover_image_url,
             description=description or '',
             book_order=book_order,
-            source_file_name=source_file_name,
+            source_file_name=source_file_name or '',
             source_file_url=source_file_url,
             metadata=metadata or {}
         )
@@ -1173,3 +1222,95 @@ class UserDB:
         book.metadata = metadata
         book.save()
         return book
+    
+    def create_highlight(self, user_id: str, book_id: str, block_id: str = None, chapter_id: str = None, 
+                        start_offset: str = None, end_offset: str = None, color: str = 'yellow') -> Highlight:
+        user = User.objects.get(user_id=user_id)
+        book = Book.objects.get(book_id=book_id)
+        
+        highlight = Highlight.objects.create(
+            user=user,
+            book=book,
+            block_id=block_id,
+            chapter_id=chapter_id,
+            start_offset=start_offset,
+            end_offset=end_offset,
+            color=color
+        )
+        return highlight
+    
+    def update_highlight(self, highlight_id: str, user_id: str, book_id: str, 
+                        block_id: str = None, chapter_id: str = None, start_offset: str = None, 
+                        end_offset: str = None) -> Highlight:
+        highlight = Highlight.objects.get(highlight_id=highlight_id, user__user_id=user_id, book__book_id=book_id)
+        
+        if block_id is not None:
+            highlight.block_id = block_id
+        if chapter_id is not None:
+            highlight.chapter_id = chapter_id
+        if start_offset is not None:
+            highlight.start_offset = start_offset
+        if end_offset is not None:
+            highlight.end_offset = end_offset
+        
+        highlight.save()
+        return highlight
+    
+    def get_highlights_by_book_id(self, book_id: str, user_id: str = None):
+        query = Highlight.objects.filter(book__book_id=book_id)
+        
+        if user_id:
+            query = query.filter(user__user_id=user_id)
+        
+        return query.order_by('-created_at')
+    
+    def get_all_books_admin(self, limit: int = None, offset: int = 0, order_by: str = '-created_at'):
+        try:
+            # Get all books with related objects (including inactive ones for admin)
+            books_query = Book.objects.select_related('category', 'age_group', 'language').all()
+            
+            # Apply ordering
+            if order_by:
+                books_query = books_query.order_by(order_by)
+            else:
+                books_query = books_query.order_by('-created_at')
+            
+            # Get total count before pagination
+            total_count = books_query.count()
+            
+            # Apply pagination
+            if limit is not None:
+                books = books_query[offset:offset + limit]
+            else:
+                books = books_query[offset:]
+            
+            books_data = []
+            for book in books:
+                books_data.append({
+                    'book_id': str(book.book_id),
+                    'title': book.title,
+                    'description': book.description or '',
+                    'category_id': str(book.category.category_id),
+                    'category_name': book.category.category_name,
+                    'category_display_name': book.category.get_category_name_display(),
+                    'age_group_id': str(book.age_group.age_group_id),
+                    'age_group_name': book.age_group.age_group_name,
+                    'age_group_display_name': book.age_group.get_age_group_name_display(),
+                    'language_id': str(book.language.language_id),
+                    'language_name': book.language.language_name,
+                    'language_display_name': book.language.get_language_name_display(),
+                    'cover_image_url': book.cover_image_url or '',
+                    'book_order': book.book_order,
+                    'is_active': book.is_active,
+                    'source_file_url': book.source_file_url or '',
+                    'metadata': book.metadata or {},
+                    'created_at': book.created_at.isoformat() if book.created_at else None,
+                    'updated_at': book.updated_at.isoformat() if book.updated_at else None
+                })
+            
+            return {
+                'books': books_data,
+                'total_count': total_count
+            }
+        except Exception as e:
+            raise Exception(f"Failed to retrieve books: {str(e)}")

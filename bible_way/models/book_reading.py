@@ -132,7 +132,6 @@ class Book(models.Model):
     metadata = models.JSONField(blank=True, null=True, default=dict, help_text="Additional metadata (e.g., testament: Old/New)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    metadata = models.JSONField(blank=True, null=True, default=dict, help_text="Additional metadata (e.g., testament: Old/New)")
 
     class Meta:
         db_table = 'bible_way_book'
@@ -171,8 +170,9 @@ class ReadingNote(models.Model):
     note_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reading_notes')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reading_notes')
-    note_text = models.TextField()
-    position_reference = models.CharField(max_length=255, blank=True)  # Where in content
+    block_id = models.UUIDField(blank=True, null=True)
+    chapter_id = models.UUIDField(blank=True, null=True)
+    content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -187,9 +187,10 @@ class Highlight(models.Model):
     highlight_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='highlights')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='highlights')
-    highlighted_text = models.TextField()
-    start_position = models.CharField(max_length=255)
-    end_position = models.CharField(max_length=255)
+    block_id = models.UUIDField(blank=True, null=True)
+    chapter_id = models.UUIDField(blank=True, null=True)
+    start_offset = models.CharField(max_length=255)
+    end_offset = models.CharField(max_length=255)
     color = models.CharField(max_length=50, blank=True, default='yellow')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

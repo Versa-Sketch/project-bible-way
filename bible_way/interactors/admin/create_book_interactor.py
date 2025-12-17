@@ -53,12 +53,10 @@ class CreateBookInteractor:
         book_id_preview = os.urandom(8).hex()
         
         source_file_url = None
-        source_file_name = None
         
         # Upload source file to S3 (required)
         try:
-            source_file_name = source_file.name
-            source_key = f"books/{book_id_preview}/source_files/{source_file_name}"
+            source_key = f"books/{book_id_preview}/source_files/{title}"
             source_file_url = s3_upload_file(source_file, source_key)
         except Exception as e:
             return self.response.error_response(f"Failed to upload source file: {str(e)}")
@@ -83,7 +81,6 @@ class CreateBookInteractor:
                 cover_image_url=cover_image_url,
                 description=description or '',
                 book_order=book_order,
-                source_file_name=source_file_name,
                 source_file_url=source_file_url
             )
             
