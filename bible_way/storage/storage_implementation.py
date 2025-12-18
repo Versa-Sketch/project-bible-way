@@ -1223,7 +1223,7 @@ class UserDB:
         book.save()
         return book
     
-    def create_highlight(self, user_id: str, book_id: str, block_id: str = None, chapter_id: str = None, 
+    def create_highlight(self, user_id: str, book_id: str, block_id: str = None, 
                         start_offset: str = None, end_offset: str = None, color: str = 'yellow') -> Highlight:
         user = User.objects.get(user_id=user_id)
         book = Book.objects.get(book_id=book_id)
@@ -1232,37 +1232,28 @@ class UserDB:
             user=user,
             book=book,
             block_id=block_id,
-            chapter_id=chapter_id,
             start_offset=start_offset,
             end_offset=end_offset,
             color=color
         )
         return highlight
     
-    def update_highlight(self, highlight_id: str, user_id: str, book_id: str, 
-                        block_id: str = None, chapter_id: str = None, start_offset: str = None, 
-                        end_offset: str = None) -> Highlight:
-        highlight = Highlight.objects.get(highlight_id=highlight_id, user__user_id=user_id, book__book_id=book_id)
-        
-        if block_id is not None:
-            highlight.block_id = block_id
-        if chapter_id is not None:
-            highlight.chapter_id = chapter_id
-        if start_offset is not None:
-            highlight.start_offset = start_offset
-        if end_offset is not None:
-            highlight.end_offset = end_offset
-        
-        highlight.save()
-        return highlight
+    def get_highlights_by_user_and_book(self, user_id: str, book_id: str):
+        return Highlight.objects.filter(
+            user__user_id=user_id,
+            book__book_id=book_id
+        ).select_related('user', 'book').order_by('-created_at')
     
-    def get_highlights_by_book_id(self, book_id: str, user_id: str = None):
-        query = Highlight.objects.filter(book__book_id=book_id)
-        
-        if user_id:
-            query = query.filter(user__user_id=user_id)
-        
-        return query.order_by('-created_at')
+    def get_highlight_by_id(self, highlight_id: str):
+        try:
+            return Highlight.objects.select_related('user', 'book').get(highlight_id=highlight_id)
+        except Highlight.DoesNotExist:
+            return None
+    
+    def delete_highlight(self, highlight_id: str, user_id: str):
+        highlight = Highlight.objects.get(highlight_id=highlight_id, user__user_id=user_id)
+        highlight.delete()
+        return True
     
     def get_all_books_admin(self, limit: int = None, offset: int = 0, order_by: str = '-created_at'):
         try:

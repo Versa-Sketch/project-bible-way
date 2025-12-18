@@ -105,11 +105,11 @@ from bible_way.presenters.admin.update_book_metadata_response import UpdateBookM
 from bible_way.presenters.admin.get_all_books_response import GetAllBooksResponse
 from bible_way.presenters.get_books_by_category_response import GetBooksByCategoryResponse
 from bible_way.interactors.create_highlight_interactor import CreateHighlightInteractor
-from bible_way.interactors.update_highlight_interactor import UpdateHighlightInteractor
-from bible_way.interactors.get_highlights_by_book_interactor import GetHighlightsByBookInteractor
+from bible_way.interactors.get_highlights_interactor import GetHighlightsInteractor
+from bible_way.interactors.delete_highlight_interactor import DeleteHighlightInteractor
 from bible_way.presenters.create_highlight_response import CreateHighlightResponse
-from bible_way.presenters.update_highlight_response import UpdateHighlightResponse
-from bible_way.presenters.get_highlights_by_book_response import GetHighlightsByBookResponse
+from bible_way.presenters.get_highlights_response import GetHighlightsResponse
+from bible_way.presenters.delete_highlight_response import DeleteHighlightResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 
@@ -859,7 +859,6 @@ def create_highlight_view(request):
     user_id = str(request.user.user_id)
     book_id = request.data.get('book_id', '').strip()
     block_id = request.data.get('block_id', '').strip() or None
-    chapter_id = request.data.get('chapter_id', '').strip() or None
     start_offset = request.data.get('start_offset', '').strip()
     end_offset = request.data.get('end_offset', '').strip()
     color = request.data.get('color', 'yellow').strip() or 'yellow'
@@ -869,47 +868,32 @@ def create_highlight_view(request):
             user_id=user_id,
             book_id=book_id,
             block_id=block_id,
-            chapter_id=chapter_id,
             start_offset=start_offset,
             end_offset=end_offset,
             color=color
         )
     return response
 
-@api_view(['PUT', 'PATCH'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
-def update_highlight_view(request):
-    user_id = str(request.user.user_id)
-    highlight_id = request.data.get('highlight_id', '').strip()
-    book_id = request.data.get('book_id', '').strip()
-    block_id = request.data.get('block_id', '').strip() or None
-    chapter_id = request.data.get('chapter_id', '').strip() or None
-    start_offset = request.data.get('start_offset', '').strip() or None
-    end_offset = request.data.get('end_offset', '').strip() or None
-    
-    response = UpdateHighlightInteractor(storage=UserDB(), response=UpdateHighlightResponse()).\
-        update_highlight_interactor(
-            highlight_id=highlight_id,
-            user_id=user_id,
-            book_id=book_id,
-            block_id=block_id,
-            chapter_id=chapter_id,
-            start_offset=start_offset,
-            end_offset=end_offset
-        )
-    return response
-
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
-def get_highlights_by_book_view(request, book_id: str):
+def get_highlights_view(request, book_id: str):
     user_id = request.query_params.get('user_id', '').strip()
     
-    # If user_id not provided, use authenticated user
     if not user_id:
         user_id = str(request.user.user_id)
     
-    response = GetHighlightsByBookInteractor(storage=UserDB(), response=GetHighlightsByBookResponse()).\
-        get_highlights_by_book_interactor(book_id=book_id, user_id=user_id)
+    response = GetHighlightsInteractor(storage=UserDB(), response=GetHighlightsResponse()).\
+        get_highlights_interactor(user_id=user_id, book_id=book_id)
+    return response
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_highlight_view(request):
+    user_id = str(request.user.user_id)
+    highlight_id = request.data.get('highlight_id', '').strip()
+    
+    response = DeleteHighlightInteractor(storage=UserDB(), response=DeleteHighlightResponse()).\
+        delete_highlight_interactor(highlight_id=highlight_id, user_id=user_id)
     return response
