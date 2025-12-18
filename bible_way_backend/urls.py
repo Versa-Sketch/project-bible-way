@@ -86,4 +86,7 @@ urlpatterns = [
     
     # ==================== Chat APIs ====================
     path('', include('project_chat.urls')),
+    
+    # ==================== Notification APIs ====================
+    path('', include('project_notifications.urls')),
 ]

@@ -174,9 +174,116 @@ class NotificationDB:
                 notification_id=notification_uuid,
                 recipient__user_id=user_uuid
             )
-            # Note: is_read field was removed in migration 0002
-            # This method is kept for future use if read tracking is re-added
+            notification.is_read = True
+            notification.save()
             return True
         except Notification.DoesNotExist:
             return False
+    
+    def get_missed_notifications(
+        self,
+        user_id: str,
+        limit: int = 50
+    ) -> list:
+        """
+        Get missed unread notifications for a user.
+        
+        Args:
+            user_id: User ID to get notifications for
+            limit: Maximum number of notifications to return (default: 50, max: 100)
+        
+        Returns:
+            List of Notification objects ordered by created_at (oldest first)
+        """
+        if limit > 100:
+            limit = 100
+        
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        # Get User object
+        from bible_way.models import User
+        try:
+            user = User.objects.get(user_id=user_uuid)
+        except User.DoesNotExist:
+            logger.error(f"Failed to get missed notifications: User not found: {user_id}")
+            raise ValueError(f"User not found: {user_id}")
+        
+        # Get or create fetch tracker
+        tracker, _ = NotificationFetchTracker.objects.get_or_create(
+            user=user
+        )
+        
+        # Determine cutoff time for missed notifications
+        if tracker.last_fetch_at:
+            cutoff_time = tracker.last_fetch_at
+        else:
+            # First time connecting - fetch last 24 hours of notifications
+            cutoff_time = timezone.now() - timedelta(hours=24)
+        
+        # Fetch missed unread notifications
+        notifications = Notification.objects.filter(
+            recipient__user_id=user_uuid,
+            created_at__gt=cutoff_time,
+            is_read=False
+        ).select_related('actor').order_by('created_at')[:limit]
+        
+        return list(notifications)
+    
+    def update_fetch_tracker(
+        self,
+        user_id: str
+    ) -> NotificationFetchTracker:
+        """
+        Update fetch tracker for a user.
+        
+        Args:
+            user_id: User ID to update tracker for
+        
+        Returns:
+            NotificationFetchTracker instance
+        """
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        # Get User object
+        from bible_way.models import User
+        try:
+            user = User.objects.get(user_id=user_uuid)
+        except User.DoesNotExist:
+            logger.error(f"Failed to update fetch tracker: User not found: {user_id}")
+            raise ValueError(f"User not found: {user_id}")
+        
+        tracker, _ = NotificationFetchTracker.objects.get_or_create(
+            user=user
+        )
+        tracker.last_fetch_at = timezone.now()
+        tracker.save()
+        
+        return tracker
+    
+    def mark_all_as_read(
+        self,
+        user_id: str
+    ) -> int:
+        """
+        Mark all notifications as read for a user.
+        
+        Args:
+            user_id: User ID to mark notifications for
+        
+        Returns:
+            Count of notifications marked as read
+        """
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        # Bulk update all unread notifications
+        count = Notification.objects.filter(
+            recipient__user_id=user_uuid,
+            is_read=False
+        ).update(is_read=True)
+        
+        logger.debug(
+            f"Marked {count} notifications as read for user {user_id}"
+        )
+        
+        return count
 

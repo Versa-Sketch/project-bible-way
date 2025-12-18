@@ -20,11 +20,10 @@ django_asgi_app = get_asgi_application()
 
 # Import WebSocket routing and JWT middleware after Django setup
 from project_chat.websocket.routing import websocket_urlpatterns as chat_websocket_urlpatterns
-from project_notifications.websocket.routing import websocket_urlpatterns as notification_websocket_urlpatterns
 from project_chat.websocket.middleware import JWTAuthMiddlewareStack
 
-# Combine all WebSocket URL patterns
-all_websocket_urlpatterns = chat_websocket_urlpatterns + notification_websocket_urlpatterns
+# Unified WebSocket URL patterns (notifications are handled through ws/user/)
+all_websocket_urlpatterns = chat_websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
