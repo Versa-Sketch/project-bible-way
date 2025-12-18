@@ -188,7 +188,6 @@ class Highlight(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='highlights')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='highlights')
     block_id = models.UUIDField(blank=True, null=True)
-    chapter_id = models.UUIDField(blank=True, null=True)
     start_offset = models.CharField(max_length=255)
     end_offset = models.CharField(max_length=255)
     color = models.CharField(max_length=50, blank=True, default='yellow')

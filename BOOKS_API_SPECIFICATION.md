@@ -893,37 +893,36 @@ This endpoint allows admins to retrieve all books with complete details. Returns
 **Authentication:** Required (JWT)
 
 **Description:**
-This endpoint allows users to create a highlight for a specific book. Highlights can be associated with a chapter (optional) and have start and end offsets to mark specific text ranges.
+This endpoint allows users to create a highlight for a specific book. Highlights are used to mark specific text ranges in books.
 
 **Request Body:**
 ```json
 {
   "book_id": "uuid-string (required)",
   "block_id": "uuid-string (optional)",
-  "chapter_id": "uuid-string (optional)",
   "start_offset": "string (required)",
   "end_offset": "string (required)",
   "color": "string (optional, default: 'yellow')"
 }
 ```
 
+**Request Fields:**
+- `book_id` (string, required) - UUID of the book
+- `block_id` (string, optional) - UUID of the block/chapter section
+- `start_offset` (string, required) - Starting position offset of the highlighted text
+- `end_offset` (string, required) - Ending position offset of the highlighted text
+- `color` (string, optional) - Color of the highlight (default: 'yellow')
+
 **Success Response (201 Created):**
 ```json
 {
   "success": true,
-  "message": "Highlight saved successfully",
+  "message": "Highlight created successfully",
   "highlight_id": "uuid-string"
 }
 ```
 
 **Error Responses:**
-
-- **401 Unauthorized** - Missing or invalid token:
-```json
-{
-  "detail": "Authentication credentials were not provided."
-}
-```
 
 - **400 Bad Request** - Validation error:
 ```json
@@ -934,12 +933,12 @@ This endpoint allows users to create a highlight for a specific book. Highlights
 }
 ```
 
-- **404 Not Found** - User not found:
+- **400 Bad Request** - Missing required field:
 ```json
 {
   "success": false,
-  "error": "User not found",
-  "error_code": "USER_NOT_FOUND"
+  "error": "start_offset is required",
+  "error_code": "VALIDATION_ERROR"
 }
 ```
 
@@ -962,108 +961,25 @@ This endpoint allows users to create a highlight for a specific book. Highlights
 ```
 
 **Notes:**
-- The `user_id` is automatically extracted from the authenticated user's token
-- `block_id` is optional; highlights can be created without a specific block
-- `chapter_id` is optional; highlights can be created without a specific chapter
-- `color` defaults to "yellow" if not provided
-- `start_offset` and `end_offset` are required to mark the text range
+- The `user_id` is automatically extracted from the authenticated user's JWT token
+- The `block_id` is optional and can be used to associate the highlight with a specific section
+- The `color` field defaults to 'yellow' if not provided
+- Highlights are ordered by creation date (newest first)
 
 ---
 
-### 5.2 Update Highlight
-**Endpoint:** `PUT /highlight/update` or `PATCH /highlight/update`  
-**Authentication:** Required (JWT)
-
-**Description:**
-This endpoint allows users to update an existing highlight. Only the highlight owner can update their highlights. If a chapter_id is provided and doesn't exist, it will be created.
-
-**Request Body:**
-```json
-{
-  "highlight_id": "uuid-string (required)",
-  "book_id": "uuid-string (required)",
-  "block_id": "uuid-string (optional)",
-  "chapter_id": "uuid-string (optional)",
-  "start_offset": "string (optional)",
-  "end_offset": "string (optional)"
-}
-```
-
-**Success Response (200 OK):**
-```json
-{
-  "success": true,
-  "message": "Highlight updated successfully"
-}
-```
-
-**Error Responses:**
-
-- **401 Unauthorized** - Missing or invalid token:
-```json
-{
-  "detail": "Authentication credentials were not provided."
-}
-```
-
-- **400 Bad Request** - Validation error:
-```json
-{
-  "success": false,
-  "error": "highlight_id is required",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **404 Not Found** - Highlight not found:
-```json
-{
-  "success": false,
-  "error": "Highlight not found",
-  "error_code": "HIGHLIGHT_NOT_FOUND"
-}
-```
-
-- **403 Forbidden** - Unauthorized:
-```json
-{
-  "success": false,
-  "error": "You are not authorized to update this highlight",
-  "error_code": "UNAUTHORIZED"
-}
-```
-
-- **500 Internal Server Error:**
-```json
-{
-  "success": false,
-  "error": "Failed to update highlight: <error_message>",
-  "error_code": "INTERNAL_ERROR"
-}
-```
-
-**Notes:**
-- The `user_id` is automatically extracted from the authenticated user's token
-- Only the highlight owner can update their highlights
-- All fields except `highlight_id` and `book_id` are optional
-- If `block_id` is provided and is not a valid UUID, a new UUID will be generated
-- If `chapter_id` is provided and is not a valid UUID, a new UUID will be generated
-- Only provided fields will be updated; omitted fields remain unchanged
-
----
-
-### 5.3 Get Highlights by Book
+### 5.2 Get Highlights by Book
 **Endpoint:** `GET /highlight/book/<book_id>`  
 **Authentication:** Required (JWT)
 
 **Description:**
-This endpoint retrieves all highlights for a specific book. Optionally, you can filter highlights by a specific user ID using a query parameter. If no user_id is provided, it returns highlights for the authenticated user.
+This endpoint retrieves all highlights for a specific book. If `user_id` is provided as a query parameter, it returns highlights for that user. Otherwise, it returns highlights for the authenticated user.
 
 **Path Parameters:**
 - `book_id` (string, required) - UUID of the book
 
 **Query Parameters:**
-- `user_id` (string, optional) - UUID of the user to filter highlights. If not provided, defaults to the authenticated user
+- `user_id` (string, optional) - UUID of the user. If not provided, uses the authenticated user's ID
 
 **Success Response (200 OK):**
 ```json
@@ -1075,12 +991,21 @@ This endpoint retrieves all highlights for a specific book. Optionally, you can 
       "highlight_id": "uuid-string",
       "book_id": "uuid-string",
       "block_id": "uuid-string",
-      "chapter_id": "uuid-string",
       "start_offset": "string",
       "end_offset": "string",
       "color": "yellow",
-      "created_at": "2024-01-01T12:00:00",
-      "updated_at": "2024-01-01T12:00:00"
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    },
+    {
+      "highlight_id": "uuid-string",
+      "book_id": "uuid-string",
+      "block_id": null,
+      "start_offset": "string",
+      "end_offset": "string",
+      "color": "blue",
+      "created_at": "2024-01-14T09:20:00Z",
+      "updated_at": "2024-01-14T09:20:00Z"
     }
   ]
 }
@@ -1089,22 +1014,14 @@ This endpoint retrieves all highlights for a specific book. Optionally, you can 
 **Response Fields:**
 - `highlight_id` (string) - Unique highlight identifier
 - `book_id` (string) - UUID of the book
-- `block_id` (string or null) - UUID of the block (null if not associated with a block)
-- `chapter_id` (string or null) - UUID of the chapter (null if not associated with a chapter)
-- `start_offset` (string) - Start position of the highlighted text
-- `end_offset` (string) - End position of the highlighted text
+- `block_id` (string or null) - UUID of the block/chapter section (null if not set)
+- `start_offset` (string) - Starting position offset
+- `end_offset` (string) - Ending position offset
 - `color` (string) - Color of the highlight
 - `created_at` (string) - Creation timestamp in ISO 8601 format
 - `updated_at` (string) - Last update timestamp in ISO 8601 format
 
 **Error Responses:**
-
-- **401 Unauthorized** - Missing or invalid token:
-```json
-{
-  "detail": "Authentication credentials were not provided."
-}
-```
 
 - **400 Bad Request** - Validation error:
 ```json
@@ -1135,10 +1052,78 @@ This endpoint retrieves all highlights for a specific book. Optionally, you can 
 
 **Notes:**
 - Highlights are ordered by creation date (newest first)
-- If `user_id` query parameter is not provided, highlights for the authenticated user are returned
-- If `user_id` is provided, highlights for that specific user are returned
-- `block_id` may be null if the highlight is not associated with a specific block
-- `chapter_id` may be null if the highlight is not associated with a specific chapter
+- If `user_id` query parameter is not provided, the endpoint uses the authenticated user's ID
+- Returns an empty array if no highlights are found for the specified book and user
+
+---
+
+### 5.3 Delete Highlight
+**Endpoint:** `DELETE /highlight/delete`  
+**Authentication:** Required (JWT)
+
+**Description:**
+This endpoint allows users to delete their own highlights. Only the owner of the highlight can delete it.
+
+**Request Body:**
+```json
+{
+  "highlight_id": "uuid-string (required)"
+}
+```
+
+**Request Fields:**
+- `highlight_id` (string, required) - UUID of the highlight to delete
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Highlight deleted successfully"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "highlight_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - Highlight not found:
+```json
+{
+  "success": false,
+  "error": "Highlight not found",
+  "error_code": "HIGHLIGHT_NOT_FOUND"
+}
+```
+
+- **403 Forbidden** - Unauthorized:
+```json
+{
+  "success": false,
+  "error": "You are not authorized to delete this highlight",
+  "error_code": "UNAUTHORIZED"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to delete highlight: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- The `user_id` is automatically extracted from the authenticated user's JWT token
+- Only the owner of the highlight can delete it
+- The endpoint checks ownership before allowing deletion
 
 ---
 
@@ -1151,6 +1136,8 @@ This endpoint retrieves all highlights for a specific book. Optionally, you can 
 | `AGE_GROUP_NOT_FOUND` | Age group does not exist |
 | `LANGUAGE_NOT_FOUND` | Language does not exist |
 | `BOOK_NOT_FOUND` | Book does not exist |
+| `HIGHLIGHT_NOT_FOUND` | Highlight does not exist |
+| `UNAUTHORIZED` | User is not authorized to perform this action |
 | `S3_UPLOAD_ERROR` | Failed to upload file to S3 storage |
 | `INTERNAL_ERROR` | Internal server error |
 

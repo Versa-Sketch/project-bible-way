@@ -69,8 +69,8 @@ urlpatterns = [
     
     # ==================== Highlight APIs ====================
     path("highlight/create", create_highlight_view),
-    path("highlight/update", update_highlight_view),
-    path("highlight/book/<str:book_id>", get_highlights_by_book_view),
+    path("highlight/book/<str:book_id>", get_highlights_view),
+    path("highlight/delete", delete_highlight_view),
     
     # ==================== Share Link APIs ====================
     path("share/post/create", create_post_share_link_view),

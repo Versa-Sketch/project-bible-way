@@ -5,11 +5,11 @@ from rest_framework import status
 class CreateHighlightResponse:
 
     @staticmethod
-    def highlight_saved_successfully_response(highlight_id: str) -> Response:
+    def highlight_created_successfully_response(highlight_id: str) -> Response:
         return Response(
             {
                 "success": True,
-                "message": "Highlight saved successfully",
+                "message": "Highlight created successfully",
                 "highlight_id": highlight_id
             },
             status=status.HTTP_201_CREATED
@@ -24,17 +24,6 @@ class CreateHighlightResponse:
                 "error_code": "VALIDATION_ERROR"
             },
             status=status.HTTP_400_BAD_REQUEST
-        )
-
-    @staticmethod
-    def user_not_found_response() -> Response:
-        return Response(
-            {
-                "success": False,
-                "error": "User not found",
-                "error_code": "USER_NOT_FOUND"
-            },
-            status=status.HTTP_404_NOT_FOUND
         )
 
     @staticmethod
@@ -58,4 +47,3 @@ class CreateHighlightResponse:
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
