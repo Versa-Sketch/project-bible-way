@@ -2,7 +2,8 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Count, Q, Case, When, Value, IntegerField, Exists, OuterRef
 import uuid
 import os
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight
+import secrets
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
@@ -1314,3 +1315,86 @@ class UserDB:
             }
         except Exception as e:
             raise Exception(f"Failed to retrieve books: {str(e)}")
+    
+    def _generate_unique_share_token(self) -> str:
+        """Generate a unique URL-safe token for share links."""
+        max_attempts = 10
+        for _ in range(max_attempts):
+            token = secrets.token_urlsafe(8)[:12]  # Generate 12-character URL-safe token
+            if not ShareLink.objects.filter(share_token=token).exists():
+                return token
+        raise Exception("Failed to generate unique share token after multiple attempts")
+    
+    def create_share_link(self, content_type: str, content_id: str, user_id: str) -> ShareLink:
+        """Create a share link for a post or profile."""
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        content_uuid = uuid.UUID(content_id) if isinstance(content_id, str) else content_id
+        
+        # Validate content_type
+        if content_type not in [ShareLinkContentTypeChoices.POST, ShareLinkContentTypeChoices.PROFILE]:
+            raise Exception("Invalid content_type. Must be 'POST' or 'PROFILE'")
+        
+        # Check if share link already exists for this content and user
+        existing_link = ShareLink.objects.filter(
+            content_type=content_type,
+            content_id=content_uuid,
+            created_by__user_id=user_uuid,
+            is_active=True
+        ).first()
+        
+        if existing_link:
+            return existing_link
+        
+        # Generate unique token
+        share_token = self._generate_unique_share_token()
+        
+        user = User.objects.get(user_id=user_uuid)
+        share_link = ShareLink.objects.create(
+            share_token=share_token,
+            content_type=content_type,
+            content_id=content_uuid,
+            created_by=user
+        )
+        return share_link
+    
+    def get_share_link_by_token(self, token: str) -> ShareLink | None:
+        """Get ShareLink by token. Returns None if not found or inactive."""
+        try:
+            share_link = ShareLink.objects.get(share_token=token, is_active=True)
+            return share_link
+        except ShareLink.DoesNotExist:
+            return None
+        except (ValueError, TypeError):
+            return None
+    
+    def get_post_by_share_token(self, token: str) -> Post | None:
+        """Get Post by share token. Returns None if token invalid or not for a POST."""
+        share_link = self.get_share_link_by_token(token)
+        if not share_link:
+            return None
+        
+        if share_link.content_type != ShareLinkContentTypeChoices.POST:
+            return None
+        
+        try:
+            post = Post.objects.select_related('user').prefetch_related('media').get(
+                post_id=share_link.content_id
+            )
+            return post
+        except Post.DoesNotExist:
+            return None
+    
+    def get_profile_by_share_token(self, token: str) -> User | None:
+        """Get User profile by share token. Returns None if token invalid or not for a PROFILE."""
+        share_link = self.get_share_link_by_token(token)
+        if not share_link:
+            return None
+        
+        if share_link.content_type != ShareLinkContentTypeChoices.PROFILE:
+            return None
+        
+        try:
+            user = User.objects.get(user_id=share_link.content_id)
+            return user
+        except User.DoesNotExist:
+            return None

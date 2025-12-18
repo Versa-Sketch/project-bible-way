@@ -10,6 +10,7 @@ try:
     FIREBASE_AVAILABLE = True
 except ImportError:
     FIREBASE_AVAILABLE = False
+    firebase_admin = None
 
 load_dotenv()
 
@@ -210,7 +211,7 @@ STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 # -------------------------------------------------------------------
 CRED_PATH = os.path.join(BASE_DIR, 'serviceAccountKey.json')
 
-if not firebase_admin._apps:
+if FIREBASE_AVAILABLE and firebase_admin and not firebase_admin._apps:
     try:
         cred = credentials.Certificate(CRED_PATH)
         firebase_admin.initialize_app(cred)

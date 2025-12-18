@@ -72,6 +72,14 @@ urlpatterns = [
     path("highlight/update", update_highlight_view),
     path("highlight/book/<str:book_id>", get_highlights_by_book_view),
     
+    # ==================== Share Link APIs ====================
+    path("share/post/create", create_post_share_link_view),
+    path("share/profile/create", create_profile_share_link_view),
+    
+    # ==================== Short Share URLs ====================
+    path("s/p/<str:token>", get_shared_post_view),  
+    path("s/u/<str:token>", get_shared_profile_view),  
+    
     # ==================== Admin APIs ====================
     path("admin/verse/create", admin_create_verse_view),
     path("admin/promotion/create", admin_create_promotion_view),
@@ -85,8 +93,8 @@ urlpatterns = [
     path("admin/books", admin_get_all_books_view),
     
     # ==================== Chat APIs ====================
-    path('', include('project_chat.urls')),
+    path('api/chat/', include('project_chat.urls')),
     
     # ==================== Notification APIs ====================
-    path('', include('project_notifications.urls')),
+    path('api/notifications/', include('project_notifications.urls')),
 ]

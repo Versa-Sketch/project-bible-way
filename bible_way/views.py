@@ -110,6 +110,14 @@ from bible_way.interactors.get_highlights_by_book_interactor import GetHighlight
 from bible_way.presenters.create_highlight_response import CreateHighlightResponse
 from bible_way.presenters.update_highlight_response import UpdateHighlightResponse
 from bible_way.presenters.get_highlights_by_book_response import GetHighlightsByBookResponse
+from bible_way.interactors.create_post_share_link_interactor import CreatePostShareLinkInteractor
+from bible_way.interactors.create_profile_share_link_interactor import CreateProfileShareLinkInteractor
+from bible_way.interactors.get_shared_post_interactor import GetSharedPostInteractor
+from bible_way.interactors.get_shared_profile_interactor import GetSharedProfileInteractor
+from bible_way.presenters.create_post_share_link_response import CreatePostShareLinkResponse
+from bible_way.presenters.create_profile_share_link_response import CreateProfileShareLinkResponse
+from bible_way.presenters.get_shared_post_response import GetSharedPostResponse
+from bible_way.presenters.get_shared_profile_response import GetSharedProfileResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 
@@ -912,4 +920,46 @@ def get_highlights_by_book_view(request, book_id: str):
     
     response = GetHighlightsByBookInteractor(storage=UserDB(), response=GetHighlightsByBookResponse()).\
         get_highlights_by_book_interactor(book_id=book_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_post_share_link_view(request):
+    user_id = str(request.user.user_id)
+    post_id = request.data.get('post_id', '').strip()
+    
+    response = CreatePostShareLinkInteractor(storage=UserDB(), response=CreatePostShareLinkResponse()).\
+        create_post_share_link_interactor(post_id=post_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_profile_share_link_view(request):
+    created_by_user_id = str(request.user.user_id)
+    user_id = request.data.get('user_id', '').strip()
+    
+    # If user_id not provided, default to current user's profile
+    if not user_id:
+        user_id = created_by_user_id
+    
+    response = CreateProfileShareLinkInteractor(storage=UserDB(), response=CreateProfileShareLinkResponse()).\
+        create_profile_share_link_interactor(user_id=user_id, created_by_user_id=created_by_user_id)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_shared_post_view(request, token: str):
+    response = GetSharedPostInteractor(storage=UserDB(), response=GetSharedPostResponse()).\
+        get_shared_post_interactor(token=token)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_shared_profile_view(request, token: str):
+    response = GetSharedProfileInteractor(storage=UserDB(), response=GetSharedProfileResponse()).\
+        get_shared_profile_interactor(token=token)
     return response

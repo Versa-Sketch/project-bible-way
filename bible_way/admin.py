@@ -12,6 +12,7 @@ from .models import (
     PromotionImage,
     PrayerRequest,
     Verse,
+    ShareLink,
     Category,
     Language,
     AgeGroup,
@@ -195,3 +196,12 @@ class HighlightAdmin(admin.ModelAdmin):
     search_fields = ('highlighted_text', 'user__user_name', 'book__title')
     readonly_fields = ('highlight_id', 'created_at', 'updated_at')
     raw_id_fields = ('user', 'book')
+
+
+@admin.register(ShareLink)
+class ShareLinkAdmin(admin.ModelAdmin):
+    list_display = ('share_token', 'content_type', 'content_id', 'created_by', 'is_active', 'created_at')
+    list_filter = ('content_type', 'is_active', 'created_at')
+    search_fields = ('share_token', 'created_by__user_name', 'created_by__email')
+    readonly_fields = ('created_at',)
+    raw_id_fields = ('created_by',)
