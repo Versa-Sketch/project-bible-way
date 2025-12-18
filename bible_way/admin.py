@@ -24,16 +24,16 @@ from .models import (
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('user_name', 'email', 'country', 'age', 'preferred_language', 'is_staff', 'is_active')
+    list_display = ('username', 'email', 'country', 'age', 'preferred_language', 'is_staff', 'is_active')
     list_filter = ('is_staff', 'is_active', 'country', 'preferred_language')
-    search_fields = ('user_name', 'email', 'country')
-    ordering = ('user_name',)
+    search_fields = ('username', 'email', 'country')
+    ordering = ('username',)
     readonly_fields = ('user_id',)
     fieldsets = BaseUserAdmin.fieldsets + (
-        ('Additional Info', {'fields': ('user_id', 'user_name', 'country', 'age', 'preferred_language')}),
+        ('Additional Info', {'fields': ('user_id', 'country', 'age', 'preferred_language')}),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ('Additional Info', {'fields': ('user_name', 'email', 'country', 'age', 'preferred_language')}),
+        ('Additional Info', {'fields': ('email', 'country', 'age', 'preferred_language')}),
     )
 
 
@@ -41,7 +41,7 @@ class UserAdmin(BaseUserAdmin):
 class UserFollowersAdmin(admin.ModelAdmin):
     list_display = ('id', 'follower_id', 'followed_id', 'created_at')
     list_filter = ('created_at',)
-    search_fields = ('follower_id__user_name', 'followed_id__user_name')
+    search_fields = ('follower_id__username', 'followed_id__username')
     readonly_fields = ('id', 'created_at')
 
 
@@ -71,7 +71,7 @@ class AgeGroupAdmin(admin.ModelAdmin):
 class PostAdmin(admin.ModelAdmin):
     list_display = ('post_id', 'user', 'title', 'created_at', 'updated_at')
     list_filter = ('created_at', 'updated_at')
-    search_fields = ('title', 'description', 'user__user_name', 'user__email')
+    search_fields = ('title', 'description', 'user__username', 'user__email')
     readonly_fields = ('post_id', 'created_at', 'updated_at')
     raw_id_fields = ('user',)
     date_hierarchy = 'created_at'
@@ -90,7 +90,7 @@ class MediaAdmin(admin.ModelAdmin):
 class CommentAdmin(admin.ModelAdmin):
     list_display = ('comment_id', 'post', 'user', 'description_preview', 'created_at', 'updated_at')
     list_filter = ('created_at', 'updated_at')
-    search_fields = ('description', 'user__user_name', 'post__title')
+    search_fields = ('description', 'user__username', 'post__title')
     readonly_fields = ('comment_id', 'created_at', 'updated_at')
     raw_id_fields = ('post', 'user')
     
@@ -103,7 +103,7 @@ class CommentAdmin(admin.ModelAdmin):
 class ReactionAdmin(admin.ModelAdmin):
     list_display = ('reaction_id', 'user', 'reaction_type', 'post', 'comment', 'created_at')
     list_filter = ('reaction_type', 'created_at')
-    search_fields = ('user__user_name', 'post__title')
+    search_fields = ('user__username', 'post__title')
     readonly_fields = ('reaction_id', 'created_at')
     raw_id_fields = ('user', 'post', 'comment')
 
@@ -112,7 +112,7 @@ class ReactionAdmin(admin.ModelAdmin):
 class ShareAdmin(admin.ModelAdmin):
     list_display = ('share_id', 'post', 'shared_by', 'shared_to', 'created_at')
     list_filter = ('created_at',)
-    search_fields = ('post__title', 'shared_by__user_name', 'shared_to__user_name', 'message')
+    search_fields = ('post__title', 'shared_by__username', 'shared_to__username', 'message')
     readonly_fields = ('share_id', 'created_at')
     raw_id_fields = ('post', 'shared_by', 'shared_to')
 
@@ -138,7 +138,7 @@ class PromotionImageAdmin(admin.ModelAdmin):
 class PrayerRequestAdmin(admin.ModelAdmin):
     list_display = ('prayer_request_id', 'user', 'name', 'email', 'phone_number', 'created_at', 'updated_at')
     list_filter = ('created_at', 'updated_at')
-    search_fields = ('name', 'email', 'phone_number', 'description', 'user__user_name')
+    search_fields = ('name', 'email', 'phone_number', 'description', 'user__username')
     readonly_fields = ('prayer_request_id', 'created_at', 'updated_at')
     raw_id_fields = ('user',)
 
@@ -170,7 +170,7 @@ class BookAdmin(admin.ModelAdmin):
 class ReadingProgressAdmin(admin.ModelAdmin):
     list_display = ('reading_progress_id', 'user', 'book', 'progress_percentage', 'last_read_at', 'updated_at')
     list_filter = ('last_read_at', 'updated_at')
-    search_fields = ('user__user_name', 'book__title')
+    search_fields = ('user__username', 'book__title')
     readonly_fields = ('reading_progress_id', 'created_at', 'updated_at')
     raw_id_fields = ('user', 'book')
 
@@ -179,7 +179,7 @@ class ReadingProgressAdmin(admin.ModelAdmin):
 class ReadingNoteAdmin(admin.ModelAdmin):
     list_display = ('note_id', 'user', 'book', 'note_preview', 'created_at', 'updated_at')
     list_filter = ('created_at', 'updated_at')
-    search_fields = ('note_text', 'user__user_name', 'book__title')
+    search_fields = ('note_text', 'user__username', 'book__title')
     readonly_fields = ('note_id', 'created_at', 'updated_at')
     raw_id_fields = ('user', 'book')
     
@@ -192,6 +192,6 @@ class ReadingNoteAdmin(admin.ModelAdmin):
 class HighlightAdmin(admin.ModelAdmin):
     list_display = ('highlight_id', 'user', 'book', 'color', 'created_at', 'updated_at')
     list_filter = ('color', 'created_at', 'updated_at')
-    search_fields = ('highlighted_text', 'user__user_name', 'book__title')
+    search_fields = ('highlighted_text', 'user__username', 'book__title')
     readonly_fields = ('highlight_id', 'created_at', 'updated_at')
     raw_id_fields = ('user', 'book')

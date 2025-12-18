@@ -163,7 +163,7 @@ class ReadingProgress(models.Model):
         unique_together = ('user', 'book')
 
     def __str__(self):
-        return f"{self.user.user_name} - {self.book.title} ({self.progress_percentage}%)"
+        return f"{self.user.username} - {self.book.title} ({self.progress_percentage}%)"
 
 
 class ReadingNote(models.Model):
@@ -180,7 +180,7 @@ class ReadingNote(models.Model):
         db_table = 'bible_way_reading_note'
 
     def __str__(self):
-        return f"Note {self.note_id} by {self.user.user_name} on {self.book.title}"
+        return f"Note {self.note_id} by {self.user.username} on {self.book.title}"
 
 
 class Highlight(models.Model):
@@ -198,6 +198,6 @@ class Highlight(models.Model):
         db_table = 'bible_way_highlight'
 
     def __str__(self):
-        return f"Highlight {self.highlight_id} by {self.user.user_name} on {self.book.title}"
+        return f"Highlight {self.highlight_id} by {self.user.username} on {self.book.title}"
 
 

@@ -78,7 +78,7 @@ def handle_reaction_signal(sender, instance, created, **kwargs):
             storage.update_notification_metadata(
                 notification,
                 actor_id,
-                instance.user.user_name
+                instance.user.username
             )
             
             # Send via WebSocket
@@ -109,7 +109,7 @@ def handle_reaction_signal(sender, instance, created, **kwargs):
             storage.update_notification_metadata(
                 notification,
                 actor_id,
-                instance.user.user_name
+                instance.user.username
             )
             
             # Send via WebSocket
@@ -140,7 +140,7 @@ def handle_reaction_signal(sender, instance, created, **kwargs):
             storage.update_notification_metadata(
                 notification,
                 actor_id,
-                instance.user.user_name
+                instance.user.username
             )
             
             # Send via WebSocket
@@ -189,7 +189,7 @@ def handle_comment_signal(sender, instance, created, **kwargs):
             storage.update_notification_metadata(
                 notification,
                 actor_id,
-                instance.user.user_name
+                instance.user.username
             )
             
             # Send via WebSocket
@@ -220,7 +220,7 @@ def handle_comment_signal(sender, instance, created, **kwargs):
             storage.update_notification_metadata(
                 notification,
                 actor_id,
-                instance.user.user_name
+                instance.user.username
             )
             
             # Send via WebSocket

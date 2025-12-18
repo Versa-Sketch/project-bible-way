@@ -40,19 +40,16 @@ class SignupInteractor:
             else:
                 return self.response.user_email_exists_response()
         
-        if self.storage.get_user_by_user_name(user_name):
-            return self.response.user_username_exists_response()
-        
+        # Map API user_name to username (Django's AbstractUser field)
         username = user_name
         
-        # Check if Django's built-in username field already exists
+        # Check if username already exists
         if self.storage.get_user_by_username(username):
             return self.response.user_username_exists_response()
         
         try:
             user = self.storage.create_user(
-                username=username,      # Required by Django's AbstractUser
-                user_name=user_name,    # Our custom field
+                username=username,      # Use username from AbstractUser
                 email=email,
                 password=password,
                 country=country,
@@ -62,7 +59,7 @@ class SignupInteractor:
             )
         except IntegrityError as e:
             # Handle race condition or any other integrity constraint violations
-            if 'username' in str(e) or 'user_name' in str(e):
+            if 'username' in str(e):
                 return self.response.user_username_exists_response()
             elif 'email' in str(e):
                 return self.response.user_email_exists_response()

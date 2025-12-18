@@ -67,16 +67,16 @@ class GoogleAuthenticationInteractor:
         if not name:
             name = email.split('@')[0]
 
+        # Generate username from name (max 150 chars for Django's AbstractUser)
         username = name.replace(' ', '_').lower()[:150]
-        user_name = name.replace(' ', '_').lower()[:255]
         
-        while self.storage.get_user_by_user_name(user_name):
+        # Ensure username is unique
+        while self.storage.get_user_by_username(username):
             random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-            user_name = f"{user_name}_{random_suffix}"[:255]
+            username = f"{username}_{random_suffix}"[:150]
         
         user = self.storage.create_google_user(
             username=username,
-            user_name=user_name,
             email=email,
             google_id=google_id,
             country=country or "",

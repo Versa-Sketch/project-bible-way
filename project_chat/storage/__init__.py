@@ -472,7 +472,7 @@ class ChatDB:
                     'message_id': str(message.id),
                     'sender': {
                         'user_id': str(message.sender.user_id),
-                        'user_name': message.sender.user_name,
+                        'user_name': message.sender.username,
                         'profile_picture_url': message.sender.profile_picture_url or ''
                     },
                     'text': message.text,
@@ -544,7 +544,7 @@ class ChatDB:
                         'text': last_message.text,
                         'sender': {
                             'user_id': str(last_message.sender.user_id),
-                            'user_name': last_message.sender.user_name,
+                            'user_name': last_message.sender.username,
                             'profile_picture_url': last_message.sender.profile_picture_url or ''
                         },
                         'file': {
@@ -571,7 +571,7 @@ class ChatDB:
                     if other_membership:
                         other_member = {
                             'user_id': str(other_membership.user.user_id),
-                            'user_name': other_membership.user.user_name,
+                            'user_name': other_membership.user.username,
                             'profile_picture_url': other_membership.user.profile_picture_url or ''
                         }
                 else:
@@ -584,7 +584,7 @@ class ChatDB:
                     for mem in all_members:
                         members_data.append({
                             'user_id': str(mem.user.user_id),
-                            'user_name': mem.user.user_name,
+                            'user_name': mem.user.username,
                             'profile_picture_url': mem.user.profile_picture_url or ''
                         })
                 

@@ -3,6 +3,7 @@ from django.db.models import Count, Q, Case, When, Value, IntegerField, Exists, 
 import uuid
 import os
 from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight
+from bible_way.models.book_reading import ReadingNote
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
@@ -15,8 +16,9 @@ class UserDB:
             return None
     
     def get_user_by_user_name(self, user_name: str) -> User | None:
+        """Map API user_name parameter to username for lookup"""
         try:
-            return User.objects.get(user_name=user_name)
+            return User.objects.get(username=user_name)
         except User.DoesNotExist:
             return None
     
@@ -26,14 +28,13 @@ class UserDB:
         except User.DoesNotExist:
             return None
     
-    def create_user(self, username: str, user_name: str, email: str, password: str, 
+    def create_user(self, username: str, email: str, password: str, 
                     country: str, age: int, preferred_language: str, 
                     profile_picture_url: str = None) -> User:
         hashed_password = make_password(password)
         
         user = User.objects.create(
             username=username,
-            user_name=user_name,
             email=email,
             country=country,
             age=age,
@@ -56,12 +57,11 @@ class UserDB:
         except User.DoesNotExist:
             return None
     
-    def create_google_user(self, username: str, user_name: str, email: str, google_id: str,
+    def create_google_user(self, username: str, email: str, google_id: str,
                           country: str, age: int, preferred_language: str, 
                           profile_picture_url: str = None) -> User:
         user = User(
             username=username,
-            user_name=user_name,
             email=email,
             google_id=google_id,
             country=country,
@@ -125,7 +125,7 @@ class UserDB:
         from django.db.models import Case, When, IntegerField, Count
         
         # Build base query
-        base_query = Q(user_name__iexact=query) | Q(user_name__istartswith=query) | Q(user_name__icontains=query)
+        base_query = Q(username__iexact=query) | Q(username__istartswith=query) | Q(username__icontains=query)
         
         # Exclude current user from results
         if current_user_uuid:
@@ -134,14 +134,14 @@ class UserDB:
         # Build query with priority ordering
         users = User.objects.filter(base_query).annotate(
             priority=Case(
-                When(user_name__iexact=query, then=1),
-                When(user_name__istartswith=query, then=2),
-                When(user_name__icontains=query, then=3),
+                When(username__iexact=query, then=1),
+                When(username__istartswith=query, then=2),
+                When(username__icontains=query, then=3),
                 output_field=IntegerField()
             )
         ).annotate(
             followers_count=Count('followed', distinct=True)
-        ).order_by('priority', 'user_name')[:limit]
+        ).order_by('priority', 'username')[:limit]
         
         # Get total count (without limit, excluding current user)
         total_count = User.objects.filter(base_query).count()
@@ -150,7 +150,7 @@ class UserDB:
         for user in users:
             user_data = {
                 'user_id': str(user.user_id),
-                'user_name': user.user_name,
+                'user_name': user.username,  # Map username to user_name for API response
                 'profile_picture_url': user.profile_picture_url or '',
                 'followers_count': user.followers_count,
                 'is_admin': user.is_staff
@@ -210,7 +210,7 @@ class UserDB:
         
         users = queryset.annotate(
             followers_count=Count('followed', distinct=True)
-        ).order_by('-followers_count', 'user_name')[:limit]
+        ).order_by('-followers_count', 'username')[:limit]
         
         total_count = queryset.count()
         
@@ -218,7 +218,7 @@ class UserDB:
         for user in users:
             users_data.append({
                 'user_id': str(user.user_id),
-                'user_name': user.user_name,
+                'user_name': user.username,  # Map username to user_name for API response
                 'profile_image': user.profile_picture_url or ''
             })
         
@@ -287,7 +287,7 @@ class UserDB:
         
         return CompleteUserProfileResponseDTO(
             user_id=str(user.user_id),
-            user_name=user.user_name,
+            user_name=user.username,  # Map username to user_name for API response
             email=user.email,
             country=user.country,
             age=user.age,
@@ -448,7 +448,7 @@ class UserDB:
                 'comment_id': str(comment.comment_id),
                 'user': {
                     'user_id': str(comment.user.user_id),
-                    'user_name': comment.user.user_name,
+                    'user_name': comment.user.username,
                     'profile_picture_url': comment.user.profile_picture_url or ''
                 },
                 'description': comment.description,
@@ -659,7 +659,7 @@ class UserDB:
                 'post_id': str(post.post_id),
                 'user': {
                     'user_id': str(post.user.user_id),
-                    'user_name': post.user.user_name,
+                    'user_name': post.user.username,  # Map username to user_name for API response
                     'profile_picture_url': post.user.profile_picture_url or ''
                 },
                 'title': post.title,
@@ -865,7 +865,7 @@ class UserDB:
                 'prayer_request_id': str(prayer_request.prayer_request_id),
                 'user': {
                     'user_id': str(prayer_request.user.user_id),
-                    'user_name': prayer_request.user.user_name,
+                    'user_name': prayer_request.user.username,  # Map username to user_name for API response
                     'profile_picture_url': prayer_request.user.profile_picture_url or ''
                 },
                 'name': prayer_request.name,
@@ -922,7 +922,7 @@ class UserDB:
                 'prayer_request_id': str(prayer_request.prayer_request_id),
                 'user': {
                     'user_id': str(prayer_request.user.user_id),
-                    'user_name': prayer_request.user.user_name,
+                    'user_name': prayer_request.user.username,  # Map username to user_name for API response
                     'profile_picture_url': prayer_request.user.profile_picture_url or ''
                 },
                 'name': prayer_request.name,
@@ -984,7 +984,7 @@ class UserDB:
                 'comment_id': str(comment.comment_id),
                 'user': {
                     'user_id': str(comment.user.user_id),
-                    'user_name': comment.user.user_name,
+                    'user_name': comment.user.username,  # Map username to user_name for API response
                     'profile_picture_url': comment.user.profile_picture_url or ''
                 },
                 'description': comment.description,
@@ -1254,6 +1254,48 @@ class UserDB:
         highlight = Highlight.objects.get(highlight_id=highlight_id, user__user_id=user_id)
         highlight.delete()
         return True
+    
+    def create_reading_note(self, user_id: str, book_id: str, content: str,
+                           chapter_id: str = None, block_id: str = None) -> ReadingNote:
+        user = User.objects.get(user_id=user_id)
+        book = Book.objects.get(book_id=book_id)
+        
+        reading_note = ReadingNote.objects.create(
+            user=user,
+            book=book,
+            content=content,
+            chapter_id=chapter_id,
+            block_id=block_id
+        )
+        return reading_note
+    
+    def get_reading_notes_by_user_and_book(self, user_id: str, book_id: str):
+        return ReadingNote.objects.filter(
+            user__user_id=user_id,
+            book__book_id=book_id
+        ).select_related('user', 'book').order_by('-created_at')
+    
+    def get_reading_note_by_id(self, note_id: str):
+        try:
+            return ReadingNote.objects.select_related('user', 'book').get(note_id=note_id)
+        except ReadingNote.DoesNotExist:
+            return None
+    
+    def update_reading_note(self, note_id: str, user_id: str, content: str) -> ReadingNote:
+        note_uuid = uuid.UUID(note_id) if isinstance(note_id, str) else note_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        try:
+            reading_note = ReadingNote.objects.get(note_id=note_uuid)
+        except ReadingNote.DoesNotExist:
+            raise Exception("Reading note not found")
+        
+        if reading_note.user.user_id != user_uuid:
+            raise Exception("You are not authorized to update this reading note")
+        
+        reading_note.content = content.strip()
+        reading_note.save()
+        return reading_note
     
     def get_all_books_admin(self, limit: int = None, offset: int = 0, order_by: str = '-created_at'):
         try:

@@ -110,6 +110,12 @@ from bible_way.interactors.delete_highlight_interactor import DeleteHighlightInt
 from bible_way.presenters.create_highlight_response import CreateHighlightResponse
 from bible_way.presenters.get_highlights_response import GetHighlightsResponse
 from bible_way.presenters.delete_highlight_response import DeleteHighlightResponse
+from bible_way.interactors.create_reading_note_interactor import CreateReadingNoteInteractor
+from bible_way.presenters.create_reading_note_response import CreateReadingNoteResponse
+from bible_way.interactors.get_reading_notes_interactor import GetReadingNotesInteractor
+from bible_way.presenters.get_reading_notes_response import GetReadingNotesResponse
+from bible_way.interactors.update_reading_note_interactor import UpdateReadingNoteInteractor
+from bible_way.presenters.update_reading_note_response import UpdateReadingNoteResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 
@@ -896,4 +902,49 @@ def delete_highlight_view(request):
     
     response = DeleteHighlightInteractor(storage=UserDB(), response=DeleteHighlightResponse()).\
         delete_highlight_interactor(highlight_id=highlight_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_reading_note_view(request):
+    user_id = str(request.user.user_id)
+    book_id = request.data.get('book_id', '').strip()
+    content = request.data.get('content', '').strip()
+    chapter_id = request.data.get('chapter_id', '').strip() or None
+    block_id = request.data.get('block_id', '').strip()
+    
+    response = CreateReadingNoteInteractor(storage=UserDB(), response=CreateReadingNoteResponse()).\
+        create_reading_note_interactor(
+            user_id=user_id,
+            book_id=book_id,
+            content=content,
+            chapter_id=chapter_id,
+            block_id=block_id
+        )
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_reading_notes_view(request, book_id: str):
+    user_id = request.query_params.get('user_id', '').strip()
+    
+    if not user_id:
+        user_id = str(request.user.user_id)
+    
+    response = GetReadingNotesInteractor(storage=UserDB(), response=GetReadingNotesResponse()).\
+        get_reading_notes_interactor(user_id=user_id, book_id=book_id)
+    return response
+
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def update_reading_note_view(request):
+    user_id = str(request.user.user_id)
+    note_id = request.data.get('note_id', '').strip()
+    content = request.data.get('content', '').strip()
+    
+    response = UpdateReadingNoteInteractor(storage=UserDB(), response=UpdateReadingNoteResponse()).\
+        update_reading_note_interactor(note_id=note_id, user_id=user_id, content=content)
     return response

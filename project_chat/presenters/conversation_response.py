@@ -23,7 +23,7 @@ class ConversationResponse:
         for member in members:
             members_data.append({
                 'user_id': str(member.user.user_id),
-                'user_name': member.user.user_name,
+                'user_name': member.user.username,
                 'profile_picture_url': member.user.profile_picture_url or '',
                 'is_admin': member.is_admin,
                 'joined_at': member.joined_at.isoformat() if member.joined_at else None,
@@ -39,7 +39,7 @@ class ConversationResponse:
             'image': conversation.image.url if conversation.image else '',
             'created_by': {
                 'user_id': str(conversation.created_by.user_id),
-                'user_name': conversation.created_by.user_name,
+                'user_name': conversation.created_by.username,
                 'profile_picture_url': conversation.created_by.profile_picture_url or ''
             } if conversation.created_by else None,
             'is_active': conversation.is_active,

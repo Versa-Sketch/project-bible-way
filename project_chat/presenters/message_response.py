@@ -43,7 +43,7 @@ class MessageResponse:
             "message_id": str(message.id),
             "conversation_id": str(message.conversation_id),
             "sender_id": str(message.sender.user_id),
-            "sender_name": message.sender.user_name,
+            "sender_name": message.sender.username,
             "sender_email": message.sender.email,
             "text": message.text,
             "file": {

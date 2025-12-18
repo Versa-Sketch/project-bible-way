@@ -284,7 +284,7 @@ Authorization: Bearer <access_token>
 
 ### 2.3 Get Complete User Profile
 **Endpoint:** `POST /user/profile/complete`  
-**Authentication:** Not required
+**Authentication:** Required (JWT)
 
 **Request Body:**
 ```json
@@ -2256,6 +2256,478 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 
 ---
 
+### 10.3 Admin Create Category
+**Endpoint:** `POST /admin/category/create`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)  
+**Content-Type:** `multipart/form-data`
+
+**Request Body (Form Data):**
+- `category_name` (string, required) - Category name (must be a valid CategoryChoices value)
+- `cover_image` (file, optional) - Cover image file for the category
+- `description` (string, optional) - Category description
+- `display_order` (integer, optional, default: 0) - Display order for sorting categories
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Category created successfully",
+  "data": {
+    "category_id": "uuid-string",
+    "category_name": "SEGREGATE_BIBLES",
+    "display_name": "Segregated Bibles",
+    "cover_image_url": "https://s3.amazonaws.com/bucket/categories/cover_images/...",
+    "description": "Bibles with age-specific content",
+    "display_order": 0,
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Category name is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid category name:
+```json
+{
+  "success": false,
+  "error": "Invalid category name. Must be one of: SEGREGATE_BIBLES, ...",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Category already exists:
+```json
+{
+  "success": false,
+  "error": "Category 'SEGREGATE_BIBLES' already exists",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error** - S3 upload error:
+```json
+{
+  "success": false,
+  "error": "Failed to upload cover image: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.4 Admin Get Categories
+**Endpoint:** `GET /admin/categories`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Categories retrieved successfully",
+  "data": [
+    {
+      "category_id": "uuid-string",
+      "category_name": "SEGREGATE_BIBLES",
+      "display_name": "Segregated Bibles",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/categories/cover_images/...",
+      "description": "Bibles with age-specific content",
+      "display_order": 0,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve categories: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.5 Admin Create Age Group
+**Endpoint:** `POST /admin/age-group/create`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)  
+**Content-Type:** `multipart/form-data`
+
+**Request Body (Form Data):**
+- `age_group_name` (string, required) - Age group name (must be a valid AgeGroupChoices value)
+- `cover_image` (file, optional) - Cover image file for the age group
+- `description` (string, optional) - Age group description
+- `display_order` (integer, optional, default: 0) - Display order for sorting age groups
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Age group created successfully",
+  "data": {
+    "age_group_id": "uuid-string",
+    "age_group_name": "CHILD",
+    "display_name": "Child",
+    "cover_image_url": "https://s3.amazonaws.com/bucket/age_groups/cover_images/...",
+    "description": "Books for children",
+    "display_order": 0,
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Age group name is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error** - S3 upload error:
+```json
+{
+  "success": false,
+  "error": "Failed to upload cover image: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.6 Admin Get Age Groups
+**Endpoint:** `GET /admin/age-groups`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Age groups retrieved successfully",
+  "data": [
+    {
+      "age_group_id": "uuid-string",
+      "age_group_name": "CHILD",
+      "display_name": "Child",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/age_groups/cover_images/...",
+      "description": "Books for children",
+      "display_order": 0,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve age groups: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.7 Admin Get Languages
+**Endpoint:** `GET /admin/languages`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Languages retrieved successfully",
+  "data": [
+    {
+      "language_id": "uuid-string",
+      "language_name": "ENGLISH",
+      "display_name": "English",
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve languages: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.8 Admin Create Book
+**Endpoint:** `POST /admin/book/create`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)  
+**Content-Type:** `multipart/form-data`
+
+**Request Body (Form Data):**
+- `title` (string, required) - Book title
+- `category` (string, required) - Category ID (UUID)
+- `age_group` (string, required) - Age group ID (UUID)
+- `language` (string, required) - Language ID (UUID)
+- `source_file` (file, required) - Source file (.md file) for the book
+- `cover_image` (file, optional) - Cover image file for the book
+- `description` (string, optional) - Book description
+- `book_order` (integer, optional, default: 0) - Display order for sorting books
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Book created successfully",
+  "data": {
+    "book_id": "uuid-string",
+    "source_file_url": "https://s3.amazonaws.com/bucket/books/.../source_files/...",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Title is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing required field:
+```json
+{
+  "success": false,
+  "error": "Category is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid category/age group/language:
+```json
+{
+  "success": false,
+  "error": "Category with id '<category_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Source file required:
+```json
+{
+  "success": false,
+  "error": "Source file (.md file) is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error** - S3 upload error:
+```json
+{
+  "success": false,
+  "error": "Failed to upload source file: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.9 Admin Update Book Metadata
+**Endpoint:** `POST /admin/book/update-metadata`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Request Body:**
+```json
+{
+  "book_id": "string (required)",
+  "metadata": "string (required) - JSON string containing metadata"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Book metadata updated successfully"
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "book_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing metadata:
+```json
+{
+  "success": false,
+  "error": "metadata is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "Book not found",
+  "error_code": "BOOK_NOT_FOUND"
+}
+```
+
+---
+
+### 10.10 Admin Get All Books
+**Endpoint:** `GET /admin/books`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)
+
+**Query Parameters:**
+- `limit` (integer, optional) - Maximum number of books to return (if not provided, returns all)
+- `offset` (integer, optional, default: 0) - Number of books to skip
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Books retrieved successfully",
+  "data": [
+    {
+      "book_id": "uuid-string",
+      "title": "The Book of Genesis",
+      "description": "string",
+      "category_id": "uuid-string",
+      "age_group_id": "uuid-string",
+      "language_id": "uuid-string",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
+      "source_file_url": "https://s3.amazonaws.com/bucket/books/.../source_files/...",
+      "book_order": 1,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total_count": 50,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve books: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
 ## 11. Books APIs
 
 ### 11.1 Get All Categories
@@ -2420,6 +2892,424 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 
 ---
 
+## 12. Highlight APIs
+
+### 12.1 Create Highlight
+**Endpoint:** `POST /highlight/create`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "book_id": "string (required)",
+  "block_id": "string (optional)",
+  "start_offset": "string (required)",
+  "end_offset": "string (required)",
+  "color": "string (optional, default: 'yellow')"
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Highlight created successfully",
+  "highlight_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "book_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing required field:
+```json
+{
+  "success": false,
+  "error": "start_offset is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book not found",
+  "error_code": "BOOK_NOT_FOUND"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to create highlight: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 12.2 Get Highlights
+**Endpoint:** `GET /highlight/book/<book_id>`  
+**Authentication:** Required (JWT)
+
+**Path Parameters:**
+- `book_id` (string, required) - The ID of the book
+
+**Query Parameters:**
+- `user_id` (string, optional) - User ID to get highlights for. If not provided, returns highlights for the authenticated user.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Highlights retrieved successfully",
+  "data": [
+    {
+      "highlight_id": "uuid-string",
+      "book_id": "uuid-string",
+      "block_id": "uuid-string or null",
+      "start_offset": "string",
+      "end_offset": "string",
+      "color": "yellow",
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "book_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - User ID required:
+```json
+{
+  "success": false,
+  "error": "user_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book not found",
+  "error_code": "BOOK_NOT_FOUND"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve highlights: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 12.3 Delete Highlight
+**Endpoint:** `DELETE /highlight/delete`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "highlight_id": "string (required)"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Highlight deleted successfully"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "highlight_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "Highlight not found",
+  "error_code": "HIGHLIGHT_NOT_FOUND"
+}
+```
+
+- **403 Forbidden** - Unauthorized:
+```json
+{
+  "success": false,
+  "error": "You are not authorized to delete this highlight",
+  "error_code": "UNAUTHORIZED"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to delete highlight: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+## 13. Reading Note APIs
+
+### 13.1 Create Reading Note
+**Endpoint:** `POST /reading-note/create`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "book_id": "string (required)",
+  "content": "string (required)",
+  "chapter_id": "string (optional)",
+  "block_id": "string (required)"
+}
+```
+
+**Note:** If `chapter_id` is not provided, a new UUID will be automatically generated.
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Reading note created successfully",
+  "note_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "book_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing required field:
+```json
+{
+  "success": false,
+  "error": "content is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing block_id:
+```json
+{
+  "success": false,
+  "error": "block_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book not found",
+  "error_code": "BOOK_NOT_FOUND"
+}
+```
+
+- **404 Not Found** - User not found:
+```json
+{
+  "success": false,
+  "error": "User not found",
+  "error_code": "USER_NOT_FOUND"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to create reading note: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 13.2 Get Reading Notes
+**Endpoint:** `GET /reading-note/book/<book_id>`  
+**Authentication:** Required (JWT)
+
+**Path Parameters:**
+- `book_id` (string, required) - The ID of the book
+
+**Query Parameters:**
+- `user_id` (string, optional) - User ID to get reading notes for. If not provided, returns reading notes for the authenticated user.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Reading notes retrieved successfully",
+  "data": [
+    {
+      "note_id": "uuid-string",
+      "book_id": "uuid-string",
+      "user_id": "uuid-string",
+      "content": "string",
+      "chapter_id": "uuid-string or null",
+      "block_id": "uuid-string"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "book_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - User ID required:
+```json
+{
+  "success": false,
+  "error": "user_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book not found",
+  "error_code": "BOOK_NOT_FOUND"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve reading notes: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 13.3 Update Reading Note
+**Endpoint:** `PUT /reading-note/update` or `PATCH /reading-note/update`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "note_id": "string (required)",
+  "content": "string (required)"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Reading note updated successfully",
+  "note_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "note_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing content:
+```json
+{
+  "success": false,
+  "error": "content is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found:**
+```json
+{
+  "success": false,
+  "error": "Reading note not found",
+  "error_code": "NOTE_NOT_FOUND"
+}
+```
+
+- **403 Forbidden** - Unauthorized:
+```json
+{
+  "success": false,
+  "error": "You are not authorized to update this reading note",
+  "error_code": "UNAUTHORIZED"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to update reading note: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
 ## Common Error Codes
 
 | Error Code | Description |
@@ -2434,6 +3324,9 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 | `POST_NOT_FOUND` | Post does not exist |
 | `PRAYER_REQUEST_NOT_FOUND` | Prayer request does not exist |
 | `VERSE_NOT_FOUND` | Verse not found in database |
+| `BOOK_NOT_FOUND` | Book does not exist |
+| `HIGHLIGHT_NOT_FOUND` | Highlight does not exist |
+| `NOTE_NOT_FOUND` | Reading note does not exist |
 | `ALREADY_FOLLOWING` | Already following the user |
 | `CANNOT_FOLLOW_YOURSELF` | Cannot follow your own account |
 | `ALREADY_LIKED` | Already liked the post/comment/prayer request |

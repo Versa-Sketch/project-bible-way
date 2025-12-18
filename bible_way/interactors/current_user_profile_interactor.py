@@ -16,7 +16,7 @@ class CurrentUserProfileInteractor:
         
         response_dto = UserProfileResponseDTO(
             user_id=str(user.user_id),
-            user_name=user.user_name,
+            user_name=user.username,  # Map username to user_name for API response
             email=user.email,
             country=user.country,
             age=user.age,

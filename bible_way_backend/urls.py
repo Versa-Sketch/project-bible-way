@@ -72,7 +72,13 @@ urlpatterns = [
     path("highlight/book/<str:book_id>", get_highlights_view),
     path("highlight/delete", delete_highlight_view),
     
+    # ==================== Reading Note APIs ====================
+    path("reading-note/create", create_reading_note_view),
+    path("reading-note/book/<str:book_id>", get_reading_notes_view),
+    path("reading-note/update", update_reading_note_view),
+    
     # ==================== Admin APIs ====================
+    # IMPORTANT: These must come BEFORE Django admin to avoid conflicts
     path("admin/verse/create", admin_create_verse_view),
     path("admin/promotion/create", admin_create_promotion_view),
     path("admin/category/create", admin_create_category_view),
@@ -83,6 +89,9 @@ urlpatterns = [
     path("admin/book/create", admin_create_book_view),
     path("admin/book/update-metadata", admin_update_book_metadata_view),
     path("admin/books", admin_get_all_books_view),
+    
+    # ==================== Django Admin (must be after custom admin APIs) ====================
+    path("admin/", admin.site.urls),
     
     # ==================== Chat APIs ====================
     path('', include('project_chat.urls')),

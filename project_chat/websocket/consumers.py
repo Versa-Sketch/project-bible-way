@@ -478,7 +478,7 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         # Broadcast typing indicator
         typing_data = self.message_response.typing_indicator(
             self.user_id,
-            self.user.user_name,
+            self.user.username,
             conversation_id,
             is_typing
         )
@@ -664,7 +664,7 @@ class UserChatConsumer(AsyncWebsocketConsumer):
             
             presence_data.append({
                 "user_id": original_user_id,  # Return original format
-                "user_name": member.user.user_name,
+                "user_name": member.user.username,
                 "is_online": is_online,
                 "last_seen": last_seen.isoformat() if last_seen else None
             })

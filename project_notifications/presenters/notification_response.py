@@ -11,7 +11,7 @@ class NotificationResponse:
             return None
         return {
             'user_id': str(notification.actor.user_id),
-            'user_name': notification.actor.user_name,
+            'user_name': notification.actor.username,
             'profile_picture_url': notification.actor.profile_picture_url or ''
         }
     
@@ -58,7 +58,7 @@ class NotificationResponse:
     
     def _get_notification_message(self, notification: Notification) -> str:
         """Get notification message based on type."""
-        actor_name = notification.actor.user_name if notification.actor else 'Someone'
+        actor_name = notification.actor.username if notification.actor else 'Someone'
         
         messages = {
             'FOLLOW': f"{actor_name} started following you",

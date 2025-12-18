@@ -214,7 +214,7 @@ def serialize_message(message, include_sender_info: bool = True) -> dict:
     
     if include_sender_info:
         data['sender_id'] = str(message.sender.user_id)
-        data['sender_name'] = message.sender.user_name
+        data['sender_name'] = message.sender.username
         data['sender_email'] = message.sender.email
     
     return data

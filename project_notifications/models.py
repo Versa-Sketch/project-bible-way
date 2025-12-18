@@ -73,7 +73,7 @@ class Notification(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.notification_type} - {self.recipient.user_name}"
+        return f"{self.notification_type} - {self.recipient.username}"
 
 
 class NotificationFetchTracker(models.Model):
@@ -98,5 +98,5 @@ class NotificationFetchTracker(models.Model):
         ]
 
     def __str__(self):
-        return f"Fetch tracker for {self.user.user_name}"
+        return f"Fetch tracker for {self.user.username}"
 
