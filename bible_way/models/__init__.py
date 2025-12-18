@@ -9,6 +9,8 @@ from .social import (
     PromotionImage,
     PrayerRequest,
     Verse,
+    ShareLink,
+    ShareLinkContentTypeChoices,
 )
 from .book_reading import (
     Category,
@@ -39,6 +41,8 @@ __all__ = [
     'PromotionImage',
     'PrayerRequest',
     'Verse',
+    'ShareLink',
+    'ShareLinkContentTypeChoices',
     'Category',
     'Language',
     'AgeGroup',

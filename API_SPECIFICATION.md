@@ -2896,6 +2896,10 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 
 ### 12.1 Create Highlight
 **Endpoint:** `POST /highlight/create`  
+## 12. Share Link APIs
+
+### 12.1 Create Post Share Link
+**Endpoint:** `POST /share/post/create`  
 **Authentication:** Required (JWT)
 
 **Request Body:**
@@ -2906,6 +2910,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "start_offset": "string (required)",
   "end_offset": "string (required)",
   "color": "string (optional, default: 'yellow')"
+  "post_id": "string (required) - UUID of the post to share"
 }
 ```
 
@@ -2915,6 +2920,9 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "success": true,
   "message": "Highlight created successfully",
   "highlight_id": "uuid-string"
+  "message": "Share link created successfully",
+  "share_url": "/s/p/abc123xyz",
+  "share_token": "abc123xyz"
 }
 ```
 
@@ -2925,6 +2933,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 {
   "success": false,
   "error": "book_id is required",
+  "error": "post_id is required",
   "error_code": "VALIDATION_ERROR"
 }
 ```
@@ -2944,6 +2953,19 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "success": false,
   "error": "Book not found",
   "error_code": "BOOK_NOT_FOUND"
+- **404 Not Found** - Post not found:
+```json
+{
+  "success": false,
+  "error": "Post not found",
+  "error_code": "POST_NOT_FOUND"
+}
+```
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
 }
 ```
 
@@ -2952,6 +2974,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 {
   "success": false,
   "error": "Failed to create highlight: <error_message>",
+  "error": "Failed to create share link: <error_message>",
   "error_code": "INTERNAL_ERROR"
 }
 ```
@@ -2985,6 +3008,24 @@ This endpoint retrieves all verses with their like counts. For authenticated use
       "updated_at": "2024-01-01T12:00:00"
     }
   ]
+### 12.2 Create Profile Share Link
+**Endpoint:** `POST /share/profile/create`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "user_id": "string (optional) - UUID of the user profile to share. Defaults to current user if not provided"
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Share link created successfully",
+  "share_url": "/s/u/xyz789abc",
+  "share_token": "xyz789abc"
 }
 ```
 
@@ -3161,11 +3202,19 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 }
 ```
 
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
 - **500 Internal Server Error:**
 ```json
 {
   "success": false,
   "error": "Failed to create reading note: <error_message>",
+  "error": "Failed to create share link: <error_message>",
   "error_code": "INTERNAL_ERROR"
 }
 ```
@@ -3181,6 +3230,15 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 
 **Query Parameters:**
 - `user_id` (string, optional) - User ID to get reading notes for. If not provided, returns reading notes for the authenticated user.
+### 12.3 View Shared Post
+**Endpoint:** `GET /s/p/<token>`  
+**Authentication:** Required (JWT)
+
+**Path Parameters:**
+- `token` (string, required) - The share token from the share link
+
+**Description:**
+View a shared post using the short share link. Users must be authenticated to view shared content. If a user is not authenticated, they will receive a 401 error and should be redirected to signup/login, then redirected back to the share link.
 
 **Success Response (200 OK):**
 ```json
@@ -3197,6 +3255,28 @@ This endpoint retrieves all verses with their like counts. For authenticated use
       "block_id": "uuid-string"
     }
   ]
+  "message": "Post retrieved successfully",
+  "data": {
+    "post_id": "uuid-string",
+    "user": {
+      "user_id": "uuid-string",
+      "user_name": "string",
+      "profile_picture_url": "string"
+    },
+    "title": "string",
+    "description": "string",
+    "media": [
+      {
+        "media_id": "uuid-string",
+        "media_type": "image|video|audio",
+        "url": "string"
+      }
+    ],
+    "likes_count": 10,
+    "comments_count": 5,
+    "created_at": "2024-01-01T12:00:00",
+    "updated_at": "2024-01-01T12:00:00"
+  }
 }
 ```
 
@@ -3226,6 +3306,30 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "success": false,
   "error": "Book not found",
   "error_code": "BOOK_NOT_FOUND"
+- **401 Unauthorized** - Not authenticated:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+**Note:** Frontend should redirect unauthenticated users to signup/login with `return_url` parameter, then redirect back after authentication.
+
+- **404 Not Found** - Invalid token:
+```json
+{
+  "success": false,
+  "error": "Invalid or expired share link",
+  "error_code": "INVALID_SHARE_TOKEN"
+}
+```
+
+- **404 Not Found** - Post deleted:
+```json
+{
+  "success": false,
+  "error": "Post no longer available",
+  "error_code": "POST_NOT_FOUND"
 }
 ```
 
@@ -3234,6 +3338,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 {
   "success": false,
   "error": "Failed to retrieve reading notes: <error_message>",
+  "error": "Failed to retrieve shared post: <error_message>",
   "error_code": "INTERNAL_ERROR"
 }
 ```
@@ -3251,6 +3356,15 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "content": "string (required)"
 }
 ```
+### 12.4 View Shared Profile
+**Endpoint:** `GET /s/u/<token>`  
+**Authentication:** Required (JWT)
+
+**Path Parameters:**
+- `token` (string, required) - The share token from the share link
+
+**Description:**
+View a shared user profile using the short share link. Users must be authenticated to view shared content. If a user is not authenticated, they will receive a 401 error and should be redirected to signup/login, then redirected back to the share link.
 
 **Success Response (200 OK):**
 ```json
@@ -3258,6 +3372,19 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "success": true,
   "message": "Reading note updated successfully",
   "note_id": "uuid-string"
+  "message": "Profile retrieved successfully",
+  "data": {
+    "user_id": "uuid-string",
+    "user_name": "string",
+    "email": "string",
+    "country": "string",
+    "age": "integer",
+    "preferred_language": "string",
+    "profile_picture_url": "string",
+    "is_admin": "boolean",
+    "followers_count": "integer",
+    "following_count": "integer"
+  }
 }
 ```
 
@@ -3296,6 +3423,30 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "success": false,
   "error": "You are not authorized to update this reading note",
   "error_code": "UNAUTHORIZED"
+- **401 Unauthorized** - Not authenticated:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+**Note:** Frontend should redirect unauthenticated users to signup/login with `return_url` parameter, then redirect back after authentication.
+
+- **404 Not Found** - Invalid token:
+```json
+{
+  "success": false,
+  "error": "Invalid or expired share link",
+  "error_code": "INVALID_SHARE_TOKEN"
+}
+```
+
+- **404 Not Found** - User deleted or deactivated:
+```json
+{
+  "success": false,
+  "error": "Profile no longer available",
+  "error_code": "USER_NOT_FOUND"
 }
 ```
 
@@ -3304,9 +3455,17 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 {
   "success": false,
   "error": "Failed to update reading note: <error_message>",
+  "error": "Failed to retrieve shared profile: <error_message>",
   "error_code": "INTERNAL_ERROR"
 }
 ```
+
+**Notes:**
+- Share links are short URLs (e.g., `/s/p/{token}` for posts, `/s/u/{token}` for profiles)
+- All share link endpoints require authentication to encourage user signups
+- If a share link already exists for the same content and user, the existing link is returned
+- Share links do not expire (unless manually deactivated by admin)
+- Frontend should handle authentication redirects: detect 401 → redirect to login with `return_url` → redirect back after auth
 
 ---
 
@@ -3336,6 +3495,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 | `INVALID_MEDIA_TYPE` | Media file type not supported |
 | `NO_MEDIA_PROVIDED` | No media files in request |
 | `S3_UPLOAD_ERROR` | Failed to upload to S3 storage |
+| `INVALID_SHARE_TOKEN` | Invalid or expired share link token |
 | `INTERNAL_ERROR` | Internal server error |
 | `INTERNAL_SERVER_ERROR` | Unexpected server error |
 
@@ -3357,4 +3517,6 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 5. **Error Responses:** All error responses follow a consistent format with `success: false`, `error` message, and `error_code`.
 
 6. **User Interaction Flags:** Posts include `is_liked` and `is_commented` flags indicating if the current authenticated user has liked or commented. Comments include `is_liked` flag indicating if the current authenticated user has liked the comment.
+
+7. **Share Links:** Share links require authentication to view shared content. This encourages user signups and growth. Unauthenticated users receive 401 errors and should be redirected to signup/login with the share link as the return URL. Share links use short URLs (`/s/p/{token}` for posts, `/s/u/{token}` for profiles) for easy sharing.
 

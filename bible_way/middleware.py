@@ -25,6 +25,8 @@ class DisableCSRFForAPI(MiddlewareMixin):
             '/promotion/',
             '/verse/',
             '/books/',
+            '/share/',
+            '/s/',
         ]
         
         # Check if the request path starts with any API path

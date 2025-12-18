@@ -76,6 +76,13 @@ urlpatterns = [
     path("reading-note/create", create_reading_note_view),
     path("reading-note/book/<str:book_id>", get_reading_notes_view),
     path("reading-note/update", update_reading_note_view),
+    # ==================== Share Link APIs ====================
+    path("share/post/create", create_post_share_link_view),
+    path("share/profile/create", create_profile_share_link_view),
+    
+    # ==================== Short Share URLs ====================
+    path("s/p/<str:token>", get_shared_post_view),  
+    path("s/u/<str:token>", get_shared_profile_view),  
     
     # ==================== Admin APIs ====================
     # IMPORTANT: These must come BEFORE Django admin to avoid conflicts
@@ -94,8 +101,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     
     # ==================== Chat APIs ====================
-    path('', include('project_chat.urls')),
+    path('api/chat/', include('project_chat.urls')),
     
     # ==================== Notification APIs ====================
-    path('', include('project_notifications.urls')),
+    path('api/notifications/', include('project_notifications.urls')),
 ]

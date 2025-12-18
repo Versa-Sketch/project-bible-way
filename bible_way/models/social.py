@@ -185,5 +185,29 @@ class PromotionImage(models.Model):
         return f"PromotionImage {self.promotion_image_id} for {self.promotion.title}"
 
 
+class ShareLinkContentTypeChoices(models.TextChoices):
+    POST = 'POST', 'Post'
+    PROFILE = 'PROFILE', 'Profile'
+
+
+class ShareLink(models.Model):
+    share_token = models.CharField(max_length=20, unique=True, db_index=True)
+    content_type = models.CharField(max_length=10, choices=ShareLinkContentTypeChoices.choices)
+    content_id = models.UUIDField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="share_links_created")
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'bible_way_share_link'
+        indexes = [
+            models.Index(fields=['share_token']),
+            models.Index(fields=['content_type', 'content_id']),
+        ]
+
+    def __str__(self):
+        return f"ShareLink {self.share_token} - {self.get_content_type_display()}"
+
+
 
 
