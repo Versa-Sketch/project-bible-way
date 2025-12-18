@@ -60,6 +60,7 @@ class Notification(models.Model):
         default=dict,
         help_text='For storing aggregated data (actors_count, actors list, last_actor_id)'
     )
+    is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -68,6 +69,7 @@ class Notification(models.Model):
         indexes = [
             models.Index(fields=['recipient', 'created_at']),
             models.Index(fields=['notification_type', 'target_id', 'recipient']),
+            models.Index(fields=['recipient', 'is_read']),
         ]
 
     def __str__(self):

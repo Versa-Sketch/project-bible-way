@@ -84,10 +84,15 @@ class UserChatConsumer(AsyncWebsocketConsumer):
         
         self.user_id = _normalize_user_id(self.user.user_id)  # Normalize to consistent format
         
-        # Join user's personal group for notifications
+        # Join user's personal group for chat
         user_group = f"user_{self.user_id}"
         await self.channel_layer.group_add(user_group, self.channel_name)
         self.user_groups.add(user_group)
+        
+        # Join user's notification group
+        notification_group = f"user_{self.user_id}_notifications"
+        await self.channel_layer.group_add(notification_group, self.channel_name)
+        self.user_groups.add(notification_group)
         
         # Accept connection
         await self.accept()
@@ -510,6 +515,11 @@ class UserChatConsumer(AsyncWebsocketConsumer):
     
     async def presence_updated(self, event):
         """Handle presence_updated event from group."""
+        await self.send(text_data=json.dumps(event['data']))
+    
+    async def notification_sent(self, event):
+        """Handle notification_sent event from notification group."""
+        # Send notification to WebSocket client
         await self.send(text_data=json.dumps(event['data']))
     
     async def _broadcast_presence_to_conversations(self, is_online: bool):

@@ -2,16 +2,21 @@
 
 ## Overview
 
-The Notifications API provides real-time WebSocket-based notifications for user activities including follows, likes, comments, and prayer requests. All notifications are delivered instantly via WebSocket connections with automatic aggregation support.
+The Notifications API provides real-time WebSocket-based notifications for user activities including follows, likes, comments, and prayer requests. All notifications are delivered instantly via WebSocket connections with automatic aggregation support. Notifications are delivered through the unified `ws/user/` WebSocket connection along with chat messages.
 
 **Base WebSocket URL:**
 ```
-ws://localhost:8000/ws/notifications/
+ws://localhost:8000/ws/user/
 ```
 
 **Production URL:**
 ```
-wss://your-domain.com/ws/notifications/
+wss://your-domain.com/ws/user/
+```
+
+**REST API Base URL:**
+```
+http://localhost:8000/api/notifications/
 ```
 
 ---
@@ -20,10 +25,12 @@ wss://your-domain.com/ws/notifications/
 
 1. [Authentication](#authentication)
 2. [WebSocket Connection](#websocket-connection)
-3. [Message Formats](#message-formats)
-4. [Notification Types](#notification-types)
-5. [Client Actions](#client-actions)
-6. [Error Handling](#error-handling)
+3. [REST API Endpoints](#rest-api-endpoints)
+4. [Message Formats](#message-formats)
+5. [Notification Types](#notification-types)
+6. [Client Actions](#client-actions)
+7. [Error Handling](#error-handling)
+8. [Read/Unread Tracking](#readunread-tracking)
 
 ---
 
@@ -31,19 +38,24 @@ wss://your-domain.com/ws/notifications/
 
 All WebSocket connections require JWT authentication via query parameter.
 
-**Connection URL Format:**
+**WebSocket Connection URL Format:**
 ```
-ws://domain/ws/notifications/?token=<access_token>
+ws://domain/ws/user/?token=<access_token>
 ```
 
-**Authentication:**
+**REST API Authentication:**
+- Include JWT access token in `Authorization` header: `Bearer <access_token>`
+- Token must be valid and not expired
+- User must be authenticated and active
+
+**WebSocket Authentication:**
 - Include JWT access token in the `token` query parameter
 - Token must be valid and not expired
 - User must be authenticated and active
 
 **Example:**
 ```
-ws://localhost:8000/ws/notifications/?token=eyJ0eXAiOiJKV1QiLCJhbGc...
+ws://localhost:8000/ws/user/?token=eyJ0eXAiOiJKV1QiLCJhbGc...
 ```
 
 ---
@@ -52,11 +64,12 @@ ws://localhost:8000/ws/notifications/?token=eyJ0eXAiOiJKV1QiLCJhbGc...
 
 ### Connection Flow
 
-1. Client initiates WebSocket connection with JWT token
+1. Client initiates WebSocket connection to unified `ws/user/` endpoint with JWT token
 2. Server validates token and authenticates user
 3. Server accepts connection and sends connection confirmation
-4. Client joins user's notification group automatically
-5. Client receives notifications in real-time
+4. Client automatically joins both chat groups and notification group (`user_{user_id}_notifications`)
+5. Client receives both chat messages and notifications in real-time through the same connection
+6. Client calls `GET /api/notifications/missed/` to fetch unread notifications created while offline
 
 ### Connection Established Message
 
@@ -65,14 +78,114 @@ Upon successful connection, the server sends:
 ```json
 {
   "type": "connection.established",
-  "message": "Notification connection established",
-  "user_id": "uuid-string"
+  "data": {
+    "user_id": "uuid-string",
+    "message": "WebSocket connection established"
+  }
 }
 ```
+
+Note: This is the same connection message used for chat, as notifications are delivered through the unified WebSocket connection.
 
 ### Connection Rejection
 
 If authentication fails, the connection is closed with code `4008` (Policy violation - authentication required).
+
+---
+
+## REST API Endpoints
+
+### GET /api/notifications/missed/
+
+Fetch unread notifications that were created while the user was offline.
+
+**Authentication:** JWT token in `Authorization` header
+
+**Query Parameters:**
+- `limit` (optional): Number of notifications to return (default: 50, max: 100)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "notifications": [
+      {
+        "type": "notification",
+        "notification_id": "uuid-string",
+        "notification_type": "POST_LIKE",
+        "message": "john_doe liked your post",
+        "target_id": "post-uuid",
+        "target_type": "post",
+        "actor": {
+          "user_id": "uuid-string",
+          "user_name": "john_doe",
+          "profile_picture_url": "https://..."
+        },
+        "metadata": {...},
+        "created_at": "2024-01-15T10:30:00Z"
+      }
+    ],
+    "count": 5,
+    "last_fetch_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Behavior:**
+- Only returns notifications where `is_read = False`
+- Filters by `created_at > last_fetch_at` (or last 24 hours if first time)
+- Updates `last_fetch_at` after successful fetch
+- Notifications are ordered by `created_at` (oldest first)
+
+**Error Responses:**
+- `401 Unauthorized`: Invalid or missing JWT token
+- `500 Internal Server Error`: Server error
+
+### POST /api/notifications/markread/
+
+Mark all notifications as read for the authenticated user.
+
+**Authentication:** JWT token in `Authorization` header
+
+**Request Body:** Empty (no body required)
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "message": "All notifications marked as read",
+    "marked_count": 10
+  }
+}
+```
+
+**Behavior:**
+- Marks ALL notifications for the authenticated user as `is_read = True`
+- Uses bulk update for performance
+- Returns count of notifications that were marked
+
+**Error Responses:**
+- `401 Unauthorized`: Invalid or missing JWT token
+- `500 Internal Server Error`: Server error
+
+---
+
+## Read/Unread Tracking
+
+All notifications default to `is_read = False` when created. The system tracks read/unread status:
+
+- **New notifications:** Created with `is_read = False`
+- **WebSocket delivery:** Real-time notifications are delivered with `is_read = False`
+- **Missed notifications:** Only unread notifications are returned by `GET /api/notifications/missed/`
+- **Mark as read:** `POST /api/notifications/markread/` marks all user's notifications as read
+
+**Best Practice:**
+1. Connect to `ws/user/` WebSocket for real-time notifications
+2. On app startup/reconnect, call `GET /api/notifications/missed/` to fetch unread missed notifications
+3. When user views notifications, call `POST /api/notifications/markread/` to mark all as read
+4. Subsequent calls to `GET /api/notifications/missed/` will only return new unread notifications
 
 ---
 
@@ -588,21 +701,35 @@ Client Displays Notification
 
 ### Manual Testing
 
-1. **Connect to WebSocket:**
+1. **Connect to Unified WebSocket:**
    ```bash
-   wscat -c "ws://localhost:8000/ws/notifications/?token=YOUR_TOKEN"
+   wscat -c "ws://localhost:8000/ws/user/?token=YOUR_TOKEN"
+   ```
+   
+2. **Fetch Missed Notifications:**
+   ```bash
+   curl -X GET "http://localhost:8000/api/notifications/missed/?limit=50" \
+     -H "Authorization: Bearer YOUR_TOKEN"
+   ```
+   
+3. **Mark All as Read:**
+   ```bash
+   curl -X POST "http://localhost:8000/api/notifications/markread/" \
+     -H "Authorization: Bearer YOUR_TOKEN"
    ```
 
-2. **Trigger Notifications:**
+4. **Trigger Notifications:**
    - Follow a user (via REST API)
    - Like a post (via REST API)
    - Comment on a post (via REST API)
    - Create a prayer request (via REST API)
 
-3. **Verify:**
-   - Notifications appear in WebSocket connection
+5. **Verify:**
+   - Notifications appear in unified WebSocket connection
    - Aggregation works correctly
    - Self-notifications are prevented
+   - Missed notifications endpoint returns only unread notifications
+   - Mark as read endpoint marks all notifications correctly
 
 ### Automated Testing
 
