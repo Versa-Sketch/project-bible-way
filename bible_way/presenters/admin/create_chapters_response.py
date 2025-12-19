@@ -2,14 +2,15 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-class CreateBookResponse:
+class CreateChaptersResponse:
 
     @staticmethod
-    def book_created_successfully_response(book_id: str) -> Response:
+    def chapters_uploaded_successfully_response(chapters_count: int, book_id: str) -> Response:
         return Response(
             {
                 "success": True,
-                "message": "Book created successfully",
+                "message": "Chapters uploaded successfully",
+                "chaptersCount": chapters_count,
                 "book_id": book_id
             },
             status=status.HTTP_201_CREATED

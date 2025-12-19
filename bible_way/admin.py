@@ -17,6 +17,7 @@ from .models import (
     Language,
     AgeGroup,
     Book,
+    Chapters,
     ReadingProgress,
     ReadingNote,
     Highlight,
@@ -165,6 +166,31 @@ class BookAdmin(admin.ModelAdmin):
     search_fields = ('title', 'description')
     readonly_fields = ('book_id', 'created_at', 'updated_at')
     raw_id_fields = ('category', 'age_group', 'language')
+
+
+@admin.register(Chapters)
+class ChaptersAdmin(admin.ModelAdmin):
+    list_display = ('chapter_id', 'book', 'chapter_number', 'chapter_name', 'title', 'metadata', 'created_at', 'updated_at')
+    list_filter = ('book', 'created_at', 'updated_at')
+    search_fields = ('title', 'chapter_name', 'description', 'book__title')
+    readonly_fields = ('chapter_id', 'created_at', 'updated_at')
+    raw_id_fields = ('book',)
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('book', 'chapter_number', 'chapter_name', 'title', 'description')
+        }),
+        ('Content', {
+            'fields': ('chapter_url',)
+        }),
+        ('Metadata', {
+            'fields': ('metadata',),
+            'description': 'Additional metadata (e.g., testament: Old/New) as JSON'
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 
 @admin.register(ReadingProgress)

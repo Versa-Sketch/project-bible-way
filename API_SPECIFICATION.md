@@ -2533,24 +2533,17 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 **Request Body (Form Data):**
 - `title` (string, required) - Book title
 - `category` (string, required) - Category ID (UUID)
-- `age_group` (string, required) - Age group ID (UUID)
+- `agegroup` (string, required) - Age group ID (UUID)
 - `language` (string, required) - Language ID (UUID)
-- `source_file` (file, required) - Source file (.md file) for the book
 - `cover_image` (file, optional) - Cover image file for the book
 - `description` (string, optional) - Book description
-- `book_order` (integer, optional, default: 0) - Display order for sorting books
 
 **Success Response (201 Created):**
 ```json
 {
   "success": true,
   "message": "Book created successfully",
-  "data": {
-    "book_id": "uuid-string",
-    "source_file_url": "https://s3.amazonaws.com/bucket/books/.../source_files/...",
-    "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-15T10:30:00Z"
-  }
+  "book_id": "uuid-string"
 }
 ```
 
@@ -2590,11 +2583,99 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 }
 ```
 
-- **400 Bad Request** - Source file required:
+- **500 Internal Server Error** - S3 upload error:
 ```json
 {
   "success": false,
-  "error": "Source file (.md file) is required",
+  "error": "Failed to upload cover image: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 10.9 Admin Create Chapters
+**Endpoint:** `POST /admin/book/chapters/create`  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)  
+**Content-Type:** `multipart/form-data`
+
+**Request Body (Form Data):**
+- `book_id` (string, required) - Book UUID
+- `bookdata` (JSON string, required) - Array of chapter objects:
+  ```json
+  [
+    {
+      "title": "string (required)",
+      "description": "string (required)",
+      "metadata": {} // optional JSON object per chapter
+    }
+  ]
+  ```
+- `file_0`, `file_1`, `file_2`, ... (files, required) - Files indexed to match bookdata array order
+
+**Note:** Files are sent as separate fields (`file_0`, `file_1`, etc.) and matched by index to the bookdata array.
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Chapters uploaded successfully",
+  "chaptersCount": 3,
+  "book_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Book ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid JSON:
+```json
+{
+  "success": false,
+  "error": "Invalid JSON format for bookdata",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book with id '<book_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing chapter fields:
+```json
+{
+  "success": false,
+  "error": "Title is required for chapter at index 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - File count mismatch:
+```json
+{
+  "success": false,
+  "error": "Number of files (2) must match number of chapters (3)",
   "error_code": "VALIDATION_ERROR"
 }
 ```
@@ -2603,14 +2684,14 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 ```json
 {
   "success": false,
-  "error": "Failed to upload source file: <error_message>",
+  "error": "Failed to upload file for chapter at index 0: <error_message>",
   "error_code": "INTERNAL_ERROR"
 }
 ```
 
 ---
 
-### 10.9 Admin Update Book Metadata
+### 10.10 Admin Update Book Metadata
 **Endpoint:** `POST /admin/book/update-metadata`  
 **Authentication:** Required (JWT)  
 **Permission:** Admin only (`is_staff=True`)
@@ -2669,7 +2750,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 
 ---
 
-### 10.10 Admin Get All Books
+### 10.11 Admin Get All Books
 **Endpoint:** `GET /admin/books`  
 **Authentication:** Required (JWT)  
 **Permission:** Admin only (`is_staff=True`)
@@ -2725,6 +2806,115 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "error_code": "INTERNAL_ERROR"
 }
 ```
+
+---  
+**Authentication:** Required (JWT)  
+**Permission:** Admin only (`is_staff=True`)  
+**Content-Type:** `multipart/form-data`
+
+**Request Body (Form Data):**
+- `book_id` (string, required) - Book ID (UUID)
+- `bookdata` (JSON string, required) - Array of chapter objects:
+  ```json
+  [
+    {
+      "title": "string (required)",
+      "description": "string (required)",
+      "metadata": {} // optional JSON object per chapter
+    }
+  ]
+  ```
+- `file_0`, `file_1`, `file_2`, ... (files, required) - Files indexed to match bookdata array order
+
+**Note:** Files are sent as separate fields (`file_0`, `file_1`, etc.) and matched by index to the bookdata array.
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Chapters uploaded successfully",
+  "chaptersCount": 3,
+  "book_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **403 Forbidden** - Not admin:
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Book ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid JSON:
+```json
+{
+  "success": false,
+  "error": "Invalid JSON format for bookdata",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book with id '<book_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing chapter fields:
+```json
+{
+  "success": false,
+  "error": "Title is required for chapter at index 0",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - File count mismatch:
+```json
+{
+  "success": false,
+  "error": "Number of files (2) must match number of chapters (3)",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error** - S3 upload error:
+```json
+{
+  "success": false,
+  "error": "Failed to upload file for chapter at index 0: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+- **500 Internal Server Error** - Chapter creation error:
+```json
+{
+  "success": false,
+  "error": "Failed to create chapter at index 0: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- Chapter numbers are auto-incremented starting from max existing chapter_number + 1
+- Files are uploaded to S3 in path: `books/{sanitized_book_title}/chapters/{original_filename}`
+- Each chapter can have its own metadata JSON object
+- Files must use indexed keys: `file_0`, `file_1`, `file_2`, etc.
 
 ---
 
@@ -2819,15 +3009,16 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 ---
 
 ### 11.3 Get Books by Category and Age Group
-**Endpoint:** `GET /books/category/<category_id>/age-group/<age_group_id>/books/`  
+**Endpoint:** `POST /books/get`  
 **Authentication:** Required (JWT)
 
-**Path Parameters:**
-- `category_id` (string, required) - UUID of the category
-- `age_group_id` (string, required) - UUID of the age group
-
-**Query Parameters:**
-- `language_id` (string, optional) - UUID of the language (filters books by language)
+**Request Body:**
+```json
+{
+  "category_id": "uuid-string (required)",
+  "age_group": "uuid-string (required)"
+}
+```
 
 **Success Response (200 OK):**
 ```json
@@ -2838,8 +3029,15 @@ This endpoint retrieves all verses with their like counts. For authenticated use
     {
       "book_id": "uuid-string",
       "title": "The Book of Genesis",
+      "description": "string",
+      "category_id": "uuid-string",
+      "age_group_id": "uuid-string",
+      "language_id": "uuid-string",
       "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
-      "book_order": 1
+      "book_order": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
     }
   ]
 }
@@ -2854,11 +3052,20 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 }
 ```
 
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Category is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
 - **400 Bad Request** - Category not found:
 ```json
 {
   "success": false,
-  "error": "Category with id '<category_id>' not found",
+  "error": "Category with id '<category_id>' does not exist",
   "error_code": "VALIDATION_ERROR"
 }
 ```
@@ -2867,16 +3074,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 ```json
 {
   "success": false,
-  "error": "Age group with id '<age_group_id>' not found",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - Language not found:
-```json
-{
-  "success": false,
-  "error": "Language with id '<language_id>' not found",
+  "error": "Age group with id '<age_group_id>' does not exist",
   "error_code": "VALIDATION_ERROR"
 }
 ```
@@ -2889,6 +3087,82 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "error_code": "INTERNAL_ERROR"
 }
 ```
+
+---
+
+
+### 11.4 Get Book Chapters
+**Endpoint:** `POST /books/chapters/get`  
+**Authentication:** Required (JWT)
+
+**Request Body:**
+```json
+{
+  "book_id": "uuid-string (required)"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Chapters retrieved successfully",
+  "data": [
+    {
+      "chapter_id": "uuid-string",
+      "book_id": "uuid-string",
+      "title": "string",
+      "description": "string",
+      "chapter_number": 1,
+      "chapter_name": "string or null",
+      "chapter_url": "string or null",
+      "metadata": {},
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Validation error:
+```json
+{
+  "success": false,
+  "error": "Book ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book with id '<book_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve chapters: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- Chapters are returned ordered by `chapter_number` (ascending)
+- Returns empty array `[]` if no chapters found for the book
 
 ---
 

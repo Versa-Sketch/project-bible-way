@@ -2,14 +2,15 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-class UpdateBookMetadataResponse:
+class GetBooksByCategoryAndAgeGroupResponse:
 
     @staticmethod
-    def metadata_updated_successfully_response() -> Response:
+    def books_retrieved_successfully_response(books_data: list) -> Response:
         return Response(
             {
                 "success": True,
-                "message": "Book metadata updated successfully"
+                "message": "Books retrieved successfully",
+                "data": books_data
             },
             status=status.HTTP_200_OK
         )
@@ -35,4 +36,3 @@ class UpdateBookMetadataResponse:
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-

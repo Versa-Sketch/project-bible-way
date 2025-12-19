@@ -2,10 +2,9 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Count, Q, Case, When, Value, IntegerField, Exists, OuterRef
 import uuid
 import os
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight, Wallpaper
-from bible_way.models.book_reading import ReadingNote
 import secrets
 from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices, Wallpaper
+from bible_way.models.book_reading import ReadingNote, Chapters
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
@@ -425,7 +424,7 @@ class UserDB:
             raise Exception("Post not found")
         
         comments = Comment.objects.select_related('user').filter(post_id=post_uuid).annotate(
-            likes_count=Count('reactions')
+            likes_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
         ).order_by('-created_at')
         
         current_user_uuid = None
@@ -605,7 +604,7 @@ class UserDB:
         
         # Build queryset with annotations
         queryset = Post.objects.select_related('user').prefetch_related('media').annotate(
-            likes_count=Count('reactions', filter=Q(reactions__post__isnull=False)),
+            likes_count=Count('reactions', filter=Q(reactions__reaction_type='like')),
             comments_count=Count('comments')
         )
         
@@ -692,7 +691,7 @@ class UserDB:
         total_count = Post.objects.filter(user__user_id=user_uuid).count()
         
         posts = Post.objects.prefetch_related('media').filter(user__user_id=user_uuid).annotate(
-            likes_count=Count('reactions', filter=Q(reactions__post__isnull=False)),
+            likes_count=Count('reactions', filter=Q(reactions__reaction_type='like')),
             comments_count=Count('comments')
         ).order_by('-created_at')[offset:offset + limit]
         
@@ -757,7 +756,7 @@ class UserDB:
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
         comments = Comment.objects.filter(user__user_id=user_uuid).annotate(
-            likes_count=Count('reactions')
+            likes_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
         ).order_by('-created_at')
         
         comments_data = []
@@ -867,16 +866,32 @@ class UserDB:
         prayer_request.delete()
         return True
     
-    def get_all_prayer_requests(self, limit: int = 10, offset: int = 0) -> dict:
+    def get_all_prayer_requests(self, limit: int = 10, offset: int = 0, current_user_id: str = None) -> dict:
         total_count = PrayerRequest.objects.count()
+        
+        current_user_uuid = None
+        if current_user_id:
+            try:
+                current_user_uuid = uuid.UUID(current_user_id) if isinstance(current_user_id, str) else current_user_id
+            except (ValueError, TypeError):
+                current_user_uuid = None
         
         prayer_requests = PrayerRequest.objects.select_related('user').annotate(
             comments_count=Count('comments'),
-            reactions_count=Count('reactions')
+            reactions_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
         ).order_by('-created_at')[offset:offset + limit]
         
         prayer_requests_data = []
         for prayer_request in prayer_requests:
+            is_liked = False
+            
+            if current_user_uuid:
+                is_liked = Reaction.objects.filter(
+                    prayer_request=prayer_request,
+                    user__user_id=current_user_uuid,
+                    reaction_type=Reaction.LIKE
+                ).exists()
+            
             prayer_requests_data.append({
                 'prayer_request_id': str(prayer_request.prayer_request_id),
                 'user': {
@@ -890,6 +905,7 @@ class UserDB:
                 'description': prayer_request.description,
                 'comments_count': prayer_request.comments_count,
                 'reactions_count': prayer_request.reactions_count,
+                'is_liked': is_liked,
                 'created_at': prayer_request.created_at.isoformat(),
                 'updated_at': prayer_request.updated_at.isoformat()
             })
@@ -913,7 +929,7 @@ class UserDB:
         
         prayer_requests = PrayerRequest.objects.filter(user__user_id=user_uuid).select_related('user').annotate(
             comments_count=Count('comments'),
-            reactions_count=Count('reactions')
+            reactions_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
         ).order_by('-created_at')[offset:offset + limit]
         
         current_user_uuid = None
@@ -991,7 +1007,7 @@ class UserDB:
             raise Exception("Prayer request not found")
         
         comments = Comment.objects.select_related('user').filter(prayer_request_id=prayer_request_uuid).annotate(
-            likes_count=Count('reactions')
+            likes_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
         ).order_by('-created_at')
         
         comments_data = []
@@ -1060,17 +1076,54 @@ class UserDB:
         reaction.delete()
         return True
     
-    def get_verse(self):
+    def check_verse_reaction_exists(self, user_id: str, verse_id: str) -> Reaction | None:
         try:
-            verse = Verse.objects.order_by('-created_at').first()
+            return Reaction.objects.get(user__user_id=user_id, verse__verse_id=verse_id)
+        except Reaction.DoesNotExist:
+            return None
+        except (ValueError, TypeError):
+            return None
+    
+    def like_verse(self, verse_id: str, user_id: str) -> Reaction:    
+        try:
+            verse = Verse.objects.get(verse_id=verse_id)
+        except Verse.DoesNotExist:
+            raise Exception("Verse not found")
+        
+        existing_reaction = self.check_verse_reaction_exists(user_id, verse_id)
+        if existing_reaction:
+            raise Exception("You have already liked this verse")
+        
+        user = User.objects.get(user_id=user_id)
+        reaction = Reaction.objects.create(
+            user=user,
+            verse=verse,
+            reaction_type=Reaction.LIKE
+        )
+        return reaction
+    
+    def get_verse(self, user_id: str):
+        try:
+            verse = Verse.objects.annotate(
+                likes_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
+            ).order_by('-created_at').first()
             
             if not verse:
                 return None
+            
+            # Check if user has liked this verse
+            is_liked = False
+            if user_id:
+                existing_reaction = self.check_verse_reaction_exists(user_id, str(verse.verse_id))
+                if existing_reaction:
+                    is_liked = True
             
             return {
                 'verse_id': str(verse.verse_id),
                 'title': verse.title or 'Quote of the day',
                 'description': verse.description or '',
+                'likes_count': verse.likes_count or 0,
+                'is_liked': is_liked,
                 'created_at': verse.created_at.isoformat(),
                 'updated_at': verse.updated_at.isoformat()
             }
@@ -1079,26 +1132,18 @@ class UserDB:
     
     def get_all_verses_with_like_count(self, user_id: str = None):
         try:
-            # Convert user_id to UUID if provided
-            user_uuid = None
-            if user_id:
-                try:
-                    user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
-                except (ValueError, TypeError):
-                    user_uuid = None
-            
             # Build queryset with like count annotation
             verses_query = Verse.objects.annotate(
                 likes_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
             )
             
             # Add is_liked annotation if user_id provided
-            if user_uuid:
+            if user_id:
                 verses_query = verses_query.annotate(
                     is_liked=Exists(
                         Reaction.objects.filter(
                             verse=OuterRef('verse_id'),
-                            user__user_id=user_uuid,
+                            user__user_id=user_id,
                             reaction_type='like'
                         )
                     )
@@ -1179,47 +1224,74 @@ class UserDB:
     def get_all_languages(self):
         return Language.objects.all().order_by('language_name')
     
-    def get_books_by_category_and_age_group(self, category_id: str, age_group_id: str, language_id: str = None):
-        queryset = Book.objects.filter(
-            category__category_id=category_id,
-            age_group__age_group_id=age_group_id,
-            is_active=True
-        )
-        
-        if language_id:
-            queryset = queryset.filter(language__language_id=language_id)
-        
-        return queryset.order_by('book_order', 'title')
+    def get_category_by_id(self, category_id: str):
+        try:
+            return Category.objects.get(category_id=category_id)
+        except Category.DoesNotExist:
+            return None
     
-    def get_book_by_id(self, book_id: str):
-        return Book.objects.select_related('category', 'age_group', 'language').get(book_id=book_id)
+    def get_age_group_by_id(self, age_group_id: str):
+        try:
+            return AgeGroup.objects.get(age_group_id=age_group_id)
+        except AgeGroup.DoesNotExist:
+            return None
     
-    def get_book_chapters(self, book_id: str):
-        # BookContent model has been removed - return empty list
-        # This method is kept for compatibility but will need to be updated
-        return []
+    def get_language_by_id(self, language_id: str):
+        try:
+            return Language.objects.get(language_id=language_id)
+        except Language.DoesNotExist:
+            return None
     
-    def create_book(self, title: str, category_id: str, age_group_id: str, language_id: str,
-                   cover_image_url: str = None, description: str = None,
-                   book_order: int = 0, source_file_name: str = None, source_file_url: str = None,
-                   metadata: dict = None) -> Book:
+    def create_book(self, title: str, category_id: str, age_group_id: str, language_id: str, 
+                    cover_image_url: str = None, description: str = None, book_order: int = 0) -> Book:
         category = Category.objects.get(category_id=category_id)
         age_group = AgeGroup.objects.get(age_group_id=age_group_id)
         language = Language.objects.get(language_id=language_id)
         
         book = Book.objects.create(
             title=title,
+            description=description or '',
             category=category,
             age_group=age_group,
             language=language,
             cover_image_url=cover_image_url,
-            description=description or '',
-            book_order=book_order,
-            source_file_name=source_file_name or '',
-            source_file_url=source_file_url,
-            metadata=metadata or {}
+            book_order=book_order
         )
         return book
+    
+    def get_books_by_category_and_age_group(self, category_id: str, age_group_id: str):
+        return Book.objects.filter(
+            category__category_id=category_id,
+            age_group__age_group_id=age_group_id,
+            is_active=True
+        ).select_related('category', 'age_group', 'language').order_by('book_order', 'title')
+    
+    def get_book_by_id(self, book_id: str):
+        return Book.objects.select_related('category', 'age_group', 'language').get(book_id=book_id)
+    
+    def get_book_chapters(self, book_id: str):
+        return Chapters.objects.filter(book_id=book_id).order_by('chapter_number')
+    
+    def get_max_chapter_number(self, book_id: str):
+        from django.db.models import Max
+        result = Chapters.objects.filter(book_id=book_id).aggregate(max_number=Max('chapter_number'))
+        return result['max_number'] if result['max_number'] is not None else 0
+    
+    def get_chapters_count(self, book_id: str):
+        return Chapters.objects.filter(book_id=book_id).count()
+    
+    def create_chapter(self, book_id: str, title: str, description: str, chapter_url: str, 
+                      chapter_number: int, metadata: dict = None) -> Chapters:
+        book = Book.objects.get(book_id=book_id)
+        chapter = Chapters.objects.create(
+            book=book,
+            title=title,
+            description=description or '',
+            chapter_url=chapter_url,
+            chapter_number=chapter_number,
+            metadata=metadata or {}
+        )
+        return chapter
     
     def update_book_parsed_status(self, book_id: str, total_chapters: int, parsed_at=None) -> Book:
         from django.utils import timezone
@@ -1230,12 +1302,6 @@ class UserDB:
             book.parsed_at = parsed_at
         else:
             book.parsed_at = timezone.now()
-        book.save()
-        return book
-    
-    def update_book_metadata(self, book_id: str, metadata: dict) -> Book:
-        book = Book.objects.get(book_id=book_id)
-        book.metadata = metadata
         book.save()
         return book
     
@@ -1312,57 +1378,6 @@ class UserDB:
         reading_note.content = content.strip()
         reading_note.save()
         return reading_note
-    
-    def get_all_books_admin(self, limit: int = None, offset: int = 0, order_by: str = '-created_at'):
-        try:
-            # Get all books with related objects (including inactive ones for admin)
-            books_query = Book.objects.select_related('category', 'age_group', 'language').all()
-            
-            # Apply ordering
-            if order_by:
-                books_query = books_query.order_by(order_by)
-            else:
-                books_query = books_query.order_by('-created_at')
-            
-            # Get total count before pagination
-            total_count = books_query.count()
-            
-            # Apply pagination
-            if limit is not None:
-                books = books_query[offset:offset + limit]
-            else:
-                books = books_query[offset:]
-            
-            books_data = []
-            for book in books:
-                books_data.append({
-                    'book_id': str(book.book_id),
-                    'title': book.title,
-                    'description': book.description or '',
-                    'category_id': str(book.category.category_id),
-                    'category_name': book.category.category_name,
-                    'category_display_name': book.category.get_category_name_display(),
-                    'age_group_id': str(book.age_group.age_group_id),
-                    'age_group_name': book.age_group.age_group_name,
-                    'age_group_display_name': book.age_group.get_age_group_name_display(),
-                    'language_id': str(book.language.language_id),
-                    'language_name': book.language.language_name,
-                    'language_display_name': book.language.get_language_name_display(),
-                    'cover_image_url': book.cover_image_url or '',
-                    'book_order': book.book_order,
-                    'is_active': book.is_active,
-                    'source_file_url': book.source_file_url or '',
-                    'metadata': book.metadata or {},
-                    'created_at': book.created_at.isoformat() if book.created_at else None,
-                    'updated_at': book.updated_at.isoformat() if book.updated_at else None
-                })
-            
-            return {
-                'books': books_data,
-                'total_count': total_count
-            }
-        except Exception as e:
-            raise Exception(f"Failed to retrieve books: {str(e)}")
     
     def _generate_unique_share_token(self) -> str:
         """Generate a unique URL-safe token for share links."""

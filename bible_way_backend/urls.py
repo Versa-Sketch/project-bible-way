@@ -64,11 +64,13 @@ urlpatterns = [
     # ==================== Verse APIs ====================
     path("verse/daily", get_verse_view),
     path("verse/all", get_all_verses_view),
+    path("verse/like", like_verse_view),
     
     # ==================== Books APIs ====================
     path("books/categories/", get_categories_view),
     path("books/age-groups/", get_age_groups_view),
-    path("books/category/<str:category_id>/age-group/<str:age_group_id>/books/", get_books_by_category_view),
+    path("books/get", get_books_by_category_and_age_group_view),
+    path("books/chapters/get", get_book_chapters_view),
     
     # ==================== Highlight APIs ====================
     path("highlight/create", create_highlight_view),
@@ -97,8 +99,7 @@ urlpatterns = [
     path("admin/age-groups", admin_get_age_groups_view),
     path("admin/languages", admin_get_languages_view),
     path("admin/book/create", admin_create_book_view),
-    path("admin/book/update-metadata", admin_update_book_metadata_view),
-    path("admin/books", admin_get_all_books_view),
+    path("admin/book/chapters/create", admin_create_chapters_view),
     
     # ==================== Django Admin (must be after custom admin APIs) ====================
     path("admin/", admin.site.urls),
