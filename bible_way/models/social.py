@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 import uuid
 from .user import User
 
@@ -45,6 +46,23 @@ class PrayerRequest(models.Model):
         return f"Prayer Request {self.prayer_request_id} by {self.user}"
 
 
+class Testimonial(models.Model):
+    testimonial_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="testimonials")
+    description = models.TextField()
+    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'bible_way_testimonial'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Testimonial {self.testimonial_id} by {self.user} - Rating: {self.rating}"
+
+
 class Media(models.Model):
     IMAGE = "image"
     VIDEO = "video"
@@ -65,6 +83,13 @@ class Media(models.Model):
     )
     prayer_request = models.ForeignKey(
         PrayerRequest,
+        on_delete=models.CASCADE,
+        related_name="media",
+        null=True,
+        blank=True,
+    )
+    testimonial = models.ForeignKey(
+        Testimonial,
         on_delete=models.CASCADE,
         related_name="media",
         null=True,

@@ -3,7 +3,7 @@ from django.db.models import Count, Q, Case, When, Value, IntegerField, Exists, 
 import uuid
 import os
 import secrets
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices, Wallpaper
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Testimonial, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices, Wallpaper
 from bible_way.models.book_reading import ReadingNote, Chapters
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
@@ -335,23 +335,27 @@ class UserDB:
         else:
             return Media.IMAGE
     
-    def _generate_s3_key(self, user_id: str, post_id: str = None, prayer_request_id: str = None, filename: str = None) -> str:
+    def _generate_s3_key(self, user_id: str, post_id: str = None, prayer_request_id: str = None, testimonial_id: str = None, filename: str = None) -> str:
         safe_filename = os.path.basename(filename) if filename else "file"
         if post_id:
             return f"bible_way/user/post/{user_id}/{post_id}/{safe_filename}"
         elif prayer_request_id:
             return f"bible_way/user/prayer_request/{user_id}/{prayer_request_id}/{safe_filename}"
+        elif testimonial_id:
+            return f"bible_way/user/testimonial/{user_id}/{testimonial_id}/{safe_filename}"
         else:
             return f"bible_way/user/media/{user_id}/{safe_filename}"
     
-    def upload_file_to_s3(self, post: Post = None, prayer_request: PrayerRequest = None, media_file = None, user_id: str = None) -> str:
+    def upload_file_to_s3(self, post: Post = None, prayer_request: PrayerRequest = None, testimonial: Testimonial = None, media_file = None, user_id: str = None) -> str:
         try:
             if post:
                 s3_key = self._generate_s3_key(str(user_id), post_id=str(post.post_id), filename=media_file.name)
             elif prayer_request:
                 s3_key = self._generate_s3_key(str(user_id), prayer_request_id=str(prayer_request.prayer_request_id), filename=media_file.name)
+            elif testimonial:
+                s3_key = self._generate_s3_key(str(user_id), testimonial_id=str(testimonial.testimonial_id), filename=media_file.name)
             else:
-                raise Exception("Either post or prayer_request must be provided")
+                raise Exception("Either post, prayer_request, or testimonial must be provided")
             
             s3_url = s3_upload_file(media_file, s3_key)
             
@@ -359,13 +363,14 @@ class UserDB:
         except Exception as e:
             raise Exception(f"Failed to upload file to S3: {str(e)}")
     
-    def create_media(self, post: Post = None, prayer_request: PrayerRequest = None, s3_url: str = None, media_type: str = None) -> Media:
-        if not post and not prayer_request:
-            raise Exception("Either post or prayer_request must be provided")
+    def create_media(self, post: Post = None, prayer_request: PrayerRequest = None, testimonial: Testimonial = None, s3_url: str = None, media_type: str = None) -> Media:
+        if not post and not prayer_request and not testimonial:
+            raise Exception("Either post, prayer_request, or testimonial must be provided")
         
         media = Media.objects.create(
             post=post,
             prayer_request=prayer_request,
+            testimonial=testimonial,
             media_type=media_type,
             url=s3_url
         )
@@ -828,6 +833,179 @@ class UserDB:
             })
         
         return wallpapers_data
+    
+    def create_testimonial(self, user_id: str, description: str, rating: int) -> Testimonial:
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        user = User.objects.get(user_id=user_uuid)
+        testimonial = Testimonial.objects.create(
+            user=user,
+            description=description.strip(),
+            rating=rating
+        )
+        return testimonial
+    
+    def get_all_testimonials(self, limit: int = 10, offset: int = 0) -> dict:
+        """Get only verified testimonials for users"""
+        total_count = Testimonial.objects.filter(is_verified=True).count()
+        
+        testimonials = Testimonial.objects.filter(is_verified=True).select_related('user').prefetch_related('media').order_by('-created_at')[offset:offset + limit]
+        
+        testimonials_data = []
+        for testimonial in testimonials:
+            # Get media for this testimonial
+            media_list = []
+            for media in testimonial.media.all():
+                media_list.append({
+                    'media_id': str(media.media_id),
+                    'media_type': media.media_type,
+                    'url': media.url,
+                    'created_at': media.created_at.isoformat()
+                })
+            
+            testimonials_data.append({
+                'testimonial_id': str(testimonial.testimonial_id),
+                'user': {
+                    'user_id': str(testimonial.user.user_id),
+                    'user_name': testimonial.user.username,
+                    'profile_picture_url': testimonial.user.profile_picture_url or ''
+                },
+                'description': testimonial.description,
+                'rating': testimonial.rating,
+                'media': media_list,
+                'created_at': testimonial.created_at.isoformat(),
+                'updated_at': testimonial.updated_at.isoformat()
+            })
+        
+        has_next = (offset + limit) < total_count
+        has_previous = offset > 0
+        
+        return {
+            'testimonials': testimonials_data,
+            'limit': limit,
+            'offset': offset,
+            'total_count': total_count,
+            'has_next': has_next,
+            'has_previous': has_previous
+        }
+    
+    def get_all_testimonials_admin(self, limit: int = 10, offset: int = 0, status_filter: str = 'all') -> dict:
+        """Get all testimonials for admin with optional status filter"""
+        queryset = Testimonial.objects.select_related('user').prefetch_related('media')
+        
+        if status_filter == 'pending':
+            queryset = queryset.filter(is_verified=False)
+        elif status_filter == 'verified':
+            queryset = queryset.filter(is_verified=True)
+        # 'all' means no filter
+        
+        total_count = queryset.count()
+        testimonials = queryset.order_by('-created_at')[offset:offset + limit]
+        
+        testimonials_data = []
+        for testimonial in testimonials:
+            # Get media for this testimonial
+            media_list = []
+            for media in testimonial.media.all():
+                media_list.append({
+                    'media_id': str(media.media_id),
+                    'media_type': media.media_type,
+                    'url': media.url,
+                    'created_at': media.created_at.isoformat()
+                })
+            
+            testimonials_data.append({
+                'testimonial_id': str(testimonial.testimonial_id),
+                'user': {
+                    'user_id': str(testimonial.user.user_id),
+                    'user_name': testimonial.user.username,
+                    'profile_picture_url': testimonial.user.profile_picture_url or ''
+                },
+                'description': testimonial.description,
+                'rating': testimonial.rating,
+                'is_verified': testimonial.is_verified,
+                'media': media_list,
+                'created_at': testimonial.created_at.isoformat(),
+                'updated_at': testimonial.updated_at.isoformat()
+            })
+        
+        has_next = (offset + limit) < total_count
+        has_previous = offset > 0
+        
+        return {
+            'testimonials': testimonials_data,
+            'limit': limit,
+            'offset': offset,
+            'total_count': total_count,
+            'has_next': has_next,
+            'has_previous': has_previous
+        }
+    
+    def approve_testimonial(self, testimonial_id: str) -> Testimonial:
+        testimonial_uuid = uuid.UUID(testimonial_id) if isinstance(testimonial_id, str) else testimonial_id
+        try:
+            testimonial = Testimonial.objects.get(testimonial_id=testimonial_uuid)
+        except Testimonial.DoesNotExist:
+            raise Exception("Testimonial not found")
+        
+        testimonial.is_verified = True
+        testimonial.save()
+        return testimonial
+    
+    def reject_testimonial(self, testimonial_id: str) -> bool:
+        testimonial_uuid = uuid.UUID(testimonial_id) if isinstance(testimonial_id, str) else testimonial_id
+        try:
+            testimonial = Testimonial.objects.get(testimonial_id=testimonial_uuid)
+        except Testimonial.DoesNotExist:
+            raise Exception("Testimonial not found")
+        
+        testimonial.delete()
+        return True
+    
+    def get_user_testimonials(self, user_id: str, limit: int = 10, offset: int = 0) -> dict:
+        """Get user's testimonials (both verified and pending)"""
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        total_count = Testimonial.objects.filter(user__user_id=user_uuid).count()
+        
+        testimonials = Testimonial.objects.filter(user__user_id=user_uuid).select_related('user').prefetch_related('media').order_by('-created_at')[offset:offset + limit]
+        
+        testimonials_data = []
+        for testimonial in testimonials:
+            # Get media for this testimonial
+            media_list = []
+            for media in testimonial.media.all():
+                media_list.append({
+                    'media_id': str(media.media_id),
+                    'media_type': media.media_type,
+                    'url': media.url,
+                    'created_at': media.created_at.isoformat()
+                })
+            
+            testimonials_data.append({
+                'testimonial_id': str(testimonial.testimonial_id),
+                'user': {
+                    'user_id': str(testimonial.user.user_id),
+                    'user_name': testimonial.user.username,
+                    'profile_picture_url': testimonial.user.profile_picture_url or ''
+                },
+                'description': testimonial.description,
+                'rating': testimonial.rating,
+                'is_verified': testimonial.is_verified,
+                'media': media_list,
+                'created_at': testimonial.created_at.isoformat(),
+                'updated_at': testimonial.updated_at.isoformat()
+            })
+        
+        has_next = (offset + limit) < total_count
+        has_previous = offset > 0
+        
+        return {
+            'testimonials': testimonials_data,
+            'limit': limit,
+            'offset': offset,
+            'total_count': total_count,
+            'has_next': has_next,
+            'has_previous': has_previous
+        }
     
     def create_prayer_request(self, user_id: str, description: str) -> PrayerRequest:
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id

@@ -33,6 +33,12 @@ from bible_way.interactors.get_specific_user_posts_interactor import GetSpecific
 from bible_way.interactors.get_user_comments_interactor import GetUserCommentsInteractor
 from bible_way.interactors.get_promotions_interactor import GetPromotionsInteractor
 from bible_way.interactors.get_wallpapers_interactor import GetWallpapersInteractor
+from bible_way.interactors.create_testimonial_interactor import CreateTestimonialInteractor
+from bible_way.interactors.get_testimonials_interactor import GetTestimonialsInteractor
+from bible_way.interactors.get_user_testimonials_interactor import GetUserTestimonialsInteractor
+from bible_way.interactors.admin.get_testimonials_interactor import AdminGetTestimonialsInteractor
+from bible_way.interactors.admin.approve_testimonial_interactor import AdminApproveTestimonialInteractor
+from bible_way.interactors.admin.reject_testimonial_interactor import AdminRejectTestimonialInteractor
 from bible_way.interactors.create_prayer_request_interactor import CreatePrayerRequestInteractor
 from bible_way.interactors.update_prayer_request_interactor import UpdatePrayerRequestInteractor
 from bible_way.interactors.delete_prayer_request_interactor import DeletePrayerRequestInteractor
@@ -82,6 +88,12 @@ from bible_way.presenters.get_specific_user_posts_response import GetSpecificUse
 from bible_way.presenters.get_user_comments_response import GetUserCommentsResponse
 from bible_way.presenters.get_promotions_response import GetPromotionsResponse
 from bible_way.presenters.get_wallpapers_response import GetWallpapersResponse
+from bible_way.presenters.create_testimonial_response import CreateTestimonialResponse
+from bible_way.presenters.get_testimonials_response import GetTestimonialsResponse
+from bible_way.presenters.get_user_testimonials_response import GetUserTestimonialsResponse
+from bible_way.presenters.admin.get_testimonials_response import AdminGetTestimonialsResponse
+from bible_way.presenters.admin.approve_testimonial_response import AdminApproveTestimonialResponse
+from bible_way.presenters.admin.reject_testimonial_response import AdminRejectTestimonialResponse
 from bible_way.presenters.create_prayer_request_response import CreatePrayerRequestResponse
 from bible_way.presenters.update_prayer_request_response import UpdatePrayerRequestResponse
 from bible_way.presenters.delete_prayer_request_response import DeletePrayerRequestResponse
@@ -572,6 +584,69 @@ def unlike_prayer_request_view(request):
         unlike_prayer_request_interactor(prayer_request_id=prayer_request_id, user_id=user_id)
     return response
 
+# ==================== Testimonial APIs ====================
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_testimonial_view(request):
+    user_id = str(request.user.user_id)
+    description = request.data.get('description')
+    rating = request.data.get('rating')
+    
+    try:
+        rating = int(rating)
+    except (ValueError, TypeError):
+        rating = None
+    
+    media_files = request.FILES.getlist('media')
+    
+    response = CreateTestimonialInteractor(storage=UserDB(), response=CreateTestimonialResponse()).\
+        create_testimonial_interactor(user_id=user_id, description=description, rating=rating, media_files=media_files)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([])
+def get_testimonials_view(request):
+    limit = request.query_params.get('limit', 10)
+    offset = request.query_params.get('offset', 0)
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
+    
+    try:
+        offset = int(offset)
+    except (ValueError, TypeError):
+        offset = 0
+    
+    response = GetTestimonialsInteractor(storage=UserDB(), response=GetTestimonialsResponse()).\
+        get_testimonials_interactor(limit=limit, offset=offset)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_user_testimonials_view(request):
+    user_id = str(request.user.user_id)
+    limit = request.query_params.get('limit', 10)
+    offset = request.query_params.get('offset', 0)
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
+    
+    try:
+        offset = int(offset)
+    except (ValueError, TypeError):
+        offset = 0
+    
+    response = GetUserTestimonialsInteractor(storage=UserDB(), response=GetUserTestimonialsResponse()).\
+        get_user_testimonials_interactor(user_id=user_id, limit=limit, offset=offset)
+    return response
+
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -778,6 +853,49 @@ def admin_get_languages_view(request):
 def admin_get_age_groups_view(request):
     response = AdminGetAgeGroupsInteractor(storage=UserDB(), response=AdminGetAgeGroupsResponse()).\
         get_age_groups_interactor()
+    return response
+
+# ==================== Admin Testimonial APIs ====================
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_get_testimonials_view(request):
+    limit = request.query_params.get('limit', 10)
+    offset = request.query_params.get('offset', 0)
+    status_filter = request.query_params.get('status', 'all')
+    
+    try:
+        limit = int(limit)
+    except (ValueError, TypeError):
+        limit = 10
+    
+    try:
+        offset = int(offset)
+    except (ValueError, TypeError):
+        offset = 0
+    
+    response = AdminGetTestimonialsInteractor(storage=UserDB(), response=AdminGetTestimonialsResponse()).\
+        get_testimonials_interactor(limit=limit, offset=offset, status_filter=status_filter)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_approve_testimonial_view(request):
+    testimonial_id = request.data.get('testimonial_id')
+    
+    response = AdminApproveTestimonialInteractor(storage=UserDB(), response=AdminApproveTestimonialResponse()).\
+        approve_testimonial_interactor(testimonial_id=testimonial_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_reject_testimonial_view(request):
+    testimonial_id = request.data.get('testimonial_id')
+    
+    response = AdminRejectTestimonialInteractor(storage=UserDB(), response=AdminRejectTestimonialResponse()).\
+        reject_testimonial_interactor(testimonial_id=testimonial_id)
     return response
 
 @api_view(['POST'])

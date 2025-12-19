@@ -61,6 +61,11 @@ urlpatterns = [
     # ==================== Wallpaper APIs ====================
     path("wallpapers/all", get_all_wallpapers_view),
     
+    # ==================== Testimonial APIs ====================
+    path("testimonial/create", create_testimonial_view),
+    path("testimonials/all", get_testimonials_view),
+    path("testimonial/user/me", get_user_testimonials_view),
+    
     # ==================== Verse APIs ====================
     path("verse/daily", get_verse_view),
     path("verse/all", get_all_verses_view),
@@ -100,6 +105,9 @@ urlpatterns = [
     path("admin/languages", admin_get_languages_view),
     path("admin/book/create", admin_create_book_view),
     path("admin/book/chapters/create", admin_create_chapters_view),
+    path("admin/testimonials", admin_get_testimonials_view),
+    path("admin/testimonial/approve", admin_approve_testimonial_view),
+    path("admin/testimonial/reject", admin_reject_testimonial_view),
     
     # ==================== Django Admin (must be after custom admin APIs) ====================
     path("admin/", admin.site.urls),

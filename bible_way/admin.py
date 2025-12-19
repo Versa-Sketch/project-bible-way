@@ -11,6 +11,7 @@ from .models import (
     Promotion,
     PromotionImage,
     PrayerRequest,
+    Testimonial,
     Verse,
     ShareLink,
     Category,
@@ -142,6 +143,19 @@ class PrayerRequestAdmin(admin.ModelAdmin):
     list_filter = ('created_at', 'updated_at')
     search_fields = ('description', 'user__username')
     readonly_fields = ('prayer_request_id', 'created_at', 'updated_at')
+    raw_id_fields = ('user',)
+    
+    def description_preview(self, obj):
+        return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
+    description_preview.short_description = 'Description Preview'
+
+
+@admin.register(Testimonial)
+class TestimonialAdmin(admin.ModelAdmin):
+    list_display = ('testimonial_id', 'user', 'description_preview', 'rating', 'is_verified', 'created_at', 'updated_at')
+    list_filter = ('is_verified', 'rating', 'created_at', 'updated_at')
+    search_fields = ('description', 'user__username')
+    readonly_fields = ('testimonial_id', 'created_at', 'updated_at')
     raw_id_fields = ('user',)
     
     def description_preview(self, obj):
