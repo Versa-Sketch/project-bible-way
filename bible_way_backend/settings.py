@@ -208,6 +208,13 @@ AWS_DEFAULT_ACL = 'public-read'
 AWS_SES_REGION = os.getenv('AWS_SES_REGION', 'ap-south-1')  # Default to ap-south-1 (Mumbai)
 AWS_SES_FROM_EMAIL = os.getenv('AWS_SES_FROM_EMAIL', 'noreply@bibleway.com')
 
+# -------------------------------------------------------------------
+# ZEPTOMAIL CONFIGURATION
+# -------------------------------------------------------------------
+ZEPTOMAIL_API_TOKEN = os.getenv('ZEPTOMAIL_API_TOKEN', '')
+ZEPTOMAIL_FROM_EMAIL = os.getenv('ZEPTOMAIL_FROM_EMAIL', 'noreply@linchpinsoftsolution.com')
+ZEPTOMAIL_OTP_EXPIRY_MINUTES = int(os.getenv('ZEPTOMAIL_OTP_EXPIRY_MINUTES', '15'))
+
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 

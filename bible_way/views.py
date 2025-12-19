@@ -7,6 +7,12 @@ from bible_way.interactors.singup_interactor import SignupInteractor
 from bible_way.presenters.singup_response import SignupResponse
 from bible_way.interactors.login_interactor import LoginInteractor
 from bible_way.presenters.login_response import LoginResponse
+from bible_way.interactors.logout_interactor import LogoutInteractor
+from bible_way.presenters.logout_response import LogoutResponse
+from bible_way.interactors.verify_email_interactor import VerifyEmailInteractor
+from bible_way.presenters.verify_email_response import VerifyEmailResponse
+from bible_way.interactors.resend_verification_email_interactor import ResendVerificationEmailInteractor
+from bible_way.presenters.resend_verification_email_response import ResendVerificationEmailResponse
 from bible_way.interactors.google_authentication_interactor import GoogleAuthenticationInteractor
 from bible_way.presenters.google_auth_response import GoogleAuthResponse
 from bible_way.interactors.user_profile_interactor import UserProfileInteractor
@@ -167,6 +173,47 @@ def login_view(request):
     password = request.data.get('password')
     response = LoginInteractor(storage=UserDB(), response=LoginResponse(), authentication=UserAuthentication()).\
         login_interactor(email=email, password=password)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    user_id = str(request.user.user_id)
+    response = LogoutInteractor(storage=UserDB(), response=LogoutResponse()).\
+        logout_interactor(user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def verify_email_view(request):
+    email = request.data.get('email')
+    otp = request.data.get('otp')
+    
+    if not email or not otp:
+        return VerifyEmailResponse().invalid_otp_response()
+    
+    response = VerifyEmailInteractor(
+        storage=UserDB(), 
+        response=VerifyEmailResponse(), 
+        authentication=UserAuthentication()
+    ).verify_email_interactor(email=email, otp=otp)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def resend_verification_email_view(request):
+    email = request.data.get('email')
+    
+    if not email:
+        return ResendVerificationEmailResponse().user_not_found_response()
+    
+    response = ResendVerificationEmailInteractor(
+        storage=UserDB(), 
+        response=ResendVerificationEmailResponse()
+    ).resend_verification_email_interactor(email=email)
     return response
 
 @api_view(['POST'])

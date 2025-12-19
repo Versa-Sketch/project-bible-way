@@ -21,6 +21,10 @@ class LoginInteractor:
         if not user:
             return self.response.invalid_credentials_response()
         
+        # Check if email is verified (only for EMAIL auth provider)
+        if user.auth_provider in ['EMAIL', 'BOTH'] and not user.is_email_verified:
+            return self.response.email_not_verified_response()
+        
         tokens = self.authentication.create_tokens(user=user)
         
         response_dto = LoginResponseDTO(

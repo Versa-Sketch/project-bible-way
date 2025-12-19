@@ -41,7 +41,8 @@ class UserDB:
             age=age,
             preferred_language=preferred_language,
             password=hashed_password,
-            profile_picture_url=profile_picture_url
+            profile_picture_url=profile_picture_url,
+            is_email_verified=False
         )
         
         return user
@@ -69,7 +70,8 @@ class UserDB:
             age=age,
             preferred_language=preferred_language,
             profile_picture_url=profile_picture_url,
-            auth_provider='GOOGLE'
+            auth_provider='GOOGLE',
+            is_email_verified=True  # Google already verified the email
         )
         user.set_unusable_password()
         user.save()
@@ -77,6 +79,21 @@ class UserDB:
     
     def update_user_auth_provider(self, user: User, provider: str) -> User:
         user.auth_provider = provider
+        user.save()
+        return user
+    
+    def update_user_otp(self, user: User, otp: str, expiry) -> User:
+        """Update user's email verification OTP and expiry"""
+        user.email_verification_otp = otp
+        user.otp_expiry = expiry
+        user.save()
+        return user
+    
+    def verify_user_email(self, user: User) -> User:
+        """Mark user's email as verified and clear OTP fields"""
+        user.is_email_verified = True
+        user.email_verification_otp = None
+        user.otp_expiry = None
         user.save()
         return user
     

@@ -4,6 +4,11 @@ from bible_way.presenters.singup_response import SignupResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from rest_framework.response import Response
 from django.db import IntegrityError
+from bible_way.utils.otp_generator import generate_otp, get_otp_expiry
+from bible_way.utils.email_service import ZeptoMailService
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class SignupInteractor:
@@ -26,6 +31,7 @@ class SignupInteractor:
                 existing_user = self.storage.update_user_auth_provider(existing_user, 'BOTH')
                 from django.contrib.auth.hashers import make_password
                 existing_user.password = make_password(password)
+                existing_user.is_email_verified = True  # Google already verified the email
                 if profile_picture_url:
                     existing_user.profile_picture_url = profile_picture_url
                 existing_user.save()
@@ -66,11 +72,25 @@ class SignupInteractor:
             else:
                 return self.response.internal_server_error_response()
     
-        tokens = self.authentication.create_tokens(user=user)
+        # Generate OTP and send verification email
+        otp = generate_otp()
+        otp_expiry = get_otp_expiry()
         
-        response_dto = SignupResponseDTO(
-            access_token=tokens['access'],
-            refresh_token=tokens['refresh']
+        # Update user with OTP
+        user = self.storage.update_user_otp(user, otp, otp_expiry)
+        
+        # Send verification email
+        email_service = ZeptoMailService()
+        email_sent, email_message = email_service.send_verification_email(
+            user_email=email,
+            user_name=username,
+            otp=otp
         )
-        response = self.response.user_signup_success_response(response_dto=response_dto)
-        return response
+        
+        if not email_sent:
+            logger.error(f"Failed to send verification email to {email}: {email_message}")
+            # Still return success but log the error
+            # User can request resend later
+        
+        # Return email verification required response (no tokens)
+        return self.response.email_verification_required_response()

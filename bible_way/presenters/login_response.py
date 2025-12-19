@@ -37,4 +37,15 @@ class LoginResponse:
             },
             status=status.HTTP_200_OK
         )
+    
+    @staticmethod
+    def email_not_verified_response() -> Response:
+        return Response(
+            {
+                "success": False,
+                "error": "Please verify your email before logging in. Check your email for the verification code.",
+                "error_code": "EMAIL_NOT_VERIFIED"
+            },
+            status=status.HTTP_403_FORBIDDEN
+        )
 

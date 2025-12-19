@@ -7,7 +7,10 @@ urlpatterns = [
     # ==================== Authentication APIs ====================
     path("user/signup", signup_view),
     path("user/login", login_view),
+    path("user/logout", logout_view),
     path("user/google/authentication", google_authentication_view),
+    path("user/verify-email", verify_email_view),
+    path("user/resend-verification-email", resend_verification_email_view),
     
     # ==================== User Profile APIs ====================
     path("user/profile/me", get_current_user_profile_view),

@@ -91,3 +91,14 @@ class SignupResponse:
             },
             status=status.HTTP_201_CREATED
         )
+    
+    @staticmethod
+    def email_verification_required_response() -> Response:
+        return Response(
+            {
+                "success": True,
+                "message": "Account created successfully. Please check your email to verify your account.",
+                "error_code": "EMAIL_VERIFICATION_REQUIRED"
+            },
+            status=status.HTTP_201_CREATED
+        )

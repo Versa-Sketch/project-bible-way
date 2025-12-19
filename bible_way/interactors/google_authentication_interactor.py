@@ -45,6 +45,7 @@ class GoogleAuthenticationInteractor:
             if existing_user.auth_provider == 'EMAIL':
                 existing_user = self.storage.update_user_auth_provider(existing_user, 'BOTH')
                 existing_user.google_id = google_id
+                existing_user.is_email_verified = True  # Google already verified the email
                 if profile_picture_url:
                     existing_user.profile_picture_url = profile_picture_url
                 existing_user.save()

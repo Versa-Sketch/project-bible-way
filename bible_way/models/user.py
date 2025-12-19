@@ -22,6 +22,9 @@ class User(AbstractUser):
     )
     google_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
     profile_picture_url = models.URLField(null=True, blank=True)
+    is_email_verified = models.BooleanField(default=False)
+    email_verification_otp = models.CharField(max_length=4, null=True, blank=True)
+    otp_expiry = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.username} ({self.email})"
