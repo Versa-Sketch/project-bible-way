@@ -2157,6 +2157,158 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 
 ---
 
+### 9.3 Like Verse
+**Endpoint:** `POST /verse/like`  
+**Authentication:** Required (JWT)
+
+**Description:**
+Allows an authenticated user to like a verse. Each user can only like a verse once.
+
+**Request Body:**
+```json
+{
+  "verse_id": "uuid-string (required)"
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Verse liked successfully",
+  "reaction_id": "uuid-string",
+  "verse_id": "uuid-string",
+  "reaction_type": "like"
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Missing verse_id:
+```json
+{
+  "success": false,
+  "error": "Verse ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - Verse not found:
+```json
+{
+  "success": false,
+  "error": "Verse not found",
+  "error_code": "VERSE_NOT_FOUND"
+}
+```
+
+- **400 Bad Request** - Already liked:
+```json
+{
+  "success": false,
+  "error": "You have already liked this verse",
+  "error_code": "ALREADY_LIKED"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to like verse: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- A user can only like a verse once
+- The like count is updated automatically
+- The reaction is stored with the user and verse relationship
+
+---
+
+### 9.4 Unlike Verse
+**Endpoint:** `POST /verse/unlike`  
+**Authentication:** Required (JWT)
+
+**Description:**
+Allows an authenticated user to remove their like from a verse.
+
+**Request Body:**
+```json
+{
+  "verse_id": "uuid-string (required)"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Verse unliked successfully",
+  "verse_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Missing verse_id:
+```json
+{
+  "success": false,
+  "error": "Verse ID is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - Verse not found:
+```json
+{
+  "success": false,
+  "error": "Verse not found",
+  "error_code": "VERSE_NOT_FOUND"
+}
+```
+
+- **400 Bad Request** - Not liked:
+```json
+{
+  "success": false,
+  "error": "You haven't liked this verse",
+  "error_code": "NOT_LIKED"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to unlike verse: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- User must have previously liked the verse to unlike it
+- The like count is decremented automatically
+- User can like the verse again after unliking
+
+---
+
 ## 10. Admin APIs
 
 ### 10.1 Admin Create Verse
@@ -3008,7 +3160,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 
 ---
 
-### 11.3 Get Books by Category and Age Group
+### 11.3 Get Books by Category and Age Group (POST)
 **Endpoint:** `POST /books/get`  
 **Authentication:** Required (JWT)
 
@@ -3016,8 +3168,103 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 ```json
 {
   "category_id": "uuid-string (required)",
-  "age_group": "uuid-string (required)"
+  "age_group": "uuid-string (required)"  // OR "age_group_id": "uuid-string"
 }
+```
+
+**Note:** The endpoint accepts either `age_group` or `age_group_id` in the request body.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Books retrieved successfully",
+  "data": [
+    {
+      "book_id": "uuid-string",
+      "title": "The Book of Genesis",
+      "description": "string",
+      "category_id": "uuid-string",
+      "age_group_id": "uuid-string",
+      "language_id": "uuid-string",
+      "cover_image_url": "https://s3.amazonaws.com/bucket/books/cover_images/...",
+      "book_order": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T12:00:00",
+      "updated_at": "2024-01-01T12:00:00"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Missing category:
+```json
+{
+  "success": false,
+  "error": "Category is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing age group:
+```json
+{
+  "success": false,
+  "error": "Age group is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Category not found:
+```json
+{
+  "success": false,
+  "error": "Category with id '<category_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Age group not found:
+```json
+{
+  "success": false,
+  "error": "Age group with id '<age_group_id>' does not exist",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve books: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+---
+
+### 11.3.1 Get Books by Category and Age Group (GET)
+**Endpoint:** `GET /books/?category_id=<uuid>&age_group_id=<uuid>`  
+**Authentication:** Required (JWT)
+
+**Query Parameters:**
+- `category_id` (string, required) - UUID of the category
+- `age_group_id` (string, required) - UUID of the age group
+
+**Example Request:**
+```
+GET /books/?category_id=123e4567-e89b-12d3-a456-426614174000&age_group_id=123e4567-e89b-12d3-a456-426614174001
+Headers: Authorization: Bearer <access_token>
 ```
 
 **Success Response (200 OK):**
@@ -3052,11 +3299,20 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 }
 ```
 
-- **400 Bad Request** - Validation error:
+- **400 Bad Request** - Missing category:
 ```json
 {
   "success": false,
   "error": "Category is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing age group:
+```json
+{
+  "success": false,
+  "error": "Age group is required",
   "error_code": "VALIDATION_ERROR"
 }
 ```
@@ -3166,75 +3422,169 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 
 ---
 
-## 12. Highlight APIs
-
-### 12.1 Create Highlight
-**Endpoint:** `POST /highlight/create`  
-## 12. Share Link APIs
-
-### 12.1 Create Post Share Link
-**Endpoint:** `POST /share/post/create`  
+### 11.5 Search Chapters
+**Endpoint:** `POST /books/search`  
 **Authentication:** Required (JWT)
+
+**Description:**  
+Search for text within chapter blocks using Elasticsearch. Returns matching text blocks with their associated chapter information, including highlighted matched text. Supports fuzzy matching for typo tolerance.
 
 **Request Body:**
 ```json
 {
-  "book_id": "string (required)",
-  "block_id": "string (optional)",
-  "start_offset": "string (required)",
-  "end_offset": "string (required)",
-  "color": "string (optional, default: 'yellow')"
-  "post_id": "string (required) - UUID of the post to share"
+  "book_id": "uuid-string (required)",
+  "language_id": "uuid-string (required)",
+  "search_text": "string (required)"
 }
 ```
 
-**Success Response (201 Created):**
+**Example Request:**
+```json
+{
+  "book_id": "123e4567-e89b-12d3-a456-426614174000",
+  "language_id": "123e4567-e89b-12d3-a456-426614174001",
+  "search_text": "town"
+}
+```
+
+**Success Response (200 OK):**
 ```json
 {
   "success": true,
-  "message": "Highlight created successfully",
-  "highlight_id": "uuid-string"
-  "message": "Share link created successfully",
-  "share_url": "/s/p/abc123xyz",
-  "share_token": "abc123xyz"
+  "message": "Search completed successfully",
+  "data": {
+    "results": [
+      {
+        "block_id": "block-0",
+        "text": "At dawn, the town of Bracken Hollow",
+        "highlighted_text": "At dawn, the <mark>town</mark> of Bracken Hollow",
+        "chapter_id": "d442a669-d96d-46a2-8b90-5b1beefb795a",
+        "chapter_name": "Untitled document (1)"
+      },
+      {
+        "block_id": "block-289",
+        "text": "And Jehovah came down to see the city and the tower, which the children of men builded",
+        "highlighted_text": "And Jehovah came down to see the <mark>city</mark> and the tower, which the children of men builded",
+        "chapter_id": "ddb8fbdc-6f46-40ee-8388-c2f9374fe1e0",
+        "chapter_name": "Genesis"
+      }
+    ],
+    "total_results": 64
+  }
 }
 ```
 
+**Response Fields:**
+- `block_id` (string) - Unique identifier of the text block
+- `text` (string) - Original text content without highlighting
+- `highlighted_text` (string, optional) - Text with `<mark>` tags around matched portions. Only present when matches are found.
+- `chapter_id` (string) - UUID of the chapter containing this block
+- `chapter_name` (string) - Name of the chapter
+- `total_results` (number) - Total number of matching results
+
 **Error Responses:**
 
-- **400 Bad Request** - Validation error:
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Missing book_id:
 ```json
 {
   "success": false,
   "error": "book_id is required",
-  "error": "post_id is required",
   "error_code": "VALIDATION_ERROR"
 }
 ```
 
-- **400 Bad Request** - Missing required field:
+- **400 Bad Request** - Missing language_id:
 ```json
 {
   "success": false,
-  "error": "start_offset is required",
+  "error": "language_id is required",
   "error_code": "VALIDATION_ERROR"
 }
 ```
 
-- **404 Not Found** - Book not found:
+- **400 Bad Request** - Missing search_text:
 ```json
 {
   "success": false,
-  "error": "Book not found",
-  "error_code": "BOOK_NOT_FOUND"
-- **404 Not Found** - Post not found:
-```json
-{
-  "success": false,
-  "error": "Post not found",
-  "error_code": "POST_NOT_FOUND"
+  "error": "search_text is required",
+  "error_code": "VALIDATION_ERROR"
 }
 ```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to perform search: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- Uses Elasticsearch for fast full-text search across chapter metadata blocks
+- Supports fuzzy matching with automatic typo tolerance
+- Results are returned with relevance scoring
+- Search is case-insensitive
+- Searches within the `text` field of chapter blocks
+- **Highlighting**: Matched text is wrapped in `<mark>` tags in the `highlighted_text` field
+- Highlighting shows up to 3 fragments of 150 characters each around matches
+- Multiple matches in the same block are separated by " ... "
+- Frontend should render `<mark>` tags with CSS styling (e.g., yellow background)
+- If no highlighting is available, use the `text` field as fallback
+- Both `book_id` and `language_id` are used as filters to narrow down search scope
+- Maximum 100 results returned per request (pagination can be added if needed)
+
+**Search Features:**
+- **Full-text search:** Matches words within block text content
+- **Fuzzy matching:** Tolerates typos (e.g., "twon" will match "town")
+- **Fast performance:** Optimized for large datasets using Elasticsearch inverted index
+- **Relevance ranking:** Results sorted by relevance to search query
+
+---
+
+### 11.6 Get All Books
+**Endpoint:** `GET /books/all`  
+**Authentication:** Required (JWT)
+
+**Description:**  
+Retrieves all active books with their IDs and titles. This is a simplified endpoint for populating dropdowns or selection lists.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Books retrieved successfully",
+  "data": [
+    {
+      "book_id": "uuid-string",
+      "title": "Genesis"
+    },
+    {
+      "book_id": "uuid-string",
+      "title": "Exodus"
+    },
+    {
+      "book_id": "uuid-string",
+      "title": "Leviticus"
+    }
+  ],
+  "total_count": 66
+}
+```
+
+**Response Fields:**
+- `book_id` (string) - Unique book identifier (UUID)
+- `title` (string) - Book title
+- `total_count` (integer) - Total number of active books
+
+**Error Responses:**
 
 - **401 Unauthorized** - Missing or invalid token:
 ```json
@@ -3247,11 +3597,203 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 ```json
 {
   "success": false,
-  "error": "Failed to create highlight: <error_message>",
-  "error": "Failed to create share link: <error_message>",
+  "error": "Failed to retrieve books: <error_message>",
   "error_code": "INTERNAL_ERROR"
 }
 ```
+
+**Notes:**
+- Returns only active books (`is_active=True`)
+- Books are ordered by `book_order` and `title`
+- Returns minimal data (only ID and title) for efficiency
+- Accessible to any authenticated user (not admin-only)
+- Perfect for dropdown menus and selection lists in frontend
+
+---
+
+### 11.7 Get All Languages
+**Endpoint:** `GET /languages/all`  
+**Authentication:** Required (JWT)
+
+**Description:**  
+Retrieves all available languages with their IDs and display names. This is a public endpoint accessible to any authenticated user.
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Languages retrieved successfully",
+  "data": [
+    {
+      "language_id": "uuid-string",
+      "language_name": "EN",
+      "display_name": "English"
+    },
+    {
+      "language_id": "uuid-string",
+      "language_name": "ES",
+      "display_name": "Spanish"
+    },
+    {
+      "language_id": "uuid-string",
+      "language_name": "FR",
+      "display_name": "French"
+    }
+  ]
+}
+```
+
+**Response Fields:**
+- `language_id` (string) - Unique language identifier (UUID)
+- `language_name` (string) - Language code (e.g., "EN", "ES", "FR")
+- `display_name` (string) - Human-readable language name (e.g., "English", "Spanish")
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to retrieve languages: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- Returns all languages ordered by `language_name`
+- Accessible to any authenticated user (not admin-only)
+- The admin equivalent endpoint (`GET /admin/languages`) still exists for admin panel use
+- Perfect for language selection dropdowns in frontend
+- Includes both language code and display name for flexibility
+
+---
+
+## 12. Highlight APIs
+
+### 12.1 Create Highlight
+**Endpoint:** `POST /highlight/create`  
+**Authentication:** Required (JWT)
+
+**Description:**
+Creates a highlight for a specific text selection within a chapter. The highlight is associated with a book, chapter, and optional block, allowing users to mark and save important passages.
+
+**Request Body:**
+```json
+{
+  "book_id": "uuid-string (required)",
+  "chapter_id": "uuid-string (required)",
+  "block_id": "uuid-string (optional)",
+  "start_offset": "string (required)",
+  "end_offset": "string (required)",
+  "color": "string (optional, default: 'yellow')"
+}
+```
+
+**Example Request:**
+```json
+{
+  "book_id": "123e4567-e89b-12d3-a456-426614174000",
+  "chapter_id": "d442a669-d96d-46a2-8b90-5b1beefb795a",
+  "block_id": "block-5",
+  "start_offset": "10",
+  "end_offset": "50",
+  "color": "yellow"
+}
+```
+
+**Success Response (201 Created):**
+```json
+{
+  "success": true,
+  "message": "Highlight created successfully",
+  "highlight_id": "uuid-string"
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Missing book_id:
+```json
+{
+  "success": false,
+  "error": "book_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing chapter_id:
+```json
+{
+  "success": false,
+  "error": "chapter_id is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing start_offset:
+```json
+{
+  "success": false,
+  "error": "start_offset is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Missing end_offset:
+```json
+{
+  "success": false,
+  "error": "end_offset is required",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - Book not found:
+```json
+{
+  "success": false,
+  "error": "Book not found",
+  "error_code": "BOOK_NOT_FOUND"
+}
+```
+
+- **404 Not Found** - Chapter not found:
+```json
+{
+  "success": false,
+  "error": "Chapter not found",
+  "error_code": "CHAPTER_NOT_FOUND"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to create highlight: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- The `block_id` is optional and can be used to specify a particular block within the chapter
+- Default highlight color is 'yellow' if not specified
+- `start_offset` and `end_offset` define the text selection boundaries
+- The response includes the unique `highlight_id` which can be used for future operations
 
 ---
 
@@ -3259,11 +3801,17 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 **Endpoint:** `GET /highlight/book/<book_id>`  
 **Authentication:** Required (JWT)
 
-**Path Parameters:**
-- `book_id` (string, required) - The ID of the book
+**Description:**
+Retrieves all highlights created by the authenticated user for a specific book.
 
-**Query Parameters:**
-- `user_id` (string, optional) - User ID to get highlights for. If not provided, returns highlights for the authenticated user.
+**Path Parameters:**
+- `book_id` (string, required) - The UUID of the book
+
+**Example Request:**
+```
+GET /highlight/book/123e4567-e89b-12d3-a456-426614174000
+Authorization: Bearer <jwt_token>
+```
 
 **Success Response (200 OK):**
 ```json
@@ -3282,43 +3830,23 @@ This endpoint retrieves all verses with their like counts. For authenticated use
       "updated_at": "2024-01-01T12:00:00"
     }
   ]
-### 12.2 Create Profile Share Link
-**Endpoint:** `POST /share/profile/create`  
-**Authentication:** Required (JWT)
-
-**Request Body:**
-```json
-{
-  "user_id": "string (optional) - UUID of the user profile to share. Defaults to current user if not provided"
-}
-```
-
-**Success Response (201 Created):**
-```json
-{
-  "success": true,
-  "message": "Share link created successfully",
-  "share_url": "/s/u/xyz789abc",
-  "share_token": "xyz789abc"
 }
 ```
 
 **Error Responses:**
 
-- **400 Bad Request** - Validation error:
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Missing book_id:
 ```json
 {
   "success": false,
   "error": "book_id is required",
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-- **400 Bad Request** - User ID required:
-```json
-{
-  "success": false,
-  "error": "user_id is required",
   "error_code": "VALIDATION_ERROR"
 }
 ```
@@ -3341,16 +3869,32 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 }
 ```
 
+**Notes:**
+- Returns highlights **only for the authenticated user**
+- Returns an empty array `[]` if no highlights are found
+- Highlights are ordered by creation date (newest first)
+- `block_id` will be `null` if the highlight is not associated with a specific block
+
 ---
 
 ### 12.3 Delete Highlight
 **Endpoint:** `DELETE /highlight/delete`  
 **Authentication:** Required (JWT)
 
+**Description:**
+Deletes a specific highlight. Users can only delete their own highlights.
+
 **Request Body:**
 ```json
 {
-  "highlight_id": "string (required)"
+  "highlight_id": "uuid-string (required)"
+}
+```
+
+**Example Request:**
+```json
+{
+  "highlight_id": "123e4567-e89b-12d3-a456-426614174000"
 }
 ```
 
@@ -3364,7 +3908,14 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 
 **Error Responses:**
 
-- **400 Bad Request** - Validation error:
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - Missing highlight_id:
 ```json
 {
   "success": false,
@@ -3373,7 +3924,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 }
 ```
 
-- **404 Not Found:**
+- **404 Not Found** - Highlight not found:
 ```json
 {
   "success": false,
@@ -3382,7 +3933,7 @@ This endpoint retrieves all verses with their like counts. For authenticated use
 }
 ```
 
-- **403 Forbidden** - Unauthorized:
+- **403 Forbidden** - Not authorized to delete:
 ```json
 {
   "success": false,
@@ -3399,6 +3950,11 @@ This endpoint retrieves all verses with their like counts. For authenticated use
   "error_code": "INTERNAL_ERROR"
 }
 ```
+
+**Notes:**
+- Users can only delete their own highlights
+- Returns `403 Forbidden` if attempting to delete another user's highlight
+- Deletion is permanent and cannot be undone
 
 ---
 

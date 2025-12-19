@@ -1,15 +1,17 @@
 from bible_way.storage import UserDB
 from bible_way.presenters.admin.create_chapters_response import CreateChaptersResponse
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
+from bible_way.services.elasticsearch_service import ElasticsearchService
 from rest_framework.response import Response
 import json
 import re
 
 
 class CreateChaptersInteractor:
-    def __init__(self, storage: UserDB, response: CreateChaptersResponse):
+    def __init__(self, storage: UserDB, response: CreateChaptersResponse, es_service: ElasticsearchService = None):
         self.storage = storage
         self.response = response
+        self.es_service = es_service or ElasticsearchService()
 
     def _sanitize_book_title(self, title: str) -> str:
         title_lower = title.lower()
@@ -76,6 +78,12 @@ class CreateChaptersInteractor:
                 except Exception as e:
                     return self.response.error_response(f"Failed to upload file for chapter at index {idx}: {str(e)}")
                 
+                video_url = chapter_data.get('video_url')
+                if video_url and isinstance(video_url, str):
+                    video_url = video_url.strip() if video_url.strip() else None
+                else:
+                    video_url = None
+                
                 metadata = chapter_data.get('metadata', {})
                 if isinstance(metadata, str):
                     try:
@@ -90,9 +98,28 @@ class CreateChaptersInteractor:
                         description=chapter_data['description'].strip(),
                         chapter_url=chapter_url,
                         chapter_number=current_chapter_number,
-                        metadata=metadata if isinstance(metadata, dict) else {}
+                        metadata=metadata if isinstance(metadata, dict) else {},
+                        video_url=video_url
                     )
                     created_chapters.append(chapter)
+                    
+                    # Index chapter in Elasticsearch
+                    try:
+                        chapter_name = metadata.get('chapterName', '') if isinstance(metadata, dict) else ''
+                        # Use language_id directly (book.language is already loaded via select_related)
+                        self.es_service.index_chapter(
+                            chapter_id=str(chapter.chapter_id),
+                            book_id=str(book.book_id),
+                            language_id=str(book.language.language_id),
+                            chapter_name=chapter_name,
+                            metadata=metadata if isinstance(metadata, dict) else {}
+                        )
+                    except Exception as es_error:
+                        # Log error but don't fail the chapter creation
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Failed to index chapter {chapter.chapter_id} in Elasticsearch: {str(es_error)}")
+                    
                     current_chapter_number += 1
                 except Exception as e:
                     return self.response.error_response(f"Failed to create chapter at index {idx}: {str(e)}")

@@ -259,3 +259,14 @@ else:
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
     }
+
+# -------------------------------------------------------------------
+# ELASTICSEARCH CONFIGURATION
+# -------------------------------------------------------------------
+ELASTICSEARCH_HOST = os.getenv('ELASTICSEARCH_HOST', 'localhost')
+ELASTICSEARCH_PORT = int(os.getenv('ELASTICSEARCH_PORT', '9200'))
+ELASTICSEARCH_USE_SSL = os.getenv('ELASTICSEARCH_USE_SSL', 'False').lower() == 'true'
+ELASTICSEARCH_VERIFY_CERTS = os.getenv('ELASTICSEARCH_VERIFY_CERTS', 'True').lower() == 'true'
+ELASTICSEARCH_USERNAME = os.getenv('ELASTICSEARCH_USERNAME', '')
+ELASTICSEARCH_PASSWORD = os.getenv('ELASTICSEARCH_PASSWORD', '')
+ELASTICSEARCH_INDEX_NAME = os.getenv('ELASTICSEARCH_INDEX_NAME', 'chapters_index')

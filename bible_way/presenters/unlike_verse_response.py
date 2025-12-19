@@ -2,17 +2,17 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-class CreateHighlightResponse:
+class UnlikeVerseResponse:
 
     @staticmethod
-    def highlight_created_successfully_response(highlight_id: str) -> Response:
+    def verse_unliked_successfully_response(verse_id: str) -> Response:
         return Response(
             {
                 "success": True,
-                "message": "Highlight created successfully",
-                "highlight_id": highlight_id
+                "message": "Verse unliked successfully",
+                "verse_id": verse_id
             },
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_200_OK
         )
 
     @staticmethod
@@ -27,25 +27,25 @@ class CreateHighlightResponse:
         )
 
     @staticmethod
-    def book_not_found_response() -> Response:
+    def verse_not_found_response() -> Response:
         return Response(
             {
                 "success": False,
-                "error": "Book not found",
-                "error_code": "BOOK_NOT_FOUND"
+                "error": "Verse not found",
+                "error_code": "VERSE_NOT_FOUND"
             },
             status=status.HTTP_404_NOT_FOUND
         )
 
     @staticmethod
-    def chapter_not_found_response() -> Response:
+    def not_liked_response() -> Response:
         return Response(
             {
                 "success": False,
-                "error": "Chapter not found",
-                "error_code": "CHAPTER_NOT_FOUND"
+                "error": "You haven't liked this verse",
+                "error_code": "NOT_LIKED"
             },
-            status=status.HTTP_404_NOT_FOUND
+            status=status.HTTP_400_BAD_REQUEST
         )
 
     @staticmethod

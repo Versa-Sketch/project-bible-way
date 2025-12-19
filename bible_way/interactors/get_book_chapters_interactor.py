@@ -30,6 +30,7 @@ class GetBookChaptersInteractor:
                     "chapter_number": chapter.chapter_number,
                     "chapter_name": chapter.chapter_name,
                     "chapter_url": chapter.chapter_url,
+                    "video_url": chapter.video_url,
                     "metadata": chapter.metadata if chapter.metadata else {},
                     "created_at": chapter.created_at.isoformat() if chapter.created_at else None,
                     "updated_at": chapter.updated_at.isoformat() if chapter.updated_at else None

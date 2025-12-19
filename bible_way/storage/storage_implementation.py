@@ -1332,6 +1332,20 @@ class UserDB:
         )
         return reaction
     
+    def unlike_verse(self, verse_id: str, user_id: str) -> bool:
+        """Unlike a verse by deleting the user's reaction"""
+        try:
+            verse = Verse.objects.get(verse_id=verse_id)
+        except Verse.DoesNotExist:
+            raise Exception("Verse not found")
+        
+        existing_reaction = self.check_verse_reaction_exists(user_id, verse_id)
+        if not existing_reaction:
+            raise Exception("You haven't liked this verse")
+        
+        existing_reaction.delete()
+        return True
+    
     def get_verse(self, user_id: str):
         try:
             verse = Verse.objects.annotate(
@@ -1454,6 +1468,10 @@ class UserDB:
     def get_all_languages(self):
         return Language.objects.all().order_by('language_name')
     
+    def get_all_books(self):
+        """Get all active books - accessible to all authenticated users"""
+        return Book.objects.filter(is_active=True).order_by('book_order', 'title')
+
     def get_category_by_id(self, category_id: str):
         try:
             return Category.objects.get(category_id=category_id)
@@ -1511,7 +1529,7 @@ class UserDB:
         return Chapters.objects.filter(book_id=book_id).count()
     
     def create_chapter(self, book_id: str, title: str, description: str, chapter_url: str, 
-                      chapter_number: int, metadata: dict = None) -> Chapters:
+                      chapter_number: int, metadata: dict = None, video_url: str = None) -> Chapters:
         book = Book.objects.get(book_id=book_id)
         chapter = Chapters.objects.create(
             book=book,
@@ -1519,7 +1537,8 @@ class UserDB:
             description=description or '',
             chapter_url=chapter_url,
             chapter_number=chapter_number,
-            metadata=metadata or {}
+            metadata=metadata or {},
+            video_url=video_url
         )
         return chapter
     
@@ -1535,14 +1554,16 @@ class UserDB:
         book.save()
         return book
     
-    def create_highlight(self, user_id: str, book_id: str, block_id: str = None, 
+    def create_highlight(self, user_id: str, book_id: str, chapter_id: str, block_id: str = None, 
                         start_offset: str = None, end_offset: str = None, color: str = 'yellow') -> Highlight:
         user = User.objects.get(user_id=user_id)
         book = Book.objects.get(book_id=book_id)
+        chapter = Chapters.objects.get(chapter_id=chapter_id)
         
         highlight = Highlight.objects.create(
             user=user,
             book=book,
+            chapter=chapter,
             block_id=block_id,
             start_offset=start_offset,
             end_offset=end_offset,

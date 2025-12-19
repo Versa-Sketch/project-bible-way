@@ -6,47 +6,45 @@ from .user import User
 
 class LanguageChoices(models.TextChoices):
     ENGLISH = 'EN', 'English'
-    SPANISH = 'ES', 'Spanish'
-    FRENCH = 'FR', 'French'
     GERMAN = 'DE', 'German'
+    FRENCH = 'FR', 'French'
+    SPANISH = 'ES', 'Spanish'
     ITALIAN = 'IT', 'Italian'
     PORTUGUESE = 'PT', 'Portuguese'
     RUSSIAN = 'RU', 'Russian'
-    CHINESE_SIMPLIFIED = 'ZH_CN', 'Chinese (Simplified)'
-    CHINESE_TRADITIONAL = 'ZH_TW', 'Chinese (Traditional)'
-    JAPANESE = 'JA', 'Japanese'
-    KOREAN = 'KO', 'Korean'
-    ARABIC = 'AR', 'Arabic'
-    HINDI = 'HI', 'Hindi'
-    BENGALI = 'BN', 'Bengali'
-    URDU = 'UR', 'Urdu'
-    TURKISH = 'TR', 'Turkish'
-    POLISH = 'PL', 'Polish'
     DUTCH = 'NL', 'Dutch'
-    GREEK = 'EL', 'Greek'
-    HEBREW = 'HE', 'Hebrew'
     SWEDISH = 'SV', 'Swedish'
-    NORWEGIAN = 'NO', 'Norwegian'
-    DANISH = 'DA', 'Danish'
-    FINNISH = 'FI', 'Finnish'
-    CZECH = 'CS', 'Czech'
-    ROMANIAN = 'RO', 'Romanian'
-    HUNGARIAN = 'HU', 'Hungarian'
-    THAI = 'TH', 'Thai'
-    VIETNAMESE = 'VI', 'Vietnamese'
-    INDONESIAN = 'ID', 'Indonesian'
-    MALAY = 'MS', 'Malay'
-    TAGALOG = 'TL', 'Tagalog'
-    SWAHILI = 'SW', 'Swahili'
-    AMHARIC = 'AM', 'Amharic'
-    YORUBA = 'YO', 'Yoruba'
-    ZULU = 'ZU', 'Zulu'
-    PERSIAN = 'FA', 'Persian'
-    UKRAINIAN = 'UK', 'Ukrainian'
+    POLISH = 'PL', 'Polish'
+    GREEK = 'EL', 'Greek'
+    ASSAMESE = 'AS', 'Assamese'
+    BENGALI = 'BN', 'Bengali'
+    BODO = 'BRX', 'Bodo'
+    HINDI = 'HI', 'Hindi'
+    GUJARATI = 'GU', 'Gujarati'
+    KANNADA = 'KN', 'Kannada'
+    KASHMIRI = 'KS', 'Kashmiri'
+    KONKANI = 'KOK', 'Konkani'
+    MAITHILI = 'MAI', 'Maithili'
+    MALAYALAM = 'ML', 'Malayalam'
+    MANIPURI = 'MNI', 'Manipuri'
+    MARATHI = 'MR', 'Marathi'
+    NEPALI = 'NE', 'Nepali'
+    ODIA = 'OR', 'Odia'
+    PUNJABI = 'PA', 'Punjabi'
+    SANSKRIT = 'SA', 'Sanskrit'
+    SANTALI = 'SAT', 'Santali'
+    SINDHI = 'SD', 'Sindhi'
     TAMIL = 'TA', 'Tamil'
     TELUGU = 'TE', 'Telugu'
-    MARATHI = 'MR', 'Marathi'
-    GUJARATI = 'GU', 'Gujarati'
+    URDU = 'UR', 'Urdu'
+    DOGRI = 'DOG', 'Dogri'
+    SWAHILI = 'SW', 'Swahili'
+    AFRIKAANS = 'AF', 'Afrikaans'
+    HAUSA = 'HA', 'Hausa'
+    ZULU = 'ZU', 'Zulu'
+    YORUBA = 'YO', 'Yoruba'
+    CHINESE_SIMPLIFIED = 'ZH_CN', 'Chinese (Simplified)'
+    ARABIC = 'AR', 'Arabic'
 
 
 class CategoryChoices(models.TextChoices):
@@ -89,7 +87,7 @@ class Category(models.Model):
 class Language(models.Model):
     language_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     language_name = models.CharField(
-        max_length=6,
+        max_length=10,
         choices=LanguageChoices.choices,
         default=LanguageChoices.ENGLISH
     )
@@ -155,7 +153,7 @@ class Chapters(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     metadata = models.JSONField(blank=True, null=True, default=dict, help_text="Additional metadata (e.g., testament: Old/New)")
-
+    video_url = models.URLField(blank=True, null=True, help_text="URL/path to the video file")
 
     class Meta:
         db_table = 'bible_way_chapters'
@@ -203,12 +201,14 @@ class Highlight(models.Model):
     highlight_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='highlights')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='highlights')
-    block_id = models.UUIDField(blank=True, null=True)
+    chapter = models.ForeignKey(Chapters, on_delete=models.CASCADE, related_name='highlights',default=None)
+    block_id = models.CharField(max_length=255, blank=True, null=True)
     start_offset = models.CharField(max_length=255)
     end_offset = models.CharField(max_length=255)
     color = models.CharField(max_length=50, blank=True, default='yellow')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
 
     class Meta:
         db_table = 'bible_way_highlight'

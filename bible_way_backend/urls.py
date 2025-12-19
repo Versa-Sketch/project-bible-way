@@ -76,12 +76,19 @@ urlpatterns = [
     path("verse/daily", get_verse_view),
     path("verse/all", get_all_verses_view),
     path("verse/like", like_verse_view),
+    path("verse/unlike", unlike_verse_view),
     
     # ==================== Books APIs ====================
     path("books/categories/", get_categories_view),
     path("books/age-groups/", get_age_groups_view),
     path("books/get", get_books_by_category_and_age_group_view),
+    path("books/", get_books_by_category_and_age_group_get_view),
+    path("books/all", get_all_books_view),
     path("books/chapters/get", get_book_chapters_view),
+    path("books/search", search_chapters_view),
+    
+    # ==================== Language APIs ====================
+    path("languages/all", get_all_languages_view),
     
     # ==================== Highlight APIs ====================
     path("highlight/create", create_highlight_view),

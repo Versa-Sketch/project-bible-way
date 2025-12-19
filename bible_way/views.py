@@ -57,6 +57,7 @@ from bible_way.interactors.get_prayer_request_comments_interactor import GetPray
 from bible_way.interactors.like_prayer_request_interactor import LikePrayerRequestInteractor
 from bible_way.interactors.unlike_prayer_request_interactor import UnlikePrayerRequestInteractor
 from bible_way.interactors.like_verse_interactor import LikeVerseInteractor
+from bible_way.interactors.unlike_verse_interactor import UnlikeVerseInteractor
 from bible_way.interactors.get_verse_interactor import GetVerseInteractor
 from bible_way.interactors.get_all_verses_interactor import GetAllVersesInteractor
 from bible_way.interactors.admin.create_verse_interactor import CreateVerseInteractor
@@ -70,8 +71,10 @@ from bible_way.interactors.admin.get_age_groups_interactor import GetAgeGroupsIn
 from bible_way.interactors.admin.get_languages_interactor import GetLanguagesInteractor
 from bible_way.interactors.admin.create_book_interactor import CreateBookInteractor
 from bible_way.interactors.admin.create_chapters_interactor import CreateChaptersInteractor
+from bible_way.interactors.get_all_books_interactor import GetAllBooksInteractor
 from bible_way.interactors.get_books_by_category_and_age_group_interactor import GetBooksByCategoryAndAgeGroupInteractor
 from bible_way.interactors.get_book_chapters_interactor import GetBookChaptersInteractor
+from bible_way.interactors.search_chapters_interactor import SearchChaptersInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
 from bible_way.presenters.search_users_response import SearchUsersResponse
 from bible_way.presenters.get_recommended_users_response import GetRecommendedUsersResponse
@@ -113,6 +116,7 @@ from bible_way.presenters.get_prayer_request_comments_response import GetPrayerR
 from bible_way.presenters.like_prayer_request_response import LikePrayerRequestResponse
 from bible_way.presenters.unlike_prayer_request_response import UnlikePrayerRequestResponse
 from bible_way.presenters.like_verse_response import LikeVerseResponse
+from bible_way.presenters.unlike_verse_response import UnlikeVerseResponse
 from bible_way.presenters.get_verse_response import GetVerseResponse
 from bible_way.presenters.get_all_verses_response import GetAllVersesResponse
 from bible_way.presenters.admin.create_verse_response import CreateVerseResponse
@@ -126,8 +130,10 @@ from bible_way.presenters.admin.get_age_groups_response import GetAgeGroupsRespo
 from bible_way.presenters.admin.get_languages_response import GetLanguagesResponse
 from bible_way.presenters.admin.create_book_response import CreateBookResponse
 from bible_way.presenters.admin.create_chapters_response import CreateChaptersResponse
+from bible_way.presenters.get_all_books_response import GetAllBooksResponse
 from bible_way.presenters.get_books_by_category_and_age_group_response import GetBooksByCategoryAndAgeGroupResponse
 from bible_way.presenters.get_book_chapters_response import GetBookChaptersResponse
+from bible_way.presenters.search_chapters_response import SearchChaptersResponse
 from bible_way.interactors.create_highlight_interactor import CreateHighlightInteractor
 from bible_way.interactors.get_highlights_interactor import GetHighlightsInteractor
 from bible_way.interactors.delete_highlight_interactor import DeleteHighlightInteractor
@@ -150,6 +156,7 @@ from bible_way.interactors.update_reading_note_interactor import UpdateReadingNo
 from bible_way.presenters.update_reading_note_response import UpdateReadingNoteResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
+from bible_way.services.elasticsearch_service import ElasticsearchService
 
 @api_view(['POST'])
 @authentication_classes([])
@@ -719,6 +726,17 @@ def like_verse_view(request):
         like_verse_interactor(verse_id=verse_id, user_id=user_id)
     return response
 
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def unlike_verse_view(request):
+    user_id = str(request.user.user_id)
+    verse_id = request.data.get('verse_id')
+    
+    response = UnlikeVerseInteractor(storage=UserDB(), response=UnlikeVerseResponse()).\
+        unlike_verse_interactor(verse_id=verse_id, user_id=user_id)
+    return response
+
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -828,12 +846,26 @@ def get_age_groups_view(request):
 @permission_classes([IsAuthenticated])
 def get_books_by_category_and_age_group_view(request):
     category_id = request.data.get('category_id')
-    age_group = request.data.get('age_group')
+    age_group_id = request.data.get('age_group') or request.data.get('age_group_id')
     
     response = GetBooksByCategoryAndAgeGroupInteractor(storage=UserDB(), response=GetBooksByCategoryAndAgeGroupResponse()).\
         get_books_by_category_and_age_group_interactor(
             category_id=category_id,
-            age_group_id=age_group
+            age_group_id=age_group_id
+        )
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_books_by_category_and_age_group_get_view(request):
+    category_id = request.query_params.get('category_id', '').strip()
+    age_group_id = request.query_params.get('age_group_id', '').strip()
+    
+    response = GetBooksByCategoryAndAgeGroupInteractor(storage=UserDB(), response=GetBooksByCategoryAndAgeGroupResponse()).\
+        get_books_by_category_and_age_group_interactor(
+            category_id=category_id,
+            age_group_id=age_group_id
         )
     return response
 
@@ -842,11 +874,47 @@ def get_books_by_category_and_age_group_view(request):
 @permission_classes([IsAuthenticated])
 def get_book_chapters_view(request):
     book_id = request.data.get('book_id')
-    
+
     response = GetBookChaptersInteractor(storage=UserDB(), response=GetBookChaptersResponse()).\
         get_book_chapters_interactor(
             book_id=book_id
         )
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_all_books_view(request):
+    """Get all books with ID and title - accessible to any logged-in user"""
+    response = GetAllBooksInteractor(storage=UserDB(), response=GetAllBooksResponse()).\
+        get_all_books_interactor()
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_all_languages_view(request):
+    """Get all languages - accessible to any logged-in user"""
+    response = GetLanguagesInteractor(storage=UserDB(), response=GetLanguagesResponse()).\
+        get_languages_interactor()
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def search_chapters_view(request):
+    book_id = request.data.get('book_id')
+    language_id = request.data.get('language_id')
+    search_text = request.data.get('search_text')
+    
+    response = SearchChaptersInteractor(
+        es_service=ElasticsearchService(),
+        response=SearchChaptersResponse()
+    ).search_chapters_interactor(
+        book_id=book_id,
+        language_id=language_id,
+        search_text=search_text
+    )
     return response
 
 @api_view(['POST'])
@@ -877,12 +945,12 @@ def admin_create_book_view(request):
 def admin_create_chapters_view(request):
     book_id = request.data.get('book_id')
     bookdata = request.data.get('bookdata')
-    
+
     files_dict = {}
     for key in request.FILES.keys():
         if key.startswith('file_'):
             files_dict[key] = request.FILES[key]
-    
+
     response = CreateChaptersInteractor(storage=UserDB(), response=CreateChaptersResponse()).\
         create_chapters_interactor(
             book_id=book_id,
@@ -1053,6 +1121,7 @@ def unlike_comment_view(request):
 def create_highlight_view(request):
     user_id = str(request.user.user_id)
     book_id = request.data.get('book_id', '').strip()
+    chapter_id = request.data.get('chapter_id', '').strip()
     block_id = request.data.get('block_id', '').strip() or None
     start_offset = request.data.get('start_offset', '').strip()
     end_offset = request.data.get('end_offset', '').strip()
@@ -1062,6 +1131,7 @@ def create_highlight_view(request):
         create_highlight_interactor(
             user_id=user_id,
             book_id=book_id,
+            chapter_id=chapter_id,
             block_id=block_id,
             start_offset=start_offset,
             end_offset=end_offset,
