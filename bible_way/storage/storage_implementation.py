@@ -3,7 +3,7 @@ from django.db.models import Count, Q, Case, When, Value, IntegerField, Exists, 
 import uuid
 import os
 import secrets
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Testimonial, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices, Wallpaper
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Testimonial, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices, Wallpaper, Sticker
 from bible_way.models.book_reading import ReadingNote, Chapters
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
@@ -850,6 +850,20 @@ class UserDB:
             })
         
         return wallpapers_data
+    
+    def get_all_stickers(self) -> list:
+        stickers = Sticker.objects.all().order_by('-created_at')
+        
+        stickers_data = []
+        for sticker in stickers:
+            stickers_data.append({
+                'sticker_id': str(sticker.sticker_id),
+                'image_url': sticker.image_url,
+                'filename': sticker.filename,
+                'created_at': sticker.created_at.isoformat()
+            })
+        
+        return stickers_data
     
     def create_testimonial(self, user_id: str, description: str, rating: int) -> Testimonial:
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id

@@ -64,6 +64,9 @@ urlpatterns = [
     # ==================== Wallpaper APIs ====================
     path("wallpapers/all", get_all_wallpapers_view),
     
+    # ==================== Sticker APIs ====================
+    path("stickers/all", get_all_stickers_view),
+    
     # ==================== Testimonial APIs ====================
     path("testimonial/create", create_testimonial_view),
     path("testimonials/all", get_testimonials_view),

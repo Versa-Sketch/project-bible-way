@@ -39,6 +39,7 @@ from bible_way.interactors.get_specific_user_posts_interactor import GetSpecific
 from bible_way.interactors.get_user_comments_interactor import GetUserCommentsInteractor
 from bible_way.interactors.get_promotions_interactor import GetPromotionsInteractor
 from bible_way.interactors.get_wallpapers_interactor import GetWallpapersInteractor
+from bible_way.interactors.get_stickers_interactor import GetStickersInteractor
 from bible_way.interactors.create_testimonial_interactor import CreateTestimonialInteractor
 from bible_way.interactors.get_testimonials_interactor import GetTestimonialsInteractor
 from bible_way.interactors.get_user_testimonials_interactor import GetUserTestimonialsInteractor
@@ -94,6 +95,7 @@ from bible_way.presenters.get_specific_user_posts_response import GetSpecificUse
 from bible_way.presenters.get_user_comments_response import GetUserCommentsResponse
 from bible_way.presenters.get_promotions_response import GetPromotionsResponse
 from bible_way.presenters.get_wallpapers_response import GetWallpapersResponse
+from bible_way.presenters.get_stickers_response import GetStickersResponse
 from bible_way.presenters.create_testimonial_response import CreateTestimonialResponse
 from bible_way.presenters.get_testimonials_response import GetTestimonialsResponse
 from bible_way.presenters.get_user_testimonials_response import GetUserTestimonialsResponse
@@ -475,6 +477,14 @@ def get_all_promotions_view(request):
 def get_all_wallpapers_view(request):
     response = GetWallpapersInteractor(storage=UserDB(), response=GetWallpapersResponse()).\
         get_all_wallpapers_interactor()
+    return response
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([])
+def get_all_stickers_view(request):
+    response = GetStickersInteractor(storage=UserDB(), response=GetStickersResponse()).\
+        get_all_stickers_interactor()
     return response
 
 @api_view(['POST'])
