@@ -12,7 +12,10 @@ class CreateTestimonialInteractor:
         if not description or not description.strip():
             return self.response.validation_error_response("Description is required")
         
-        if not rating or rating < 1 or rating > 5:
+        if rating is None:
+            return self.response.validation_error_response("Rating is required")
+        
+        if rating < 1 or rating > 5:
             return self.response.validation_error_response("Rating must be between 1 and 5")
         
         try:

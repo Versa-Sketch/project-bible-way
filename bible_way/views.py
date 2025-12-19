@@ -593,9 +593,13 @@ def create_testimonial_view(request):
     description = request.data.get('description')
     rating = request.data.get('rating')
     
-    try:
-        rating = int(rating)
-    except (ValueError, TypeError):
+    # Handle rating conversion with proper validation
+    if rating is not None and rating != '':
+        try:
+            rating = int(rating)
+        except (ValueError, TypeError):
+            rating = None
+    else:
         rating = None
     
     media_files = request.FILES.getlist('media')
