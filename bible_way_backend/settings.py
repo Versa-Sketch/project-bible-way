@@ -203,6 +203,11 @@ AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '')
 AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-1')
 AWS_DEFAULT_ACL = 'public-read'
 
+# AWS SES Configuration for Email
+# Uses the same AWS credentials as S3 (from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars)
+AWS_SES_REGION = os.getenv('AWS_SES_REGION', 'ap-south-1')  # Default to ap-south-1 (Mumbai)
+AWS_SES_FROM_EMAIL = os.getenv('AWS_SES_FROM_EMAIL', 'noreply@bibleway.com')
+
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 

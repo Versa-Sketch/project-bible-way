@@ -209,5 +209,19 @@ class ShareLink(models.Model):
         return f"ShareLink {self.share_token} - {self.get_content_type_display()}"
 
 
+class Wallpaper(models.Model):
+    wallpaper_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    image_url = models.URLField()
+    filename = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'bible_way_wallpaper'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Wallpaper {self.wallpaper_id} - {self.filename}"
+
+
 
 

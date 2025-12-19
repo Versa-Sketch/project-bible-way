@@ -32,6 +32,7 @@ from bible_way.interactors.get_user_posts_interactor import GetUserPostsInteract
 from bible_way.interactors.get_specific_user_posts_interactor import GetSpecificUserPostsInteractor
 from bible_way.interactors.get_user_comments_interactor import GetUserCommentsInteractor
 from bible_way.interactors.get_promotions_interactor import GetPromotionsInteractor
+from bible_way.interactors.get_wallpapers_interactor import GetWallpapersInteractor
 from bible_way.interactors.create_prayer_request_interactor import CreatePrayerRequestInteractor
 from bible_way.interactors.update_prayer_request_interactor import UpdatePrayerRequestInteractor
 from bible_way.interactors.delete_prayer_request_interactor import DeletePrayerRequestInteractor
@@ -79,6 +80,7 @@ from bible_way.presenters.get_user_posts_response import GetUserPostsResponse
 from bible_way.presenters.get_specific_user_posts_response import GetSpecificUserPostsResponse
 from bible_way.presenters.get_user_comments_response import GetUserCommentsResponse
 from bible_way.presenters.get_promotions_response import GetPromotionsResponse
+from bible_way.presenters.get_wallpapers_response import GetWallpapersResponse
 from bible_way.presenters.create_prayer_request_response import CreatePrayerRequestResponse
 from bible_way.presenters.update_prayer_request_response import UpdatePrayerRequestResponse
 from bible_way.presenters.delete_prayer_request_response import DeletePrayerRequestResponse
@@ -404,6 +406,14 @@ def get_user_comments_view(request):
 def get_all_promotions_view(request):
     response = GetPromotionsInteractor(storage=UserDB(), response=GetPromotionsResponse()).\
         get_all_promotions_interactor()
+    return response
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([])
+def get_all_wallpapers_view(request):
+    response = GetWallpapersInteractor(storage=UserDB(), response=GetWallpapersResponse()).\
+        get_all_wallpapers_interactor()
     return response
 
 @api_view(['POST'])
@@ -988,3 +998,4 @@ def get_shared_profile_view(request, token: str):
     response = GetSharedProfileInteractor(storage=UserDB(), response=GetSharedProfileResponse()).\
         get_shared_profile_interactor(token=token)
     return response
+

@@ -11,6 +11,7 @@ from .social import (
     Verse,
     ShareLink,
     ShareLinkContentTypeChoices,
+    Wallpaper,
 )
 from .book_reading import (
     Category,
@@ -43,6 +44,7 @@ __all__ = [
     'Verse',
     'ShareLink',
     'ShareLinkContentTypeChoices',
+    'Wallpaper',
     'Category',
     'Language',
     'AgeGroup',

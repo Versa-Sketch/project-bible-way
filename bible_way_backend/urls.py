@@ -58,6 +58,9 @@ urlpatterns = [
     # ==================== Promotion APIs ====================
     path("promotion/all", get_all_promotions_view),
     
+    # ==================== Wallpaper APIs ====================
+    path("wallpapers/all", get_all_wallpapers_view),
+    
     # ==================== Verse APIs ====================
     path("verse/daily", get_verse_view),
     path("verse/all", get_all_verses_view),

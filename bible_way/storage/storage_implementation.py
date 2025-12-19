@@ -2,10 +2,10 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Count, Q, Case, When, Value, IntegerField, Exists, OuterRef
 import uuid
 import os
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight, Wallpaper
 from bible_way.models.book_reading import ReadingNote
 import secrets
-from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices
+from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices, Wallpaper
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
@@ -70,7 +70,8 @@ class UserDB:
             age=age,
             preferred_language=preferred_language,
             profile_picture_url=profile_picture_url,
-            auth_provider='GOOGLE'
+            auth_provider='GOOGLE',
+            is_email_verified=True  # Google already verifies emails
         )
         user.set_unusable_password()
         user.save()
@@ -801,6 +802,20 @@ class UserDB:
             })
         
         return promotions_data
+    
+    def get_all_wallpapers(self) -> list:
+        wallpapers = Wallpaper.objects.all().order_by('-created_at')
+        
+        wallpapers_data = []
+        for wallpaper in wallpapers:
+            wallpapers_data.append({
+                'wallpaper_id': str(wallpaper.wallpaper_id),
+                'image_url': wallpaper.image_url,
+                'filename': wallpaper.filename,
+                'created_at': wallpaper.created_at.isoformat()
+            })
+        
+        return wallpapers_data
     
     def create_prayer_request(self, user_id: str, name: str, email: str, description: str, phone_number: str = None) -> PrayerRequest:
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
