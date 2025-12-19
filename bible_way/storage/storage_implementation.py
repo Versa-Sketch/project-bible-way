@@ -70,8 +70,7 @@ class UserDB:
             age=age,
             preferred_language=preferred_language,
             profile_picture_url=profile_picture_url,
-            auth_provider='GOOGLE',
-            is_email_verified=True  # Google already verifies emails
+            auth_provider='GOOGLE'
         )
         user.set_unusable_password()
         user.save()
