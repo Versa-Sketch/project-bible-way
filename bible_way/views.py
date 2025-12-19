@@ -423,13 +423,12 @@ def get_all_wallpapers_view(request):
 @permission_classes([IsAuthenticated])
 def create_prayer_request_view(request):
     user_id = str(request.user.user_id)
-    name = request.data.get('name')
-    email = request.data.get('email')
-    phone_number = request.data.get('phone_number')
     description = request.data.get('description')
     
+    media_files = request.FILES.getlist('media')
+    
     response = CreatePrayerRequestInteractor(storage=UserDB(), response=CreatePrayerRequestResponse()).\
-        create_prayer_request_interactor(user_id=user_id, name=name, email=email, description=description, phone_number=phone_number)
+        create_prayer_request_interactor(user_id=user_id, description=description, media_files=media_files)
     return response
 
 @api_view(['PUT', 'PATCH'])
@@ -438,18 +437,12 @@ def create_prayer_request_view(request):
 def update_prayer_request_view(request):
     user_id = str(request.user.user_id)
     prayer_request_id = request.data.get('prayer_request_id')
-    name = request.data.get('name')
-    email = request.data.get('email')
-    phone_number = request.data.get('phone_number')
     description = request.data.get('description')
     
     response = UpdatePrayerRequestInteractor(storage=UserDB(), response=UpdatePrayerRequestResponse()).\
         update_prayer_request_interactor(
             prayer_request_id=prayer_request_id,
             user_id=user_id,
-            name=name,
-            email=email,
-            phone_number=phone_number,
             description=description
         )
     return response

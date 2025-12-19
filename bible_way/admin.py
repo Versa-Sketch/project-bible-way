@@ -81,11 +81,11 @@ class PostAdmin(admin.ModelAdmin):
 
 @admin.register(Media)
 class MediaAdmin(admin.ModelAdmin):
-    list_display = ('media_id', 'post', 'media_type', 'url', 'created_at')
+    list_display = ('media_id', 'post', 'prayer_request', 'media_type', 'url', 'created_at')
     list_filter = ('media_type', 'created_at')
-    search_fields = ('post__title', 'url')
+    search_fields = ('post__title', 'prayer_request__description', 'url')
     readonly_fields = ('media_id', 'created_at')
-    raw_id_fields = ('post',)
+    raw_id_fields = ('post', 'prayer_request')
 
 
 @admin.register(Comment)
@@ -138,11 +138,15 @@ class PromotionImageAdmin(admin.ModelAdmin):
 
 @admin.register(PrayerRequest)
 class PrayerRequestAdmin(admin.ModelAdmin):
-    list_display = ('prayer_request_id', 'user', 'name', 'email', 'phone_number', 'created_at', 'updated_at')
+    list_display = ('prayer_request_id', 'user', 'description_preview', 'created_at', 'updated_at')
     list_filter = ('created_at', 'updated_at')
-    search_fields = ('name', 'email', 'phone_number', 'description', 'user__username')
+    search_fields = ('description', 'user__username')
     readonly_fields = ('prayer_request_id', 'created_at', 'updated_at')
     raw_id_fields = ('user',)
+    
+    def description_preview(self, obj):
+        return obj.description[:50] + '...' if len(obj.description) > 50 else obj.description
+    description_preview.short_description = 'Description Preview'
 
 
 @admin.register(Verse)

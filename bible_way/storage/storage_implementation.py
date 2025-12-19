@@ -335,13 +335,23 @@ class UserDB:
         else:
             return Media.IMAGE
     
-    def _generate_s3_key(self, user_id: str, post_id: str, filename: str) -> str:
-        safe_filename = os.path.basename(filename)
-        return f"bible_way/user/post/{user_id}/{post_id}/{safe_filename}"
+    def _generate_s3_key(self, user_id: str, post_id: str = None, prayer_request_id: str = None, filename: str = None) -> str:
+        safe_filename = os.path.basename(filename) if filename else "file"
+        if post_id:
+            return f"bible_way/user/post/{user_id}/{post_id}/{safe_filename}"
+        elif prayer_request_id:
+            return f"bible_way/user/prayer_request/{user_id}/{prayer_request_id}/{safe_filename}"
+        else:
+            return f"bible_way/user/media/{user_id}/{safe_filename}"
     
-    def upload_file_to_s3(self, post: Post, media_file, user_id: str) -> str:
+    def upload_file_to_s3(self, post: Post = None, prayer_request: PrayerRequest = None, media_file = None, user_id: str = None) -> str:
         try:
-            s3_key = self._generate_s3_key(str(user_id), str(post.post_id), media_file.name)
+            if post:
+                s3_key = self._generate_s3_key(str(user_id), post_id=str(post.post_id), filename=media_file.name)
+            elif prayer_request:
+                s3_key = self._generate_s3_key(str(user_id), prayer_request_id=str(prayer_request.prayer_request_id), filename=media_file.name)
+            else:
+                raise Exception("Either post or prayer_request must be provided")
             
             s3_url = s3_upload_file(media_file, s3_key)
             
@@ -349,9 +359,13 @@ class UserDB:
         except Exception as e:
             raise Exception(f"Failed to upload file to S3: {str(e)}")
     
-    def create_media(self, post: Post, s3_url: str, media_type: str) -> Media:
+    def create_media(self, post: Post = None, prayer_request: PrayerRequest = None, s3_url: str = None, media_type: str = None) -> Media:
+        if not post and not prayer_request:
+            raise Exception("Either post or prayer_request must be provided")
+        
         media = Media.objects.create(
             post=post,
+            prayer_request=prayer_request,
             media_type=media_type,
             url=s3_url
         )
@@ -815,19 +829,16 @@ class UserDB:
         
         return wallpapers_data
     
-    def create_prayer_request(self, user_id: str, name: str, email: str, description: str, phone_number: str = None) -> PrayerRequest:
+    def create_prayer_request(self, user_id: str, description: str) -> PrayerRequest:
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         user = User.objects.get(user_id=user_uuid)
         prayer_request = PrayerRequest.objects.create(
             user=user,
-            name=name.strip(),
-            email=email.strip(),
-            phone_number=phone_number.strip() if phone_number else None,
             description=description.strip()
         )
         return prayer_request
     
-    def update_prayer_request(self, prayer_request_id: str, user_id: str, name: str = None, email: str = None, phone_number: str = None, description: str = None) -> PrayerRequest:
+    def update_prayer_request(self, prayer_request_id: str, user_id: str, description: str = None) -> PrayerRequest:
         prayer_request_uuid = uuid.UUID(prayer_request_id) if isinstance(prayer_request_id, str) else prayer_request_id
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
@@ -839,12 +850,6 @@ class UserDB:
         if prayer_request.user.user_id != user_uuid:
             raise Exception("You are not authorized to update this prayer request")
         
-        if name is not None:
-            prayer_request.name = name.strip()
-        if email is not None:
-            prayer_request.email = email.strip()
-        if phone_number is not None:
-            prayer_request.phone_number = phone_number.strip()
         if description is not None:
             prayer_request.description = description.strip()
         
@@ -876,7 +881,7 @@ class UserDB:
             except (ValueError, TypeError):
                 current_user_uuid = None
         
-        prayer_requests = PrayerRequest.objects.select_related('user').annotate(
+        prayer_requests = PrayerRequest.objects.select_related('user').prefetch_related('media').annotate(
             comments_count=Count('comments'),
             reactions_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
         ).order_by('-created_at')[offset:offset + limit]
@@ -892,6 +897,16 @@ class UserDB:
                     reaction_type=Reaction.LIKE
                 ).exists()
             
+            # Get media for this prayer request
+            media_list = []
+            for media in prayer_request.media.all():
+                media_list.append({
+                    'media_id': str(media.media_id),
+                    'media_type': media.media_type,
+                    'url': media.url,
+                    'created_at': media.created_at.isoformat()
+                })
+            
             prayer_requests_data.append({
                 'prayer_request_id': str(prayer_request.prayer_request_id),
                 'user': {
@@ -899,10 +914,8 @@ class UserDB:
                     'user_name': prayer_request.user.username,  # Map username to user_name for API response
                     'profile_picture_url': prayer_request.user.profile_picture_url or ''
                 },
-                'name': prayer_request.name,
-                'email': prayer_request.email,
-                'phone_number': prayer_request.phone_number,
                 'description': prayer_request.description,
+                'media': media_list,
                 'comments_count': prayer_request.comments_count,
                 'reactions_count': prayer_request.reactions_count,
                 'is_liked': is_liked,
@@ -927,7 +940,7 @@ class UserDB:
         
         total_count = PrayerRequest.objects.filter(user__user_id=user_uuid).count()
         
-        prayer_requests = PrayerRequest.objects.filter(user__user_id=user_uuid).select_related('user').annotate(
+        prayer_requests = PrayerRequest.objects.filter(user__user_id=user_uuid).select_related('user').prefetch_related('media').annotate(
             comments_count=Count('comments'),
             reactions_count=Count('reactions', filter=Q(reactions__reaction_type='like'))
         ).order_by('-created_at')[offset:offset + limit]
@@ -950,6 +963,16 @@ class UserDB:
                     reaction_type=Reaction.LIKE
                 ).exists()
             
+            # Get media for this prayer request
+            media_list = []
+            for media in prayer_request.media.all():
+                media_list.append({
+                    'media_id': str(media.media_id),
+                    'media_type': media.media_type,
+                    'url': media.url,
+                    'created_at': media.created_at.isoformat()
+                })
+            
             prayer_requests_data.append({
                 'prayer_request_id': str(prayer_request.prayer_request_id),
                 'user': {
@@ -957,10 +980,8 @@ class UserDB:
                     'user_name': prayer_request.user.username,  # Map username to user_name for API response
                     'profile_picture_url': prayer_request.user.profile_picture_url or ''
                 },
-                'name': prayer_request.name,
-                'email': prayer_request.email,
-                'phone_number': prayer_request.phone_number,
                 'description': prayer_request.description,
+                'media': media_list,
                 'comments_count': prayer_request.comments_count,
                 'reactions_count': prayer_request.reactions_count,
                 'is_liked': is_liked,
