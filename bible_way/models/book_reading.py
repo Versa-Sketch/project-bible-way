@@ -126,10 +126,8 @@ class Book(models.Model):
     age_group = models.ForeignKey(AgeGroup, on_delete=models.CASCADE, related_name='books')
     language = models.ForeignKey(Language, on_delete=models.CASCADE, related_name='books')
     cover_image_url = models.URLField(blank=True, null=True)
-    book_order = models.IntegerField(default=0, help_text="Order for displaying books in list")
+    book_order = models.IntegerField(default=0, help_text="Order for displaying books in list", null=True, blank=True)
     is_active = models.BooleanField(default=True, help_text="Whether the book is active and visible")
-    source_file_url = models.URLField(blank=True, null=True, help_text="URL/path to the source markdown file")
-    metadata = models.JSONField(blank=True, null=True, default=dict, help_text="Additional metadata (e.g., testament: Old/New)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -146,6 +144,24 @@ class Book(models.Model):
         category_name = str(self.category) if self.category else "No Category"
         return f"{self.title} - {category_name}"
 
+class Chapters(models.Model):
+    chapter_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='chapters')
+    title = models.CharField(max_length=255, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    chapter_number = models.IntegerField(default=0, help_text="Chapter number", null=True, blank=True)
+    chapter_name = models.CharField(max_length=255, blank=True, null=True)
+    chapter_url = models.URLField(blank=True, null=True, help_text="URL/path to the chapter file")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    metadata = models.JSONField(blank=True, null=True, default=dict, help_text="Additional metadata (e.g., testament: Old/New)")
+
+
+    class Meta:
+        db_table = 'bible_way_chapters'
+
+    def __str__(self):
+        return f"{self.title} - {self.book.title}"
 
 
 class ReadingProgress(models.Model):

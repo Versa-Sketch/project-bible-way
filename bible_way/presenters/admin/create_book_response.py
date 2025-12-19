@@ -5,12 +5,12 @@ from rest_framework import status
 class CreateBookResponse:
 
     @staticmethod
-    def book_created_successfully_response(book_data: dict) -> Response:
+    def book_created_successfully_response(book_id: str) -> Response:
         return Response(
             {
                 "success": True,
                 "message": "Book created successfully",
-                "data": book_data
+                "book_id": book_id
             },
             status=status.HTTP_201_CREATED
         )

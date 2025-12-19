@@ -8,9 +8,9 @@ class GetVerseInteractor:
         self.storage = storage
         self.response = response
 
-    def get_verse_interactor(self) -> Response:
+    def get_verse_interactor(self, user_id: str) -> Response:
         try:
-            verse_data = self.storage.get_verse()
+            verse_data = self.storage.get_verse(user_id=user_id)
             
             if not verse_data:
                 return self.response.verse_not_found_response()
