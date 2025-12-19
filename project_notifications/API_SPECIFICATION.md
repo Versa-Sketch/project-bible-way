@@ -733,4 +733,4 @@ Client Displays Notification
 
 ### Automated Testing
 
-See `test_notifications.py` for comprehensive test suite covering all notification types.
+For automated testing, use the REST API endpoints and WebSocket connections programmatically. All notification types can be tested by triggering the corresponding actions (follow, like, comment, create prayer request) via the REST API while monitoring WebSocket messages.

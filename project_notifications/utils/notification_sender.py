@@ -57,10 +57,12 @@ def send_notification_via_websocket(notification: Notification):
                 'data': notification_data
             }
         )
-        logger.debug(
-            f"Notification sent via WebSocket: notification_id={notification.notification_id}, "
-            f"type={notification.notification_type}, recipient={recipient_id}"
+        ws_msg = (
+            f"📤 WebSocket message sent to group '{group_name}': notification_id={notification.notification_id}, "
+            f"type={notification.notification_type}, recipient={recipient_id[:8]}..."
         )
+        print(ws_msg)
+        logger.info(ws_msg)
     except Exception as e:
         logger.error(
             f"Failed to send notification via WebSocket: notification_id={getattr(notification, 'notification_id', 'unknown')}, "
