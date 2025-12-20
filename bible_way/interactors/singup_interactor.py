@@ -19,7 +19,7 @@ class SignupInteractor:
     
     def signup_interactor(self, user_name: str, email: str, password: str, 
                           country: str, age: int, preferred_language: str, 
-                          confirm_password: str, profile_picture_url: str = None) -> Response:
+                          confirm_password: str) -> Response:
       
         if password != confirm_password:
             return self.response.password_does_not_match()
@@ -32,8 +32,6 @@ class SignupInteractor:
                 from django.contrib.auth.hashers import make_password
                 existing_user.password = make_password(password)
                 existing_user.is_email_verified = True  # Google already verified the email
-                if profile_picture_url:
-                    existing_user.profile_picture_url = profile_picture_url
                 existing_user.save()
                 tokens = self.authentication.create_tokens(user=existing_user)
                 response_dto = SignupResponseDTO(
@@ -60,8 +58,7 @@ class SignupInteractor:
                 password=password,
                 country=country,
                 age=age,
-                preferred_language=preferred_language,
-                profile_picture_url=profile_picture_url
+                preferred_language=preferred_language
             )
         except IntegrityError as e:
             # Handle race condition or any other integrity constraint violations

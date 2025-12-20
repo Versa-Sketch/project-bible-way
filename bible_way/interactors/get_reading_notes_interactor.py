@@ -34,8 +34,7 @@ class GetReadingNotesInteractor:
                     "book_id": str(note.book.book_id),
                     "user_id": str(note.user.user_id),
                     "content": note.content,
-                    "chapter_id": str(note.chapter_id) if note.chapter_id else None,
-                    "block_id": str(note.block_id) if note.block_id else None
+                    "chapter_id": str(note.chapter_id) if note.chapter_id else None
                 })
             
             return self.response.reading_notes_retrieved_successfully_response(reading_notes_data)

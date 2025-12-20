@@ -4,7 +4,7 @@ import uuid
 import os
 import secrets
 from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Testimonial, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices, Wallpaper, Sticker
-from bible_way.models.book_reading import ReadingNote, Chapters
+from bible_way.models.book_reading import ReadingNote, Chapters, Bookmark, ReadingProgress
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
 
 
@@ -30,8 +30,7 @@ class UserDB:
             return None
     
     def create_user(self, username: str, email: str, password: str, 
-                    country: str, age: int, preferred_language: str, 
-                    profile_picture_url: str = None) -> User:
+                    country: str, age: int, preferred_language: str) -> User:
         hashed_password = make_password(password)
         
         user = User.objects.create(
@@ -41,7 +40,6 @@ class UserDB:
             age=age,
             preferred_language=preferred_language,
             password=hashed_password,
-            profile_picture_url=profile_picture_url,
             is_email_verified=False
         )
         
@@ -94,6 +92,29 @@ class UserDB:
         user.is_email_verified = True
         user.email_verification_otp = None
         user.otp_expiry = None
+        user.save()
+        return user
+    
+    def update_user_profile(self, user_id: str, preferred_language: str = None, 
+                           age: int = None, country: str = None, profile_picture_url: str = None) -> User:
+        """
+        Update user profile fields (preferred_language, age, country, profile_picture_url)
+        Only updates fields that are provided (not None)
+        """
+        user = self.get_user_by_user_id(user_id)
+        if not user:
+            return None
+        
+        # Update only provided fields
+        if preferred_language is not None:
+            user.preferred_language = preferred_language
+        if age is not None:
+            user.age = age
+        if country is not None:
+            user.country = country
+        if profile_picture_url is not None:
+            user.profile_picture_url = profile_picture_url
+        
         user.save()
         return user
     
@@ -1471,7 +1492,7 @@ class UserDB:
     def get_all_books(self):
         """Get all active books - accessible to all authenticated users"""
         return Book.objects.filter(is_active=True).order_by('book_order', 'title')
-
+    
     def get_category_by_id(self, category_id: str):
         try:
             return Category.objects.get(category_id=category_id)
@@ -1598,7 +1619,7 @@ class UserDB:
             book=book,
             content=content,
             chapter_id=chapter_id,
-            block_id=block_id
+            block_id=block_id.strip() if block_id else None
         )
         return reading_note
     
@@ -1629,6 +1650,124 @@ class UserDB:
         reading_note.content = content.strip()
         reading_note.save()
         return reading_note
+    
+    def delete_reading_note(self, note_id: str, user_id: str):
+        note_uuid = uuid.UUID(note_id) if isinstance(note_id, str) else note_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        reading_note = ReadingNote.objects.get(note_id=note_uuid, user__user_id=user_uuid)
+        reading_note.delete()
+        return True
+    
+    def create_bookmark(self, user_id: str, book_id: str) -> Bookmark:
+        user = User.objects.get(user_id=user_id)
+        book = Book.objects.get(book_id=book_id)
+        
+        bookmark = Bookmark.objects.create(
+            user=user,
+            book=book
+        )
+        return bookmark
+    
+    def get_bookmarks_by_user(self, user_id: str):
+        return Bookmark.objects.filter(
+            user__user_id=user_id
+        ).select_related('user', 'book', 'book__category', 'book__age_group', 'book__language').order_by('-created_at')
+    
+    def get_bookmark_by_id(self, bookmark_id: str):
+        try:
+            return Bookmark.objects.select_related('user', 'book').get(bookmark_id=bookmark_id)
+        except Bookmark.DoesNotExist:
+            return None
+    
+    def get_bookmark_by_user_and_book(self, user_id: str, book_id: str):
+        try:
+            return Bookmark.objects.select_related('user', 'book').get(
+                user__user_id=user_id,
+                book__book_id=book_id
+            )
+        except Bookmark.DoesNotExist:
+            return None
+    
+    def delete_bookmark(self, bookmark_id: str, user_id: str):
+        bookmark_uuid = uuid.UUID(bookmark_id) if isinstance(bookmark_id, str) else bookmark_id
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        bookmark = Bookmark.objects.get(bookmark_id=bookmark_uuid, user__user_id=user_uuid)
+        bookmark.delete()
+        return True
+    
+    def create_or_update_reading_progress(self, user_id: str, book_id: str, chapter_id: str = None, progress_percentage: float = 0.0, block_id: str = None) -> ReadingProgress:
+        from bible_way.models.book_reading import Chapters
+        
+        # Get Chapters instance if chapter_id is provided
+        chapter_instance = None
+        if chapter_id:
+            chapter_instance = Chapters.objects.get(chapter_id=chapter_id)
+        
+        # Try to get existing reading progress
+        try:
+            reading_progress = ReadingProgress.objects.get(
+                user__user_id=user_id,
+                book__book_id=book_id
+            )
+            
+            # Update with max of current and new progress
+            new_progress = max(float(reading_progress.progress_percentage), float(progress_percentage))
+            reading_progress.progress_percentage = new_progress
+            
+            # Update chapter_id if provided
+            if chapter_instance:
+                reading_progress.chapter_id = chapter_instance
+            
+            # Update block_id if provided
+            if block_id:
+                reading_progress.block_id = block_id.strip()
+            
+            reading_progress.save()
+            return reading_progress
+            
+        except ReadingProgress.DoesNotExist:
+            # Create new reading progress
+            user = User.objects.get(user_id=user_id)
+            book = Book.objects.get(book_id=book_id)
+            
+            reading_progress = ReadingProgress.objects.create(
+                user=user,
+                book=book,
+                progress_percentage=float(progress_percentage),
+                chapter_id=chapter_instance,
+                block_id=block_id.strip() if block_id else None
+            )
+            return reading_progress
+    
+    def get_reading_progress_by_user(self, user_id: str):
+        """Get all reading progress for a user, returns a dictionary mapping book_id to dict with progress_percentage and block_id"""
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        reading_progresses = ReadingProgress.objects.filter(
+            user__user_id=user_uuid
+        ).select_related('book')
+        
+        # Create a dictionary mapping book_id to dict with progress_percentage and block_id
+        progress_dict = {}
+        for progress in reading_progresses:
+            progress_dict[str(progress.book.book_id)] = {
+                'progress_percentage': float(progress.progress_percentage),
+                'block_id': progress.block_id if progress.block_id else None
+            }
+        
+        return progress_dict
+    
+    def get_reading_progress_by_user_and_book(self, user_id: str, book_id: str):
+        """Get reading progress for a specific user and book"""
+        try:
+            return ReadingProgress.objects.select_related('user', 'book', 'chapter_id').get(
+                user__user_id=user_id,
+                book__book_id=book_id
+            )
+        except ReadingProgress.DoesNotExist:
+            return None
     
     def _generate_unique_share_token(self) -> str:
         """Generate a unique URL-safe token for share links."""

@@ -20,6 +20,7 @@ from bible_way.interactors.current_user_profile_interactor import CurrentUserPro
 from bible_way.interactors.search_users_interactor import SearchUsersInteractor
 from bible_way.interactors.get_recommended_users_interactor import GetRecommendedUsersInteractor
 from bible_way.interactors.get_complete_user_profile_interactor import GetCompleteUserProfileInteractor
+from bible_way.interactors.update_profile_interactor import UpdateProfileInteractor
 from bible_way.interactors.follow_user_interactor import FollowUserInteractor
 from bible_way.interactors.unfollow_user_interactor import UnfollowUserInteractor
 from bible_way.interactors.create_post_interactor import CreatePostInteractor
@@ -79,6 +80,7 @@ from bible_way.presenters.user_profile_response import UserProfileResponse
 from bible_way.presenters.search_users_response import SearchUsersResponse
 from bible_way.presenters.get_recommended_users_response import GetRecommendedUsersResponse
 from bible_way.presenters.get_complete_user_profile_response import GetCompleteUserProfileResponse
+from bible_way.presenters.update_profile_response import UpdateProfileResponse
 from bible_way.presenters.follow_user_response import FollowUserResponse
 from bible_way.presenters.unfollow_user_response import UnfollowUserResponse
 from bible_way.presenters.create_post_response import CreatePostResponse
@@ -154,6 +156,18 @@ from bible_way.interactors.get_reading_notes_interactor import GetReadingNotesIn
 from bible_way.presenters.get_reading_notes_response import GetReadingNotesResponse
 from bible_way.interactors.update_reading_note_interactor import UpdateReadingNoteInteractor
 from bible_way.presenters.update_reading_note_response import UpdateReadingNoteResponse
+from bible_way.interactors.delete_reading_note_interactor import DeleteReadingNoteInteractor
+from bible_way.presenters.delete_reading_note_response import DeleteReadingNoteResponse
+from bible_way.interactors.create_bookmark_interactor import CreateBookmarkInteractor
+from bible_way.presenters.create_bookmark_response import CreateBookmarkResponse
+from bible_way.interactors.get_bookmarks_interactor import GetBookmarksInteractor
+from bible_way.presenters.get_bookmarks_response import GetBookmarksResponse
+from bible_way.interactors.delete_bookmark_interactor import DeleteBookmarkInteractor
+from bible_way.presenters.delete_bookmark_response import DeleteBookmarkResponse
+from bible_way.interactors.create_reading_progress_interactor import CreateReadingProgressInteractor
+from bible_way.presenters.create_reading_progress_response import CreateReadingProgressResponse
+from bible_way.interactors.get_reading_progress_interactor import GetReadingProgressInteractor
+from bible_way.presenters.get_reading_progress_response import GetReadingProgressResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 from bible_way.services.elasticsearch_service import ElasticsearchService
@@ -169,9 +183,8 @@ def signup_view(request):
     age = request.data.get('age')
     preferred_language = request.data.get('preferred_language') or request.data.get('Preferred_language')
     confirm_password = request.data.get('confirm_password')
-    profile_picture_url = request.data.get('profile_picture_url')
     response =SignupInteractor(storage=UserDB(), response=SignupResponse(), authentication=UserAuthentication()).\
-        signup_interactor(user_name=user_name, email=email, password=password, country=country, age=age, preferred_language=preferred_language, confirm_password=confirm_password, profile_picture_url=profile_picture_url)
+        signup_interactor(user_name=user_name, email=email, password=password, country=country, age=age, preferred_language=preferred_language, confirm_password=confirm_password)
     return response
 
 @api_view(['POST'])
@@ -275,11 +288,33 @@ def get_current_user_profile_view(request):
 def get_complete_user_profile_view(request):
     user_id = request.data.get('user_id', '').strip()
     current_user = str(request.user.user_id)
-    
+
     response = GetCompleteUserProfileInteractor(
-        storage=UserDB(), 
+        storage=UserDB(),
         response=GetCompleteUserProfileResponse()
     ).get_complete_user_profile_interactor(user_id=user_id, current_user=current_user)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def update_profile_view(request):
+    user_id = str(request.user.user_id)
+    preferred_language = request.data.get('preferred_language', '').strip() or None
+    age = request.data.get('age', None)
+    country = request.data.get('country', '').strip() or None
+    profile_picture_url = request.data.get('profile_picture_url', '').strip() or None
+    
+    response = UpdateProfileInteractor(
+        storage=UserDB(),
+        response=UpdateProfileResponse()
+    ).update_profile_interactor(
+        user_id=user_id,
+        preferred_language=preferred_language,
+        age=age,
+        country=country,
+        profile_picture_url=profile_picture_url
+    )
     return response
 
 @api_view(['GET'])
@@ -845,11 +880,13 @@ def get_age_groups_view(request):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def get_books_by_category_and_age_group_view(request):
+    user_id = str(request.user.user_id)
     category_id = request.data.get('category_id')
     age_group_id = request.data.get('age_group') or request.data.get('age_group_id')
     
     response = GetBooksByCategoryAndAgeGroupInteractor(storage=UserDB(), response=GetBooksByCategoryAndAgeGroupResponse()).\
         get_books_by_category_and_age_group_interactor(
+            user_id=user_id,
             category_id=category_id,
             age_group_id=age_group_id
         )
@@ -859,11 +896,13 @@ def get_books_by_category_and_age_group_view(request):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def get_books_by_category_and_age_group_get_view(request):
+    user_id = str(request.user.user_id)
     category_id = request.query_params.get('category_id', '').strip()
     age_group_id = request.query_params.get('age_group_id', '').strip()
     
     response = GetBooksByCategoryAndAgeGroupInteractor(storage=UserDB(), response=GetBooksByCategoryAndAgeGroupResponse()).\
         get_books_by_category_and_age_group_interactor(
+            user_id=user_id,
             category_id=category_id,
             age_group_id=age_group_id
         )
@@ -1171,8 +1210,8 @@ def create_reading_note_view(request):
     book_id = request.data.get('book_id', '').strip()
     content = request.data.get('content', '').strip()
     chapter_id = request.data.get('chapter_id', '').strip() or None
-    block_id = request.data.get('block_id', '').strip()
-    
+    block_id = request.data.get('block_id', '').strip() or None
+
     response = CreateReadingNoteInteractor(storage=UserDB(), response=CreateReadingNoteResponse()).\
         create_reading_note_interactor(
             user_id=user_id,
@@ -1181,6 +1220,7 @@ def create_reading_note_view(request):
             chapter_id=chapter_id,
             block_id=block_id
         )
+    return response
 def create_post_share_link_view(request):
     user_id = str(request.user.user_id)
     post_id = request.data.get('post_id', '').strip()
@@ -1227,6 +1267,86 @@ def update_reading_note_view(request):
     
     response = UpdateReadingNoteInteractor(storage=UserDB(), response=UpdateReadingNoteResponse()).\
         update_reading_note_interactor(note_id=note_id, user_id=user_id, content=content)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_reading_note_view(request):
+    user_id = str(request.user.user_id)
+    note_id = request.data.get('note_id', '').strip()
+    
+    response = DeleteReadingNoteInteractor(storage=UserDB(), response=DeleteReadingNoteResponse()).\
+        delete_reading_note_interactor(note_id=note_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_bookmark_view(request):
+    user_id = str(request.user.user_id)
+    book_id = request.data.get('book_id', '').strip()
+    
+    response = CreateBookmarkInteractor(storage=UserDB(), response=CreateBookmarkResponse()).\
+        create_bookmark_interactor(user_id=user_id, book_id=book_id)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_bookmarks_view(request):
+    user_id = str(request.user.user_id)
+    
+    response = GetBookmarksInteractor(storage=UserDB(), response=GetBookmarksResponse()).\
+        get_bookmarks_interactor(user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def delete_bookmark_view(request):
+    user_id = str(request.user.user_id)
+    bookmark_id = request.data.get('bookmark_id', '').strip()
+    
+    response = DeleteBookmarkInteractor(storage=UserDB(), response=DeleteBookmarkResponse()).\
+        delete_bookmark_interactor(bookmark_id=bookmark_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def create_reading_progress_view(request):
+    user_id = str(request.user.user_id)
+    book_id = request.data.get('book_id', '').strip()
+    chapter_id = request.data.get('chapter_id', '').strip() or None
+    progress_percentage = request.data.get('progress_percentage')
+    block_id = request.data.get('block_id', '').strip() or None
+    
+    response = CreateReadingProgressInteractor(storage=UserDB(), response=CreateReadingProgressResponse()).\
+        create_reading_progress_interactor(
+            user_id=user_id,
+            book_id=book_id,
+            chapter_id=chapter_id,
+            progress_percentage=progress_percentage,
+            block_id=block_id
+        )
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_reading_progress_view(request):
+    user_id = str(request.user.user_id)
+    book_id = request.data.get('book_id', '').strip()
+    
+    response = GetReadingProgressInteractor(storage=UserDB(), response=GetReadingProgressResponse()).\
+        get_reading_progress_interactor(
+            user_id=user_id,
+            book_id=book_id
+        )
+    return response
+
+@api_view(['POST'])
 def get_shared_post_view(request, token: str):
     response = GetSharedPostInteractor(storage=UserDB(), response=GetSharedPostResponse()).\
         get_shared_post_interactor(token=token)

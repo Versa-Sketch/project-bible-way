@@ -25,7 +25,6 @@ class GoogleAuthenticationInteractor:
             google_id = decoded_token['uid']
             email = decoded_token['email']
             name = decoded_token.get('name', '')
-            profile_picture_url = decoded_token.get('picture', None)
             
         except Exception as e:
             print(f"Token verification failed: {e}")
@@ -46,13 +45,9 @@ class GoogleAuthenticationInteractor:
                 existing_user = self.storage.update_user_auth_provider(existing_user, 'BOTH')
                 existing_user.google_id = google_id
                 existing_user.is_email_verified = True  # Google already verified the email
-                if profile_picture_url:
-                    existing_user.profile_picture_url = profile_picture_url
                 existing_user.save()
             elif existing_user.auth_provider == 'GOOGLE':
                 existing_user.google_id = google_id
-                if profile_picture_url:
-                    existing_user.profile_picture_url = profile_picture_url
                 existing_user.save()
             
             tokens = self.authentication.create_tokens(user=existing_user)
@@ -82,8 +77,7 @@ class GoogleAuthenticationInteractor:
             google_id=google_id,
             country=country or "",
             age=age,
-            preferred_language=preferred_language,
-            profile_picture_url=profile_picture_url
+            preferred_language=preferred_language
         )
         
         tokens = self.authentication.create_tokens(user=user)

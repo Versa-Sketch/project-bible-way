@@ -166,8 +166,9 @@ class ReadingProgress(models.Model):
     reading_progress_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reading_progresses')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reading_progresses')
-    last_position = models.CharField(max_length=255, blank=True)  # e.g., "chapter:verse" or "section:paragraph"
     progress_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
+    block_id = models.CharField(max_length=255, blank=True, null=True)
+    chapter_id = models.ForeignKey(Chapters, on_delete=models.CASCADE, related_name='reading_progresses',blank=True, null=True)
     last_read_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -184,8 +185,8 @@ class ReadingNote(models.Model):
     note_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reading_notes')
     book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='reading_notes')
-    block_id = models.UUIDField(blank=True, null=True)
     chapter_id = models.UUIDField(blank=True, null=True)
+    block_id = models.CharField(max_length=255, blank=True, null=True)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -216,4 +217,16 @@ class Highlight(models.Model):
     def __str__(self):
         return f"Highlight {self.highlight_id} by {self.user.username} on {self.book.title}"
 
+class Bookmark(models.Model):
+    bookmark_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bookmarks')
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='bookmarks')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        db_table = 'bible_way_bookmark'
+
+    def __str__(self):
+        return f"Bookmark {self.bookmark_id} by {self.user.username} on {self.book.title}"
+    

@@ -15,6 +15,7 @@ urlpatterns = [
     # ==================== User Profile APIs ====================
     path("user/profile/me", get_current_user_profile_view),
     path("user/profile/complete", get_complete_user_profile_view),
+    path("user/profile/update", update_profile_view),
     path("user/profile/<str:user_name>", get_user_profile_view),
     
     # ==================== User Search & Discovery APIs ====================
@@ -99,6 +100,17 @@ urlpatterns = [
     path("reading-note/create", create_reading_note_view),
     path("reading-note/book/<str:book_id>", get_reading_notes_view),
     path("reading-note/update", update_reading_note_view),
+    path("reading-note/delete", delete_reading_note_view),
+    
+    # ==================== Bookmark APIs ====================
+    path("bookmark/create", create_bookmark_view),
+    path("bookmark/all", get_bookmarks_view),
+    path("bookmark/delete", delete_bookmark_view),
+    
+    # ==================== Reading Progress APIs ====================
+    path("reading-progress/create", create_reading_progress_view),
+    path("reading-progress/get", get_reading_progress_view),
+    
     # ==================== Share Link APIs ====================
     path("share/post/create", create_post_share_link_view),
     path("share/profile/create", create_profile_share_link_view),

@@ -359,7 +359,115 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 2.4 Search Users
+### 2.4 Update User Profile
+**Endpoint:** `POST /user/profile/update`  
+**Authentication:** Required (JWT)
+
+**Description:**  
+Update the authenticated user's profile information. All fields are optional, but at least one field must be provided. Users can only update their own profile.
+
+**Request Body:**
+```json
+{
+  "preferred_language": "string (optional)",
+  "age": "integer (optional)",
+  "country": "string (optional)"
+}
+```
+
+**Example Request:**
+```json
+{
+  "preferred_language": "English",
+  "age": 28,
+  "country": "United States"
+}
+```
+
+**Success Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "profile_updated_successfully"
+}
+```
+
+**Error Responses:**
+
+- **401 Unauthorized** - Missing or invalid token:
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+- **400 Bad Request** - No fields provided:
+```json
+{
+  "success": false,
+  "error": "At least one field must be provided to update",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid age:
+```json
+{
+  "success": false,
+  "error": "Age must be between 1 and 150",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid preferred_language:
+```json
+{
+  "success": false,
+  "error": "Preferred language must be between 2 and 50 characters",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **400 Bad Request** - Invalid country:
+```json
+{
+  "success": false,
+  "error": "Country must be between 2 and 100 characters",
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
+- **404 Not Found** - User not found:
+```json
+{
+  "success": false,
+  "error": "User not found",
+  "error_code": "USER_NOT_FOUND"
+}
+```
+
+- **500 Internal Server Error:**
+```json
+{
+  "success": false,
+  "error": "Failed to update profile: <error_message>",
+  "error_code": "INTERNAL_ERROR"
+}
+```
+
+**Notes:**
+- All fields are optional (partial update supported)
+- At least one field must be provided in the request
+- Users can only update their own profile (based on JWT token)
+- Username is NOT updatable through this endpoint
+- Empty strings are treated as null (field will not be updated)
+- Age must be a valid integer between 1 and 150
+- Preferred language must be between 2 and 50 characters
+- Country must be between 2 and 100 characters
+
+---
+
+### 2.5 Search Users
 **Endpoint:** `GET /user/search`  
 **Authentication:** Required (JWT)
 
@@ -463,7 +571,7 @@ Authorization: Bearer <access_token>
 
 ---
 
-### 2.5 Get Recommended Users
+### 2.6 Get Recommended Users
 **Endpoint:** `GET /user/recommended` or `POST /user/recommended`  
 **Authentication:** Required (JWT)
 

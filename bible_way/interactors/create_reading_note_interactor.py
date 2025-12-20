@@ -22,20 +22,16 @@ class CreateReadingNoteInteractor:
         if not content or not content.strip():
             return self.response.validation_error_response("content is required")
         
-        if not block_id or not block_id.strip():
-            return self.response.validation_error_response("block_id is required")
-        
         # Clean inputs
         book_id = book_id.strip()
         user_id = user_id.strip()
         content = content.strip()
-        block_id = block_id.strip()
+        chapter_id = chapter_id.strip() if chapter_id else None
+        block_id = block_id.strip() if block_id else None
         
         # Handle chapter_id: if not provided, generate a new UUID
-        if not chapter_id or not chapter_id.strip():
+        if not chapter_id:
             chapter_id = str(uuid.uuid4())
-        else:
-            chapter_id = chapter_id.strip()
         
         try:
             # Verify Book exists

@@ -8,7 +8,7 @@ class GetBooksByCategoryAndAgeGroupInteractor:
         self.storage = storage
         self.response = response
 
-    def get_books_by_category_and_age_group_interactor(self, category_id: str, age_group_id: str) -> Response:
+    def get_books_by_category_and_age_group_interactor(self, user_id: str, category_id: str, age_group_id: str) -> Response:
         if not category_id or (isinstance(category_id, str) and not category_id.strip()):
             return self.response.validation_error_response("Category is required")
         
@@ -26,10 +26,15 @@ class GetBooksByCategoryAndAgeGroupInteractor:
         try:
             books = self.storage.get_books_by_category_and_age_group(category_id, age_group_id)
             
+            # Get all bookmarked book IDs for the user
+            bookmarks = self.storage.get_bookmarks_by_user(user_id)
+            bookmarked_book_ids = {str(bookmark.book.book_id) for bookmark in bookmarks}
+            
             books_data = []
             for book in books:
+                book_id_str = str(book.book_id)
                 books_data.append({
-                    "book_id": str(book.book_id),
+                    "book_id": book_id_str,
                     "title": book.title,
                     "description": book.description,
                     "category_id": str(book.category.category_id),
@@ -38,6 +43,7 @@ class GetBooksByCategoryAndAgeGroupInteractor:
                     "cover_image_url": book.cover_image_url,
                     "book_order": book.book_order,
                     "is_active": book.is_active,
+                    "is_bookmarked": book_id_str in bookmarked_book_ids,
                     "created_at": book.created_at.isoformat() if book.created_at else None,
                     "updated_at": book.updated_at.isoformat() if book.updated_at else None
                 })
