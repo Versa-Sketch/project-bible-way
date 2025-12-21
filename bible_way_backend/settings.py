@@ -91,9 +91,11 @@ CORS_ALLOW_HEADERS = [
 ]
 
 # -------------------------------------------------------------------
-# CSRF CONFIG (NGROK)
+# CSRF CONFIG
 # -------------------------------------------------------------------
 CSRF_TRUSTED_ORIGINS = [
+    "https://api.bibleway.io",
+    "http://10.10.26.203:5173",
     "https://*.ngrok-free.app",
 ]
 
