@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 from django.db.models import Q, Max
+from django.db import IntegrityError
 from project_chat.models import Conversation, ConversationMember, Message, MessageReadReceipt, ConversationTypeChoices
 from bible_way.models import User
 
@@ -325,21 +326,51 @@ class ChatDB:
             
             # Create new conversation
             user1 = User.objects.get(user_id=user1_uuid)
+            user2 = User.objects.get(user_id=user2_uuid)
             conversation = Conversation.objects.create(
                 type=ConversationTypeChoices.DIRECT,
                 created_by=user1,
                 is_active=True
             )
             
-            # Add both users as members
-            ConversationMember.objects.create(
-                conversation=conversation,
-                user=user1
-            )
-            ConversationMember.objects.create(
-                conversation=conversation,
-                user=User.objects.get(user_id=user2_uuid)
-            )
+            # Add both users as members using update_or_create to prevent duplicates
+            # Wrap in try-except to handle IntegrityError from race conditions
+            try:
+                ConversationMember.objects.update_or_create(
+                    conversation=conversation,
+                    user=user1,
+                    defaults={'left_at': None}
+                )
+                ConversationMember.objects.update_or_create(
+                    conversation=conversation,
+                    user=user2,
+                    defaults={'left_at': None}
+                )
+            except IntegrityError as e:
+                # Handle race condition - membership might have been created concurrently
+                print(f"IntegrityError in get_or_create_direct_conversation (membership): {e}")
+                # Try to get existing memberships and reactivate if needed
+                try:
+                    membership1 = ConversationMember.objects.get(
+                        conversation=conversation,
+                        user=user1
+                    )
+                    if membership1.left_at is not None:
+                        membership1.left_at = None
+                        membership1.save()
+                except ConversationMember.DoesNotExist:
+                    pass
+                
+                try:
+                    membership2 = ConversationMember.objects.get(
+                        conversation=conversation,
+                        user=user2
+                    )
+                    if membership2.left_at is not None:
+                        membership2.left_at = None
+                        membership2.save()
+                except ConversationMember.DoesNotExist:
+                    pass
             
             return conversation
         except Exception as e:
@@ -401,24 +432,35 @@ class ChatDB:
             conv_id = self._safe_convert_conversation_id(conversation_id)
             user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
             
-            # Check if already a member
-            membership = ConversationMember.objects.filter(
-                conversation_id=conv_id,
-                user_id=user_uuid,
-                left_at__isnull=True
-            ).first()
-            
-            if membership:
-                return True  # Already a member
-            
-            # Add user as member
+            # Get conversation and user objects
             conversation = Conversation.objects.get(id=conv_id)
             user = User.objects.get(user_id=user_uuid)
-            ConversationMember.objects.create(
-                conversation=conversation,
-                user=user
+            
+            # Use update_or_create to handle both creation and reactivation atomically
+            # This ensures left_at is always None (user is active) regardless of previous state
+            membership, created = ConversationMember.objects.update_or_create(
+                conversation_id=conv_id,
+                user_id=user_uuid,
+                defaults={'left_at': None}
             )
+            
             return True
+        except IntegrityError as e:
+            # Handle race condition where membership was created between check and create
+            print(f"IntegrityError in ensure_user_membership (race condition): {e}, conversation_id={conversation_id}, user_id={user_id}")
+            try:
+                # Attempt to fetch and reactivate the existing membership
+                membership = ConversationMember.objects.get(
+                    conversation_id=conv_id,
+                    user_id=user_uuid
+                )
+                if membership.left_at is not None:
+                    membership.left_at = None
+                    membership.save()
+                return True
+            except ConversationMember.DoesNotExist:
+                print(f"Could not recover from IntegrityError: membership not found")
+                return False
         except (Conversation.DoesNotExist, User.DoesNotExist) as e:
             print(f"Error in ensure_user_membership (object not found): {type(e).__name__}: {e}, conversation_id={conversation_id}, user_id={user_id}")
             return False
