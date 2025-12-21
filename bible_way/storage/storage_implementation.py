@@ -1522,6 +1522,19 @@ class UserDB:
             raise Exception(f"Failed to retrieve verses: {str(e)}")
     
     
+    def check_verse_exists_today(self) -> bool:
+        """Check if a verse was already created today"""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = today_start + timedelta(days=1)
+        
+        return Verse.objects.filter(
+            created_at__gte=today_start,
+            created_at__lt=today_end
+        ).exists()
+    
     def create_verse(self, title: str, description: str) -> Verse:
         verse = Verse.objects.create(
             title=title.strip() if title else 'Quote of the day',

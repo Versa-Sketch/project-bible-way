@@ -19,11 +19,11 @@ class GetVerseResponse:
     def verse_not_found_response() -> Response:
         return Response(
             {
-                "success": False,
-                "error": "Verse not found",
-                "error_code": "VERSE_NOT_FOUND"
+                "success": True,
+                "message": "No verse found",
+                "data": None
             },
-            status=status.HTTP_404_NOT_FOUND
+            status=status.HTTP_200_OK
         )
 
     @staticmethod

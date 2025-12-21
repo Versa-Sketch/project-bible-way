@@ -27,6 +27,17 @@ class CreateVerseResponse:
         )
 
     @staticmethod
+    def verse_already_exists_today_response() -> Response:
+        return Response(
+            {
+                "success": False,
+                "error": "A verse has already been created today. Only one verse can be added per day.",
+                "error_code": "VERSE_ALREADY_EXISTS_TODAY"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    @staticmethod
     def error_response(error_message: str) -> Response:
         return Response(
             {

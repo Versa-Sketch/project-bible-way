@@ -12,8 +12,11 @@ class CreateVerseInteractor:
         if not description or not description.strip():
             return self.response.validation_error_response("Description is required")
         
+        # Check if verse already exists today
+        if self.storage.check_verse_exists_today():
+            return self.response.verse_already_exists_today_response()
+        
         try:
-            
             verse = self.storage.create_verse(
                 title=title,
                 description=description
