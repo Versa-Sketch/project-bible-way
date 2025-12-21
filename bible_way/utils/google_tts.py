@@ -2,25 +2,37 @@ from google.cloud import texttospeech
 import os
 import base64
 import io
+from pathlib import Path
 try:
     from mutagen.mp3 import MP3
     MUTAGEN_AVAILABLE = True
 except ImportError:
     MUTAGEN_AVAILABLE = False
 
+# Get the project root directory (assuming this file is in bible_way/utils/)
+# Go up from bible_way/utils/ to project root
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 # Path to your Google Cloud service account JSON key file
-KEY_PATH = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "serviceAccountKey.json")
+# First check environment variable, then try project root
+env_key_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+if env_key_path:
+    KEY_PATH = env_key_path
+else:
+    KEY_PATH = str(PROJECT_ROOT / "serviceAccountKey.json")
 
 # Maximum bytes per TTS API request (5000 bytes limit, using 4500 for safety)
-MAX_BYTES_PER_CHUNK = 4500
+MAX_BYTES_PER_CHUNK = 4900
 
 
 def get_tts_client():
     """Initialize and return a Text-to-Speech client."""
-    if os.path.exists(KEY_PATH):
+    # Check if KEY_PATH exists (either from env var or project root)
+    if KEY_PATH and os.path.exists(KEY_PATH):
         return texttospeech.TextToSpeechClient.from_service_account_file(KEY_PATH)
     else:
         # Try using default credentials (from environment or metadata service)
+        # This will use GOOGLE_APPLICATION_CREDENTIALS env var if set, or try other methods
         return texttospeech.TextToSpeechClient()
 
 
@@ -150,6 +162,21 @@ def encode_audio_to_base64(audio_bytes: bytes) -> str:
         str: Base64 encoded string
     """
     return base64.b64encode(audio_bytes).decode('utf-8')
+
+
+def create_audio_data_url(audio_bytes: bytes, mime_type: str = "audio/mp3") -> str:
+    """
+    Create a data URL from audio bytes.
+    
+    Args:
+        audio_bytes: Binary audio data
+        mime_type: MIME type of the audio (default: "audio/mp3")
+    
+    Returns:
+        str: Data URL string (e.g., "data:audio/mp3;base64,...")
+    """
+    base64_data = encode_audio_to_base64(audio_bytes)
+    return f"data:{mime_type};base64,{base64_data}"
 
 
 def run_quickstart():

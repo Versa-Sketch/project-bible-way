@@ -6,17 +6,17 @@ class GenerateTextToSpeechResponse:
 
     @staticmethod
     def audio_generated_successfully_response(
-        chunks_data: list,
-        total_chunks: int,
+        blocks_data: list,
+        total_blocks: int,
         total_duration: float,
         audio_format: str
     ) -> Response:
         return Response(
             {
                 "success": True,
-                "message": f"Audio generated successfully in {total_chunks} chunk{'s' if total_chunks != 1 else ''}",
-                "chunks": chunks_data,
-                "total_chunks": total_chunks,
+                "message": f"Audio generated successfully for {total_blocks} block{'s' if total_blocks != 1 else ''}",
+                "blocks": blocks_data,
+                "total_blocks": total_blocks,
                 "audio_format": audio_format,
                 "total_duration": total_duration
             },

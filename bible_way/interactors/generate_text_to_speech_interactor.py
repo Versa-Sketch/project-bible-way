@@ -1,8 +1,8 @@
 from bible_way.presenters.generate_text_to_speech_response import GenerateTextToSpeechResponse
 from bible_way.utils.google_tts import (
     synthesize_text_to_speech,
-    chunk_blocks,
-    encode_audio_to_base64
+    create_audio_data_url,
+    MAX_BYTES_PER_CHUNK
 )
 from rest_framework.response import Response
 import re
@@ -52,48 +52,52 @@ class GenerateTextToSpeechInteractor:
                 return self.response.validation_error_response(f"Block at index {i} 'text' field must be a string")
         
         try:
-            # Chunk blocks into groups that fit within API limits
-            chunked_blocks = chunk_blocks(blocks)
-            
-            if not chunked_blocks:
-                return self.response.validation_error_response("No valid blocks to process")
-            
-            chunks_data = []
+            blocks_data = []
             total_duration = 0.0
             
-            # Process each chunk
-            for chunk_index, chunk in enumerate(chunked_blocks):
+            # Process each block individually
+            for block in blocks:
+                block_id = block.get("block_id")
+                block_text = block.get("text", "")
+                
+                # Check if block text exceeds the byte limit
+                text_bytes = len(block_text.encode('utf-8'))
+                if text_bytes > MAX_BYTES_PER_CHUNK:
+                    return self.response.validation_error_response(
+                        f"Block '{block_id}' text exceeds the maximum allowed size ({MAX_BYTES_PER_CHUNK} bytes). "
+                        f"Current size: {text_bytes} bytes. Please split this block into smaller parts."
+                    )
+                
                 try:
-                    # Synthesize speech for this chunk
+                    # Synthesize speech for this block
                     audio_bytes, duration = synthesize_text_to_speech(
-                        text=chunk["text"],
+                        text=block_text,
                         language_code=language_code
                     )
                     
-                    # Encode audio to base64
-                    audio_base64 = encode_audio_to_base64(audio_bytes)
+                    # Create data URL for the audio
+                    audio_url = create_audio_data_url(audio_bytes, mime_type="audio/mp3")
                     
-                    # Build chunk data
-                    chunk_data = {
-                        "chunk_index": chunk_index,
-                        "block_ids": chunk["block_ids"],
-                        "audio_data": audio_base64,
+                    # Build block data
+                    block_data = {
+                        "block_id": block_id,
+                        "audio_url": audio_url,
                         "duration": round(duration, 2)
                     }
                     
-                    chunks_data.append(chunk_data)
+                    blocks_data.append(block_data)
                     total_duration += duration
                     
                 except Exception as e:
-                    # If one chunk fails, continue with others but log the error
+                    # If one block fails, return error
                     return self.response.error_response(
-                        f"Failed to generate audio for chunk {chunk_index}: {str(e)}"
+                        f"Failed to generate audio for block '{block_id}': {str(e)}"
                     )
             
             # Return successful response
             return self.response.audio_generated_successfully_response(
-                chunks_data=chunks_data,
-                total_chunks=len(chunks_data),
+                blocks_data=blocks_data,
+                total_blocks=len(blocks_data),
                 total_duration=round(total_duration, 2),
                 audio_format="mp3"
             )
