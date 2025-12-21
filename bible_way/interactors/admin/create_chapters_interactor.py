@@ -48,9 +48,6 @@ class CreateChaptersInteractor:
             
             if not chapter_data.get('title') or not chapter_data.get('title').strip():
                 return self.response.validation_error_response(f"Title is required for chapter at index {idx}")
-            
-            if not chapter_data.get('description') or not chapter_data.get('description').strip():
-                return self.response.validation_error_response(f"Description is required for chapter at index {idx}")
         
         if len(files_dict) != len(chapters_data):
             return self.response.validation_error_response(f"Number of files ({len(files_dict)}) must match number of chapters ({len(chapters_data)})")
@@ -92,10 +89,11 @@ class CreateChaptersInteractor:
                         metadata = {}
                 
                 try:
+                    description = chapter_data.get('description', '').strip() if chapter_data.get('description') else ''
                     chapter = self.storage.create_chapter(
                         book_id=book_id,
                         title=chapter_data['title'].strip(),
-                        description=chapter_data['description'].strip(),
+                        description=description,
                         chapter_url=chapter_url,
                         chapter_number=current_chapter_number,
                         metadata=metadata if isinstance(metadata, dict) else {},
