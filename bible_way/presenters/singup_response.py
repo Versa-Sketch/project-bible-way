@@ -102,3 +102,14 @@ class SignupResponse:
             },
             status=status.HTTP_201_CREATED
         )
+    
+    @staticmethod
+    def validation_error_response(error_message: str) -> Response:
+        return Response(
+            {
+                "success": False,
+                "error": error_message,
+                "error_code": "VALIDATION_ERROR"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )

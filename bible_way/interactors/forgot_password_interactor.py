@@ -48,6 +48,10 @@ class ForgotPasswordInteractor:
         if user.auth_provider == AuthProviderChoices.GOOGLE:
             return self.response.invalid_auth_provider_response()
         
+        # Check if email is verified before sending password reset
+        if not user.is_email_verified:
+            return self.response.email_not_verified_response()
+        
         # Generate OTP and expiry
         otp = generate_otp()
         otp_expiry = get_otp_expiry()

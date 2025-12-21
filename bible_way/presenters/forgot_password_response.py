@@ -57,4 +57,15 @@ class ForgotPasswordResponse:
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+    
+    @staticmethod
+    def email_not_verified_response() -> Response:
+        return Response(
+            {
+                "success": False,
+                "error": "Email address is not verified. Please verify your email before requesting a password reset.",
+                "error_code": "EMAIL_NOT_VERIFIED"
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
