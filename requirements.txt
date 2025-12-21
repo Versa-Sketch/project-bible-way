@@ -33,3 +33,8 @@ elasticsearch-dsl>=8.0.0
 
 # Database (MySQL for Production)
 mysqlclient>=2.1.0
+# Google Cloud Text-to-Speech
+google-cloud-texttospeech>=2.16.0
+
+# Audio Processing (for MP3 duration calculation)
+mutagen>=1.47.0

@@ -75,6 +75,8 @@ from bible_way.interactors.admin.create_chapters_interactor import CreateChapter
 from bible_way.interactors.get_all_books_interactor import GetAllBooksInteractor
 from bible_way.interactors.get_books_by_category_and_age_group_interactor import GetBooksByCategoryAndAgeGroupInteractor
 from bible_way.interactors.get_book_chapters_interactor import GetBookChaptersInteractor
+from bible_way.interactors.get_book_details_interactor import GetBookDetailsInteractor
+from bible_way.interactors.generate_text_to_speech_interactor import GenerateTextToSpeechInteractor
 from bible_way.interactors.search_chapters_interactor import SearchChaptersInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
 from bible_way.presenters.search_users_response import SearchUsersResponse
@@ -135,6 +137,8 @@ from bible_way.presenters.admin.create_chapters_response import CreateChaptersRe
 from bible_way.presenters.get_all_books_response import GetAllBooksResponse
 from bible_way.presenters.get_books_by_category_and_age_group_response import GetBooksByCategoryAndAgeGroupResponse
 from bible_way.presenters.get_book_chapters_response import GetBookChaptersResponse
+from bible_way.presenters.get_book_details_response import GetBookDetailsResponse
+from bible_way.presenters.generate_text_to_speech_response import GenerateTextToSpeechResponse
 from bible_way.presenters.search_chapters_response import SearchChaptersResponse
 from bible_way.interactors.create_highlight_interactor import CreateHighlightInteractor
 from bible_way.interactors.get_highlights_interactor import GetHighlightsInteractor
@@ -170,6 +174,8 @@ from bible_way.interactors.create_reading_progress_interactor import CreateReadi
 from bible_way.presenters.create_reading_progress_response import CreateReadingProgressResponse
 from bible_way.interactors.get_reading_progress_interactor import GetReadingProgressInteractor
 from bible_way.presenters.get_reading_progress_response import GetReadingProgressResponse
+from bible_way.interactors.get_top_books_reading_progress_interactor import GetTopBooksReadingProgressInteractor
+from bible_way.presenters.get_top_books_reading_progress_response import GetTopBooksReadingProgressResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
 from bible_way.storage.s3_utils import upload_file_to_s3
@@ -961,6 +967,38 @@ def get_book_chapters_view(request):
         )
     return response
 
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_book_details_view(request):
+    user_id = str(request.user.user_id)
+    book_id = request.data.get('book_id', '').strip()
+
+    response = GetBookDetailsInteractor(storage=UserDB(), response=GetBookDetailsResponse()).\
+        get_book_details_interactor(
+            book_id=book_id,
+            user_id=user_id
+        )
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def generate_text_to_speech_view(request):
+    chapter_id = request.data.get('chapter_id', '').strip()
+    book_id = request.data.get('book_id', '').strip()
+    blocks = request.data.get('blocks', [])
+    language_code = request.data.get('language_code', 'en-US').strip()
+
+    response = GenerateTextToSpeechInteractor(response=GenerateTextToSpeechResponse()).\
+        generate_text_to_speech_interactor(
+            chapter_id=chapter_id,
+            book_id=book_id,
+            blocks=blocks,
+            language_code=language_code
+        )
+    return response
+
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -1395,6 +1433,18 @@ def get_reading_progress_view(request):
         get_reading_progress_interactor(
             user_id=user_id,
             book_id=book_id
+        )
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_top_books_reading_progress_view(request):
+    user_id = str(request.user.user_id)
+    
+    response = GetTopBooksReadingProgressInteractor(storage=UserDB(), response=GetTopBooksReadingProgressResponse()).\
+        get_top_books_reading_progress_interactor(
+            user_id=user_id
         )
     return response
 

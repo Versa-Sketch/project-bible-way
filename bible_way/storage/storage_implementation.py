@@ -661,8 +661,8 @@ class UserDB:
         
         # Build queryset with annotations
         queryset = Post.objects.select_related('user').prefetch_related('media').annotate(
-            likes_count=Count('reactions', filter=Q(reactions__reaction_type='like')),
-            comments_count=Count('comments')
+            likes_count=Count('reactions', filter=Q(reactions__reaction_type='like'), distinct=True),
+            comments_count=Count('comments', distinct=True)
         )
         
         # Add following status annotation and ordering if user is authenticated
@@ -748,8 +748,8 @@ class UserDB:
         total_count = Post.objects.filter(user__user_id=user_uuid).count()
         
         posts = Post.objects.prefetch_related('media').filter(user__user_id=user_uuid).annotate(
-            likes_count=Count('reactions', filter=Q(reactions__reaction_type='like')),
-            comments_count=Count('comments')
+            likes_count=Count('reactions', filter=Q(reactions__reaction_type='like'), distinct=True),
+            comments_count=Count('comments', distinct=True)
         ).order_by('-created_at')[offset:offset + limit]
         
         current_user_uuid = None
@@ -1769,6 +1769,20 @@ class UserDB:
             )
         except ReadingProgress.DoesNotExist:
             return None
+    
+    def get_top_reading_progress_books(self, user_id: str, limit: int = 2):
+        """Get top N books by reading progress for a user, ordered by progress_percentage DESC, then last_read_at DESC"""
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        return ReadingProgress.objects.filter(
+            user__user_id=user_uuid
+        ).select_related(
+            'book', 
+            'book__category', 
+            'book__age_group', 
+            'book__language', 
+            'chapter_id'
+        ).order_by('-progress_percentage', '-last_read_at')[:limit]
     
     def _generate_unique_share_token(self) -> str:
         """Generate a unique URL-safe token for share links."""

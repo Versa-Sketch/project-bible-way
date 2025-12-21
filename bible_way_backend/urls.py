@@ -86,10 +86,14 @@ urlpatterns = [
     path("books/", get_books_by_category_and_age_group_get_view),
     path("books/all", get_all_books_view),
     path("books/chapters/get", get_book_chapters_view),
+    path("books/details", get_book_details_view),
     path("books/search", search_chapters_view),
     
     # ==================== Language APIs ====================
     path("languages/all", get_all_languages_view),
+    
+    # ==================== Audio/TTS APIs ====================
+    path("audio/text-to-speech", generate_text_to_speech_view),
     
     # ==================== Highlight APIs ====================
     path("highlight/create", create_highlight_view),
@@ -109,6 +113,7 @@ urlpatterns = [
     # ==================== Reading Progress APIs ====================
     path("reading-progress/create", create_reading_progress_view),
     path("reading-progress/get", get_reading_progress_view),
+    path("reading-progress/top-books", get_top_books_reading_progress_view),
     
     # ==================== Share Link APIs ====================
     path("share/post/create", create_post_share_link_view),
