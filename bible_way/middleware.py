@@ -11,11 +11,7 @@ class DisableCSRFForAPI(MiddlewareMixin):
     def process_request(self, request):
         # List of URL patterns that should be exempt from CSRF
         api_paths = [
-            '/admin/book/create',
-            '/admin/promotion/create',
-            '/admin/verse/create',
-            '/admin/category/create',
-            '/admin/age-group/create',
+            '/admin/',  # Exempt all admin API endpoints
             '/user/',
             '/post/',
             '/comment/',
@@ -26,6 +22,7 @@ class DisableCSRFForAPI(MiddlewareMixin):
             '/books/',
             '/share/',
             '/s/',
+            '/api/',  # Exempt all /api/ endpoints (chat, notifications, etc.)
         ]
         
         # Check if the request path starts with any API path
