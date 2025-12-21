@@ -17,7 +17,7 @@ class AdminGetTestimonialsInteractor:
                 return self.response.validation_error_response("Offset must be greater than or equal to 0")
             
             if status_filter not in ['all', 'pending', 'verified']:
-                status_filter = 'all'
+                return self.response.validation_error_response("Status filter must be 'all', 'pending', or 'verified'")
             
             result = self.storage.get_all_testimonials_admin(limit=limit, offset=offset, status_filter=status_filter)
             

@@ -6,10 +6,11 @@ class GetAllVersesResponse:
 
     @staticmethod
     def verses_retrieved_successfully_response(verses_data: list) -> Response:
+        message = "Verses retrieved successfully" if verses_data else "No verses found"
         return Response(
             {
                 "success": True,
-                "message": "Verses retrieved successfully",
+                "message": message,
                 "data": verses_data,
                 "total_count": len(verses_data)
             },
