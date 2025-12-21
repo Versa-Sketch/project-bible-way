@@ -6,6 +6,7 @@ Returns dictionary responses that will be sent as JSON over WebSocket.
 
 from typing import Optional, Dict, Any
 from project_chat.models import Message, Conversation
+from project_chat.storage.s3_utils import generate_presigned_url
 
 
 class MessageResponse:
@@ -47,7 +48,7 @@ class MessageResponse:
             "sender_email": message.sender.email,
             "text": message.text,
             "file": {
-                "url": message.file,
+                "url": generate_presigned_url(message.file) if message.file else None,
                 "type": message.file_type,
                 "size": message.file_size,
                 "name": message.file_name
@@ -69,7 +70,7 @@ class MessageResponse:
                     {
                         "media_id": str(media.media_id),
                         "media_type": media.media_type,
-                        "url": media.url
+                        "url": generate_presigned_url(media.url)
                     }
                     for media in message.shared_post.media.all()[:3]  # Limit to 3 media items for preview
                 ]

@@ -74,7 +74,11 @@ MIDDLEWARE = [
 # -------------------------------------------------------------------
 # CORS CONFIGURATION (FOR FRONTEND)
 # -------------------------------------------------------------------
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "https://bibleway.io",
+    "https://www.bibleway.io",
+]
+
 CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_HEADERS = [
@@ -87,16 +91,14 @@ CORS_ALLOW_HEADERS = [
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
-    'ngrok-skip-browser-warning',  # IMPORTANT
 ]
 
 # -------------------------------------------------------------------
 # CSRF CONFIG
 # -------------------------------------------------------------------
 CSRF_TRUSTED_ORIGINS = [
-    "https://api.bibleway.io",
-    "http://10.10.26.203:5173",
-    "https://*.ngrok-free.app",
+    "https://bibleway.io",
+    "https://www.bibleway.io",
 ]
 
 # -------------------------------------------------------------------
@@ -229,6 +231,10 @@ AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '')
 AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-1')
 AWS_DEFAULT_ACL = 'public-read'
+
+# S3 Presigned URL Configuration
+AWS_S3_PRESIGNED_URL_EXPIRATION = int(os.getenv('AWS_S3_PRESIGNED_URL_EXPIRATION', '3600'))  # Default 1 hour
+AWS_S3_USE_PRESIGNED_URLS = os.getenv('AWS_S3_USE_PRESIGNED_URLS', 'True').lower() == 'true'
 
 # AWS SES Configuration for Email
 # Uses the same AWS credentials as S3 (from AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars)

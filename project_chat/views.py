@@ -86,6 +86,9 @@ class ChatFileUploadView(APIView):
                     conversation_id=conversation_id,
                     content_type=file_obj.content_type
                 )
+                # Generate presigned URL for the uploaded file
+                from project_chat.storage.s3_utils import generate_presigned_url
+                presigned_file_url = generate_presigned_url(file_url)
             except Exception as e:
                 return Response({
                     "success": False,
@@ -93,11 +96,11 @@ class ChatFileUploadView(APIView):
                     "error_code": ErrorCodes.FILE_UPLOAD_FAILED
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-            # Return success response
+            # Return success response with presigned URL
             return Response({
                 "success": True,
                 "data": {
-                    "file_url": file_url,
+                    "file_url": presigned_file_url,
                     "file_type": file_type,
                     "file_size": file_obj.size,
                     "file_name": file_obj.name

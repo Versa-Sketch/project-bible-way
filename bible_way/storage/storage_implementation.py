@@ -6,6 +6,7 @@ import secrets
 from bible_way.models import User, UserFollowers, Post, Media, Comment, Reaction, Promotion, PromotionImage, PrayerRequest, Testimonial, Verse, Category, AgeGroup, Book, Language, Highlight, ShareLink, ShareLinkContentTypeChoices, Wallpaper, Sticker
 from bible_way.models.book_reading import ReadingNote, Chapters, Bookmark, ReadingProgress
 from bible_way.storage.s3_utils import upload_file_to_s3 as s3_upload_file
+from bible_way.utils.s3_url_helper import get_presigned_url
 
 
 class UserDB:
@@ -210,7 +211,7 @@ class UserDB:
             user_data = {
                 'user_id': str(user.user_id),
                 'user_name': user.username,  # Map username to user_name for API response
-                'profile_picture_url': user.profile_picture_url or '',
+                'profile_picture_url': get_presigned_url(user.profile_picture_url) if user.profile_picture_url else '',
                 'followers_count': user.followers_count,
                 'is_admin': user.is_staff
             }
@@ -596,7 +597,7 @@ class UserDB:
                 'user': {
                     'user_id': str(comment.user.user_id),
                     'user_name': comment.user.username,
-                    'profile_picture_url': comment.user.profile_picture_url or ''
+                    'profile_picture_url': get_presigned_url(comment.user.profile_picture_url) if comment.user.profile_picture_url else ''
                 },
                 'description': comment.description,
                 'likes_count': comment.likes_count,
@@ -784,7 +785,7 @@ class UserDB:
                 media_list.append({
                     'media_id': str(media.media_id),
                     'media_type': media.media_type,
-                    'url': media.url
+                    'url': get_presigned_url(media.url)
                 })
             
             is_liked = False
@@ -807,7 +808,7 @@ class UserDB:
                 'user': {
                     'user_id': str(post.user.user_id),
                     'user_name': post.user.username,  # Map username to user_name for API response
-                    'profile_picture_url': post.user.profile_picture_url or ''
+                    'profile_picture_url': get_presigned_url(post.user.profile_picture_url) if post.user.profile_picture_url else ''
                 },
                 'title': post.title,
                 'description': post.description,
@@ -855,7 +856,7 @@ class UserDB:
                 media_list.append({
                     'media_id': str(media.media_id),
                     'media_type': media.media_type,
-                    'url': media.url
+                    'url': get_presigned_url(media.url)
                 })
             
             is_liked = False
@@ -926,7 +927,7 @@ class UserDB:
             for image in promotion.promotion_images.all().order_by('order', 'created_at'):
                 images_data.append({
                     'promotion_image_id': str(image.promotion_image_id),
-                    'image_url': image.image_url,
+                    'image_url': get_presigned_url(image.image_url),
                     'image_type': image.image_type,
                     'order': image.order,
                     'created_at': image.created_at.isoformat(),
@@ -954,7 +955,7 @@ class UserDB:
         for wallpaper in wallpapers:
             wallpapers_data.append({
                 'wallpaper_id': str(wallpaper.wallpaper_id),
-                'image_url': wallpaper.image_url,
+                'image_url': get_presigned_url(wallpaper.image_url),
                 'filename': wallpaper.filename,
                 'created_at': wallpaper.created_at.isoformat()
             })
@@ -968,7 +969,7 @@ class UserDB:
         for sticker in stickers:
             stickers_data.append({
                 'sticker_id': str(sticker.sticker_id),
-                'image_url': sticker.image_url,
+                'image_url': get_presigned_url(sticker.image_url),
                 'filename': sticker.filename,
                 'created_at': sticker.created_at.isoformat()
             })
@@ -999,7 +1000,7 @@ class UserDB:
                 media_list.append({
                     'media_id': str(media.media_id),
                     'media_type': media.media_type,
-                    'url': media.url,
+                    'url': get_presigned_url(media.url),
                     'created_at': media.created_at.isoformat()
                 })
             
@@ -1008,7 +1009,7 @@ class UserDB:
                 'user': {
                     'user_id': str(testimonial.user.user_id),
                     'user_name': testimonial.user.username,
-                    'profile_picture_url': testimonial.user.profile_picture_url or ''
+                    'profile_picture_url': get_presigned_url(testimonial.user.profile_picture_url) if testimonial.user.profile_picture_url else ''
                 },
                 'description': testimonial.description,
                 'rating': testimonial.rating,
@@ -1050,7 +1051,7 @@ class UserDB:
                 media_list.append({
                     'media_id': str(media.media_id),
                     'media_type': media.media_type,
-                    'url': media.url,
+                    'url': get_presigned_url(media.url),
                     'created_at': media.created_at.isoformat()
                 })
             
@@ -1059,7 +1060,7 @@ class UserDB:
                 'user': {
                     'user_id': str(testimonial.user.user_id),
                     'user_name': testimonial.user.username,
-                    'profile_picture_url': testimonial.user.profile_picture_url or ''
+                    'profile_picture_url': get_presigned_url(testimonial.user.profile_picture_url) if testimonial.user.profile_picture_url else ''
                 },
                 'description': testimonial.description,
                 'rating': testimonial.rating,
@@ -1117,7 +1118,7 @@ class UserDB:
                 media_list.append({
                     'media_id': str(media.media_id),
                     'media_type': media.media_type,
-                    'url': media.url,
+                    'url': get_presigned_url(media.url),
                     'created_at': media.created_at.isoformat()
                 })
             
@@ -1126,7 +1127,7 @@ class UserDB:
                 'user': {
                     'user_id': str(testimonial.user.user_id),
                     'user_name': testimonial.user.username,
-                    'profile_picture_url': testimonial.user.profile_picture_url or ''
+                    'profile_picture_url': get_presigned_url(testimonial.user.profile_picture_url) if testimonial.user.profile_picture_url else ''
                 },
                 'description': testimonial.description,
                 'rating': testimonial.rating,
@@ -1222,7 +1223,7 @@ class UserDB:
                 media_list.append({
                     'media_id': str(media.media_id),
                     'media_type': media.media_type,
-                    'url': media.url,
+                    'url': get_presigned_url(media.url),
                     'created_at': media.created_at.isoformat()
                 })
             
@@ -1231,7 +1232,7 @@ class UserDB:
                 'user': {
                     'user_id': str(prayer_request.user.user_id),
                     'user_name': prayer_request.user.username,  # Map username to user_name for API response
-                    'profile_picture_url': prayer_request.user.profile_picture_url or ''
+                    'profile_picture_url': get_presigned_url(prayer_request.user.profile_picture_url) if prayer_request.user.profile_picture_url else ''
                 },
                 'description': prayer_request.description,
                 'media': media_list,
@@ -1288,7 +1289,7 @@ class UserDB:
                 media_list.append({
                     'media_id': str(media.media_id),
                     'media_type': media.media_type,
-                    'url': media.url,
+                    'url': get_presigned_url(media.url),
                     'created_at': media.created_at.isoformat()
                 })
             
@@ -1297,7 +1298,7 @@ class UserDB:
                 'user': {
                     'user_id': str(prayer_request.user.user_id),
                     'user_name': prayer_request.user.username,  # Map username to user_name for API response
-                    'profile_picture_url': prayer_request.user.profile_picture_url or ''
+                    'profile_picture_url': get_presigned_url(prayer_request.user.profile_picture_url) if prayer_request.user.profile_picture_url else ''
                 },
                 'description': prayer_request.description,
                 'media': media_list,
@@ -1729,7 +1730,7 @@ class UserDB:
                 book = latest_chapter.book
                 age_group_data.update({
                     "book_id": str(book.book_id),
-                    "cover_image_url": book.cover_image_url,
+                    "cover_image_url": get_presigned_url(book.cover_image_url) if book.cover_image_url else None,
                     "title": book.title
                 })
             

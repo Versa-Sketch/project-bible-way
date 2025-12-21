@@ -8,7 +8,9 @@ Supports both Django UploadedFile objects and bytes.
 import os
 import boto3
 import uuid
+import re
 from io import BytesIO
+from urllib.parse import urlparse
 from django.conf import settings
 from typing import Optional
 
@@ -22,6 +24,73 @@ s3_client = boto3.client(
 
 BUCKET_NAME = settings.AWS_STORAGE_BUCKET_NAME
 REGION = settings.AWS_S3_REGION_NAME
+
+
+def extract_s3_key_from_url(url: str) -> str:
+    """
+    Extract S3 key from full S3 URL.
+    
+    Args:
+        url: Full S3 URL like https://bucket.s3.region.amazonaws.com/key
+        
+    Returns:
+        S3 key path
+    """
+    if not url:
+        return ""
+    
+    # If it's already a key (no http/https), return as-is
+    if not url.startswith(('http://', 'https://')):
+        return url
+    
+    try:
+        parsed = urlparse(url)
+        # Remove leading slash from path
+        key = parsed.path.lstrip('/')
+        return key
+    except Exception:
+        # Fallback: try regex extraction
+        match = re.search(r'\.s3\.[^/]+\.amazonaws\.com/(.+)$', url)
+        if match:
+            return match.group(1)
+        return url
+
+
+def generate_presigned_url(s3_key: str, expiration: int = None) -> str:
+    """
+    Generate presigned URL for S3 object.
+    
+    Args:
+        s3_key: S3 key path or full S3 URL (will extract key if URL provided)
+        expiration: Expiration time in seconds (defaults to AWS_S3_PRESIGNED_URL_EXPIRATION setting)
+        
+    Returns:
+        Presigned URL string
+    """
+    if not s3_key:
+        return ""
+    
+    # Extract key if full URL provided
+    key = extract_s3_key_from_url(s3_key)
+    
+    if not key:
+        return s3_key  # Return original if extraction fails
+    
+    # Use default expiration from settings if not provided
+    if expiration is None:
+        expiration = getattr(settings, 'AWS_S3_PRESIGNED_URL_EXPIRATION', 3600)
+    
+    try:
+        presigned_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': BUCKET_NAME, 'Key': key},
+            ExpiresIn=expiration
+        )
+        return presigned_url
+    except Exception as e:
+        # If presigned URL generation fails, return original URL/key
+        # This ensures backward compatibility
+        return s3_key
 
 
 def upload_chat_file_to_s3(

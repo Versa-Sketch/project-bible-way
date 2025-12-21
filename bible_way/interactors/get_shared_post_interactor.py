@@ -3,6 +3,7 @@ from bible_way.presenters.get_shared_post_response import GetSharedPostResponse
 from rest_framework.response import Response
 from django.db.models import Count, Q
 from bible_way.models import ShareLinkContentTypeChoices
+from bible_way.utils.s3_url_helper import get_presigned_url
 
 
 class GetSharedPostInteractor:
@@ -40,7 +41,7 @@ class GetSharedPostInteractor:
                 media_list.append({
                     'media_id': str(media.media_id),
                     'media_type': media.media_type,
-                    'url': media.url
+                    'url': get_presigned_url(media.url)
                 })
             
             # Get counts
@@ -54,7 +55,7 @@ class GetSharedPostInteractor:
                 'user': {
                     'user_id': str(post.user.user_id),
                     'user_name': post.user.user_name,
-                    'profile_picture_url': post.user.profile_picture_url or ''
+                    'profile_picture_url': get_presigned_url(post.user.profile_picture_url) if post.user.profile_picture_url else ''
                 },
                 'title': post.title,
                 'description': post.description,

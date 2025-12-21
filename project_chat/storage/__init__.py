@@ -11,6 +11,8 @@ from django.db.models import Q, Max
 from django.db import IntegrityError
 from project_chat.models import Conversation, ConversationMember, Message, MessageReadReceipt, ConversationTypeChoices
 from bible_way.models import User
+from project_chat.storage.s3_utils import generate_presigned_url
+from bible_way.utils.s3_url_helper import get_presigned_url as get_bible_way_presigned_url
 
 
 class ChatDB:
@@ -504,7 +506,7 @@ class ChatDB:
                             {
                                 'media_id': str(media.media_id),
                                 'media_type': media.media_type,
-                                'url': media.url
+                                'url': get_bible_way_presigned_url(media.url)
                             }
                             for media in message.shared_post.media.all()[:3]  # Limit to 3 for preview
                         ]
@@ -515,11 +517,11 @@ class ChatDB:
                     'sender': {
                         'user_id': str(message.sender.user_id),
                         'user_name': message.sender.username,
-                        'profile_picture_url': message.sender.profile_picture_url or ''
+                        'profile_picture_url': get_bible_way_presigned_url(message.sender.profile_picture_url) if message.sender.profile_picture_url else ''
                     },
                     'text': message.text,
                     'file': {
-                        'url': message.file,
+                        'url': generate_presigned_url(message.file) if message.file else None,
                         'type': message.file_type,
                         'size': message.file_size,
                         'name': message.file_name
