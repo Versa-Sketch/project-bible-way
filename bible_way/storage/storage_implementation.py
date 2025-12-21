@@ -1522,19 +1522,6 @@ class UserDB:
             raise Exception(f"Failed to retrieve verses: {str(e)}")
     
     
-    def check_verse_exists_today(self) -> bool:
-        """Check if a verse was already created today"""
-        from django.utils import timezone
-        from datetime import timedelta
-        
-        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = today_start + timedelta(days=1)
-        
-        return Verse.objects.filter(
-            created_at__gte=today_start,
-            created_at__lt=today_end
-        ).exists()
-    
     def create_verse(self, title: str, description: str) -> Verse:
         verse = Verse.objects.create(
             title=title.strip() if title else 'Quote of the day',
@@ -1713,6 +1700,43 @@ class UserDB:
     def get_book_by_id(self, book_id: str):
         return Book.objects.select_related('category', 'age_group', 'language').get(book_id=book_id)
     
+    def get_latest_chapter_books_by_age_group_in_segregate_bibles(self):
+        """Get latest chapter's book for each age group in SEGREGATE_BIBLES category"""
+        from bible_way.models.book_reading import CategoryChoices
+        
+        # Get all age groups ordered by display_order
+        age_groups = AgeGroup.objects.all().order_by('display_order', 'age_group_name')
+        
+        result = []
+        for age_group in age_groups:
+            # Find latest chapter for this age group in SEGREGATE_BIBLES
+            latest_chapter = Chapters.objects.filter(
+                book__category__category_name=CategoryChoices.SEGREGATE_BIBLES,
+                book__age_group__age_group_id=age_group.age_group_id,
+                book__is_active=True
+            ).select_related('book', 'book__category', 'book__age_group').order_by('-created_at').first()
+            
+            age_group_data = {
+                "age_group_id": str(age_group.age_group_id),
+                "age_group_name": age_group.age_group_name,
+                "display_name": age_group.get_age_group_name_display(),
+                "book_id": None,
+                "cover_image_url": None,
+                "title": None
+            }
+            
+            if latest_chapter and latest_chapter.book:
+                book = latest_chapter.book
+                age_group_data.update({
+                    "book_id": str(book.book_id),
+                    "cover_image_url": book.cover_image_url,
+                    "title": book.title
+                })
+            
+            result.append(age_group_data)
+        
+        return result
+    
     def get_book_chapters(self, book_id: str):
         return Chapters.objects.filter(book_id=book_id).order_by('chapter_number')
     
@@ -1851,101 +1875,6 @@ class UserDB:
         reading_note = ReadingNote.objects.get(note_id=note_uuid, user__user_id=user_uuid)
         reading_note.delete()
         return True
-    
-    def get_all_reading_notes_by_user(self, user_id: str) -> list:
-        """Get all reading notes for a user, grouped by book and chapter"""
-        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
-        
-        # Fetch all notes for the user with book relationship
-        notes = ReadingNote.objects.filter(
-            user__user_id=user_uuid
-        ).select_related('book').order_by('book__book_order', 'book__title', '-created_at')
-        
-        if not notes.exists():
-            return []
-        
-        # Extract unique chapter_ids (excluding None)
-        chapter_ids = set()
-        book_ids = set()
-        for note in notes:
-            book_ids.add(note.book.book_id)
-            if note.chapter_id:
-                chapter_ids.add(note.chapter_id)
-        
-        # Fetch all chapters in bulk
-        chapters_dict = {}
-        if chapter_ids:
-            chapters = Chapters.objects.filter(chapter_id__in=chapter_ids).select_related('book')
-            for chapter in chapters:
-                chapters_dict[str(chapter.chapter_id)] = {
-                    'chapter_id': str(chapter.chapter_id),
-                    'chapter_name': chapter.chapter_name or chapter.title or None,
-                    'chapter_number': chapter.chapter_number
-                }
-        
-        # Group notes by book_id, then by chapter_id
-        books_dict = {}
-        
-        for note in notes:
-            book_id = str(note.book.book_id)
-            book_name = note.book.title
-            cover_image_url = note.book.cover_image_url or ''
-            
-            # Initialize book if not exists
-            if book_id not in books_dict:
-                books_dict[book_id] = {
-                    'book_id': book_id,
-                    'book_name': book_name,
-                    'cover_image_url': cover_image_url,
-                    'chapters': {}
-                }
-            
-            # Handle chapter grouping - use None as key for null chapter_id
-            chapter_id_key = str(note.chapter_id) if note.chapter_id else None
-            
-            # Initialize chapter if not exists
-            if chapter_id_key not in books_dict[book_id]['chapters']:
-                chapter_info = chapters_dict.get(chapter_id_key, {}) if chapter_id_key else {}
-                books_dict[book_id]['chapters'][chapter_id_key] = {
-                    'chapter_id': str(note.chapter_id) if note.chapter_id else None,
-                    'chapter_name': chapter_info.get('chapter_name') if chapter_id_key else None,
-                    'notes': []
-                }
-            
-            # Add note to appropriate chapter
-            note_data = {
-                'note_id': str(note.note_id),
-                'content': note.content,
-                'block_id': note.block_id if note.block_id else None,
-                'created_at': note.created_at.isoformat(),
-                'updated_at': note.updated_at.isoformat()
-            }
-            books_dict[book_id]['chapters'][chapter_id_key]['notes'].append(note_data)
-        
-        # Convert to list format and sort chapters
-        result = []
-        for book_id, book_data in books_dict.items():
-            chapters_list = []
-            # Sort chapters: null chapter_id last, then by chapter_number
-            sorted_chapters = sorted(
-                book_data['chapters'].items(),
-                key=lambda x: (
-                    x[0] is None,  # None values go last
-                    chapters_dict.get(x[0], {}).get('chapter_number', 999999) if x[0] else 999999
-                )
-            )
-            
-            for chapter_id, chapter_data in sorted_chapters:
-                chapters_list.append(chapter_data)
-            
-            result.append({
-                'book_id': book_data['book_id'],
-                'book_name': book_data['book_name'],
-                'cover_image_url': book_data['cover_image_url'],
-                'chapters': chapters_list
-            })
-        
-        return result
     
     def create_bookmark(self, user_id: str, book_id: str) -> Bookmark:
         user = User.objects.get(user_id=user_id)

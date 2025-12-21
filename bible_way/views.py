@@ -88,6 +88,7 @@ from bible_way.interactors.get_all_books_interactor import GetAllBooksInteractor
 from bible_way.interactors.get_books_by_category_and_age_group_interactor import GetBooksByCategoryAndAgeGroupInteractor
 from bible_way.interactors.get_book_chapters_interactor import GetBookChaptersInteractor
 from bible_way.interactors.get_book_details_interactor import GetBookDetailsInteractor
+from bible_way.interactors.get_latest_segregate_bibles_chapters_by_age_group_interactor import GetLatestSegregateBiblesChaptersByAgeGroupInteractor
 from bible_way.interactors.generate_text_to_speech_interactor import GenerateTextToSpeechInteractor
 from bible_way.interactors.search_chapters_interactor import SearchChaptersInteractor
 from bible_way.presenters.user_profile_response import UserProfileResponse
@@ -158,6 +159,7 @@ from bible_way.presenters.get_all_books_response import GetAllBooksResponse
 from bible_way.presenters.get_books_by_category_and_age_group_response import GetBooksByCategoryAndAgeGroupResponse
 from bible_way.presenters.get_book_chapters_response import GetBookChaptersResponse
 from bible_way.presenters.get_book_details_response import GetBookDetailsResponse
+from bible_way.presenters.get_latest_segregate_bibles_chapters_by_age_group_response import GetLatestSegregateBiblesChaptersByAgeGroupResponse
 from bible_way.presenters.generate_text_to_speech_response import GenerateTextToSpeechResponse
 from bible_way.presenters.search_chapters_response import SearchChaptersResponse
 from bible_way.interactors.create_highlight_interactor import CreateHighlightInteractor
@@ -178,8 +180,6 @@ from bible_way.interactors.create_reading_note_interactor import CreateReadingNo
 from bible_way.presenters.create_reading_note_response import CreateReadingNoteResponse
 from bible_way.interactors.get_reading_notes_interactor import GetReadingNotesInteractor
 from bible_way.presenters.get_reading_notes_response import GetReadingNotesResponse
-from bible_way.interactors.get_all_reading_notes_interactor import GetAllReadingNotesInteractor
-from bible_way.presenters.get_all_reading_notes_response import GetAllReadingNotesResponse
 from bible_way.interactors.update_reading_note_interactor import UpdateReadingNoteInteractor
 from bible_way.presenters.update_reading_note_response import UpdateReadingNoteResponse
 from bible_way.interactors.delete_reading_note_interactor import DeleteReadingNoteInteractor
@@ -1072,6 +1072,16 @@ def get_book_chapters_view(request):
         )
     return response
 
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_latest_segregate_bibles_chapters_by_age_group_view(request):
+    response = GetLatestSegregateBiblesChaptersByAgeGroupInteractor(
+        storage=UserDB(), 
+        response=GetLatestSegregateBiblesChaptersByAgeGroupResponse()
+    ).get_latest_segregate_bibles_chapters_by_age_group_interactor()
+    return response
+
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
@@ -1205,7 +1215,6 @@ def admin_update_category_view(request):
 def admin_update_age_group_view(request):
     age_group_id = request.data.get('age_group_id', '').strip()
     cover_image_file = request.FILES.get('cover_image')
-    cover_image_url = request.data.get('cover_image_url', '').strip() or None
     description = request.data.get('description', '').strip() or None
     
     if not age_group_id:
@@ -1215,7 +1224,6 @@ def admin_update_age_group_view(request):
         update_age_group_interactor(
             age_group_id=age_group_id,
             cover_image_file=cover_image_file,
-            cover_image_url=cover_image_url,
             description=description
         )
     return response
@@ -1499,16 +1507,6 @@ def get_reading_notes_view(request, book_id: str):
     
     response = GetReadingNotesInteractor(storage=UserDB(), response=GetReadingNotesResponse()).\
         get_reading_notes_interactor(user_id=user_id, book_id=book_id)
-    return response
-
-@api_view(['GET'])
-@authentication_classes([JWTAuthentication])
-@permission_classes([IsAuthenticated])
-def get_all_reading_notes_view(request):
-    user_id = str(request.user.user_id)
-    
-    response = GetAllReadingNotesInteractor(storage=UserDB(), response=GetAllReadingNotesResponse()).\
-        get_all_reading_notes_interactor(user_id=user_id)
     return response
 
 @api_view(['PUT', 'PATCH'])

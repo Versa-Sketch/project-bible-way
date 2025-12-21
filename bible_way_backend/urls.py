@@ -92,6 +92,7 @@ urlpatterns = [
     path("books/chapters/get", get_book_chapters_view),
     path("books/details", get_book_details_view),
     path("books/search", search_chapters_view),
+    path("books/segregate-bibles/latest-chapters-by-age-group", get_latest_segregate_bibles_chapters_by_age_group_view),
     
     # ==================== Language APIs ====================
     path("languages/all", get_all_languages_view),
@@ -106,7 +107,6 @@ urlpatterns = [
     
     # ==================== Reading Note APIs ====================
     path("reading-note/create", create_reading_note_view),
-    path("reading-note/all", get_all_reading_notes_view),
     path("reading-note/book/<str:book_id>", get_reading_notes_view),
     path("reading-note/update", update_reading_note_view),
     path("reading-note/delete", delete_reading_note_view),

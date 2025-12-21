@@ -10,7 +10,7 @@ class UpdateAgeGroupInteractor:
         self.storage = storage
         self.response = response
 
-    def update_age_group_interactor(self, age_group_id: str, cover_image_file=None, cover_image_url: str = None, description: str = None) -> Response:
+    def update_age_group_interactor(self, age_group_id: str, cover_image_file=None, description: str = None) -> Response:
         # Validation
         if not age_group_id or not age_group_id.strip():
             return self.response.validation_error_response("age_group_id is required")
@@ -22,7 +22,7 @@ class UpdateAgeGroupInteractor:
         if not age_group:
             return self.response.age_group_not_found_response()
         
-        # Handle cover image - prioritize file upload over URL
+        # Handle cover image - only file upload
         final_cover_image_url = None
         if cover_image_file:
             try:
@@ -31,8 +31,6 @@ class UpdateAgeGroupInteractor:
                 final_cover_image_url = s3_upload_file(cover_image_file, image_key)
             except Exception as e:
                 return self.response.error_response(f"Failed to upload cover image: {str(e)}")
-        elif cover_image_url is not None:
-            final_cover_image_url = cover_image_url.strip() if cover_image_url.strip() else None
         
         try:
             # Update age group (only provided fields)
