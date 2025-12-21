@@ -30,3 +30,6 @@ websockets>=12.0
 # Elasticsearch
 elasticsearch>=8.0.0
 elasticsearch-dsl>=8.0.0
+
+# Database (MySQL for Production)
+mysqlclient>=2.1.0
