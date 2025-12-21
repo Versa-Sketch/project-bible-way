@@ -95,6 +95,26 @@ class UserDB:
         user.save()
         return user
     
+    def update_password_reset_otp(self, user: User, otp: str, expiry) -> User:
+        """Update user's password reset OTP and expiry (reuses email_verification_otp field)"""
+        user.email_verification_otp = otp
+        user.otp_expiry = expiry
+        user.save()
+        return user
+    
+    def update_user_password(self, user: User, new_password: str) -> User:
+        """Update user's password"""
+        user.password = make_password(new_password)
+        user.save()
+        return user
+    
+    def clear_password_reset_otp(self, user: User) -> User:
+        """Clear password reset OTP fields"""
+        user.email_verification_otp = None
+        user.otp_expiry = None
+        user.save()
+        return user
+    
     def update_user_profile(self, user_id: str, preferred_language: str = None, 
                            age: int = None, country: str = None, profile_picture_url: str = None) -> User:
         """
@@ -264,6 +284,56 @@ class UserDB:
         return {
             'users': users_data,
             'total_count': total_count
+        }
+    
+    def get_user_following(self, user_id: str) -> dict:
+        """Get list of users that the given user is following"""
+        try:
+            user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        except (ValueError, TypeError):
+            raise Exception("Invalid user_id format")
+        
+        # Get all UserFollowers where this user is the follower
+        following_relationships = UserFollowers.objects.filter(
+            follower_id__user_id=user_uuid
+        ).select_related('followed_id')
+        
+        users_data = []
+        for relationship in following_relationships:
+            followed_user = relationship.followed_id
+            users_data.append({
+                'user_name': followed_user.username,
+                'profile_picture': followed_user.profile_picture_url or ''
+            })
+        
+        return {
+            'users': users_data,
+            'total_count': len(users_data)
+        }
+    
+    def get_user_followers(self, user_id: str) -> dict:
+        """Get list of users who are following the given user"""
+        try:
+            user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        except (ValueError, TypeError):
+            raise Exception("Invalid user_id format")
+        
+        # Get all UserFollowers where this user is being followed
+        follower_relationships = UserFollowers.objects.filter(
+            followed_id__user_id=user_uuid
+        ).select_related('follower_id')
+        
+        users_data = []
+        for relationship in follower_relationships:
+            follower_user = relationship.follower_id
+            users_data.append({
+                'user_name': follower_user.username,
+                'profile_picture': follower_user.profile_picture_url or ''
+            })
+        
+        return {
+            'users': users_data,
+            'total_count': len(users_data)
         }
     
     def follow_user(self, follower_id: str, followed_id: str) -> UserFollowers:

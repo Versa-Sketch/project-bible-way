@@ -11,6 +11,8 @@ urlpatterns = [
     path("user/google/authentication", google_authentication_view),
     path("user/verify-email", verify_email_view),
     path("user/resend-verification-email", resend_verification_email_view),
+    path("user/forgot-password", forgot_password_view),
+    path("user/otp-verify-reset-password", reset_password_view),
     
     # ==================== User Profile APIs ====================
     path("user/profile/me", get_current_user_profile_view),
@@ -25,6 +27,8 @@ urlpatterns = [
     # ==================== User Follow APIs ====================
     path("user/follow", follow_user_view),
     path("user/unfollow", unfollow_user_view),
+    path("user/following", get_user_following_view),
+    path("user/followers", get_user_followers_view),
     
     # ==================== Post APIs ====================
     path("post/create", create_post_view),

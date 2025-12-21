@@ -13,6 +13,10 @@ from bible_way.interactors.verify_email_interactor import VerifyEmailInteractor
 from bible_way.presenters.verify_email_response import VerifyEmailResponse
 from bible_way.interactors.resend_verification_email_interactor import ResendVerificationEmailInteractor
 from bible_way.presenters.resend_verification_email_response import ResendVerificationEmailResponse
+from bible_way.interactors.forgot_password_interactor import ForgotPasswordInteractor
+from bible_way.presenters.forgot_password_response import ForgotPasswordResponse
+from bible_way.interactors.reset_password_interactor import ResetPasswordInteractor
+from bible_way.presenters.reset_password_response import ResetPasswordResponse
 from bible_way.interactors.google_authentication_interactor import GoogleAuthenticationInteractor
 from bible_way.presenters.google_auth_response import GoogleAuthResponse
 from bible_way.interactors.user_profile_interactor import UserProfileInteractor
@@ -23,6 +27,8 @@ from bible_way.interactors.get_complete_user_profile_interactor import GetComple
 from bible_way.interactors.update_profile_interactor import UpdateProfileInteractor
 from bible_way.interactors.follow_user_interactor import FollowUserInteractor
 from bible_way.interactors.unfollow_user_interactor import UnfollowUserInteractor
+from bible_way.interactors.get_user_following_interactor import GetUserFollowingInteractor
+from bible_way.interactors.get_user_followers_interactor import GetUserFollowersInteractor
 from bible_way.interactors.create_post_interactor import CreatePostInteractor
 from bible_way.interactors.update_post_interactor import UpdatePostInteractor
 from bible_way.interactors.delete_post_interactor import DeletePostInteractor
@@ -85,6 +91,8 @@ from bible_way.presenters.get_complete_user_profile_response import GetCompleteU
 from bible_way.presenters.update_profile_response import UpdateProfileResponse
 from bible_way.presenters.follow_user_response import FollowUserResponse
 from bible_way.presenters.unfollow_user_response import UnfollowUserResponse
+from bible_way.presenters.get_user_following_response import GetUserFollowingResponse
+from bible_way.presenters.get_user_followers_response import GetUserFollowersResponse
 from bible_way.presenters.create_post_response import CreatePostResponse
 from bible_way.presenters.update_post_response import UpdatePostResponse
 from bible_way.presenters.delete_post_response import DeletePostResponse
@@ -247,6 +255,38 @@ def resend_verification_email_view(request):
         storage=UserDB(), 
         response=ResendVerificationEmailResponse()
     ).resend_verification_email_interactor(email=email)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def forgot_password_view(request):
+    email = request.data.get('email', '').strip()
+    
+    response = ForgotPasswordInteractor(
+        storage=UserDB(),
+        response=ForgotPasswordResponse()
+    ).forgot_password_interactor(email=email)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([])
+def reset_password_view(request):
+    email = request.data.get('email', '').strip()
+    otp = request.data.get('otp', '').strip()
+    new_password = request.data.get('new_password', '').strip()
+    confirm_password = request.data.get('confirm_password', '').strip()
+    
+    response = ResetPasswordInteractor(
+        storage=UserDB(),
+        response=ResetPasswordResponse()
+    ).reset_password_interactor(
+        email=email,
+        otp=otp,
+        new_password=new_password,
+        confirm_password=confirm_password
+    )
     return response
 
 @api_view(['POST'])
@@ -427,6 +467,24 @@ def unfollow_user_view(request):
     
     response = UnfollowUserInteractor(storage=UserDB(), response=UnfollowUserResponse()).\
         unfollow_user_interactor(follower_id=follower_id, followed_id=followed_id)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_user_following_view(request):
+    user_id = str(request.user.user_id)
+    response = GetUserFollowingInteractor(storage=UserDB(), response=GetUserFollowingResponse()).\
+        get_user_following_interactor(user_id=user_id)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_user_followers_view(request):
+    user_id = str(request.user.user_id)
+    response = GetUserFollowersInteractor(storage=UserDB(), response=GetUserFollowersResponse()).\
+        get_user_followers_interactor(user_id=user_id)
     return response
 
 @api_view(['POST'])
