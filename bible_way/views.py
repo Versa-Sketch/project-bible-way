@@ -1043,17 +1043,13 @@ def get_book_details_view(request):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def generate_text_to_speech_view(request):
-    chapter_id = request.data.get('chapter_id', '').strip()
-    book_id = request.data.get('book_id', '').strip()
-    blocks = request.data.get('blocks', [])
-    language_code = request.data.get('language_code', 'en-US').strip()
+    text = request.data.get('text', '').strip()
+    language = request.data.get('language', 'en-US').strip()
 
     response = GenerateTextToSpeechInteractor(response=GenerateTextToSpeechResponse()).\
         generate_text_to_speech_interactor(
-            chapter_id=chapter_id,
-            book_id=book_id,
-            blocks=blocks,
-            language_code=language_code
+            text=text,
+            language=language
         )
     return response
 

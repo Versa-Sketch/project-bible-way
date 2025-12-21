@@ -6,18 +6,13 @@ class GenerateTextToSpeechResponse:
 
     @staticmethod
     def audio_generated_successfully_response(
-        blocks_data: list,
-        total_blocks: int,
-        total_duration: float,
-        audio_format: str
+        audio: str,
+        total_duration: float
     ) -> Response:
         return Response(
             {
                 "success": True,
-                "message": f"Audio generated successfully for {total_blocks} block{'s' if total_blocks != 1 else ''}",
-                "blocks": blocks_data,
-                "total_blocks": total_blocks,
-                "audio_format": audio_format,
+                "audio": audio,
                 "total_duration": total_duration
             },
             status=status.HTTP_200_OK
