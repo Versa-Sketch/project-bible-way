@@ -31,6 +31,8 @@ websockets>=12.0
 elasticsearch>=8.0.0
 elasticsearch-dsl>=8.0.0
 
+# Database (MySQL for Production)
+mysqlclient>=2.1.0
 # Google Cloud Text-to-Speech
 google-cloud-texttospeech>=2.16.0
 
