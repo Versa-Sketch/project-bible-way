@@ -311,7 +311,7 @@ class UserDB:
             'total_count': len(users_data)
         }
     
-    def get_user_followers(self, user_id: str) -> dict:
+    def get_user_followers(self, user_id: str, current_user_id: str = None) -> dict:
         """Get list of users who are following the given user"""
         try:
             user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
@@ -323,12 +323,31 @@ class UserDB:
             followed_id__user_id=user_uuid
         ).select_related('follower_id')
         
+        # Get current user UUID if provided
+        current_user_uuid = None
+        if current_user_id:
+            try:
+                current_user_uuid = uuid.UUID(current_user_id) if isinstance(current_user_id, str) else current_user_id
+            except (ValueError, TypeError):
+                current_user_uuid = None
+        
         users_data = []
         for relationship in follower_relationships:
             follower_user = relationship.follower_id
+            follower_user_uuid = follower_user.user_id
+            
+            # Check if current_user is following this follower
+            is_following = False
+            if current_user_uuid:
+                is_following = UserFollowers.objects.filter(
+                    follower_id__user_id=current_user_uuid,
+                    followed_id__user_id=follower_user_uuid
+                ).exists()
+            
             users_data.append({
                 'user_name': follower_user.username,
-                'profile_picture': follower_user.profile_picture_url or ''
+                'profile_picture': follower_user.profile_picture_url or '',
+                'is_following': is_following
             })
         
         return {

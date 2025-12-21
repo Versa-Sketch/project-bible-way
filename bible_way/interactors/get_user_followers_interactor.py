@@ -8,7 +8,7 @@ class GetUserFollowersInteractor:
         self.storage = storage
         self.response = response
 
-    def get_user_followers_interactor(self, user_id: str) -> Response:
+    def get_user_followers_interactor(self, user_id: str, current_user_id: str = None) -> Response:
         if not user_id or not user_id.strip():
             return self.response.validation_error_response("user_id is required")
         
@@ -20,7 +20,7 @@ class GetUserFollowersInteractor:
             return self.response.user_not_found_response()
         
         try:
-            result = self.storage.get_user_followers(user_id=user_id)
+            result = self.storage.get_user_followers(user_id=user_id, current_user_id=current_user_id)
             
             return self.response.success_response(
                 users=result['users'],
