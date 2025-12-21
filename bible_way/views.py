@@ -68,6 +68,8 @@ from bible_way.interactors.unlike_verse_interactor import UnlikeVerseInteractor
 from bible_way.interactors.get_verse_interactor import GetVerseInteractor
 from bible_way.interactors.get_all_verses_interactor import GetAllVersesInteractor
 from bible_way.interactors.admin.create_verse_interactor import CreateVerseInteractor
+from bible_way.interactors.admin.delete_verse_interactor import DeleteVerseInteractor
+from bible_way.interactors.admin.update_verse_interactor import UpdateVerseInteractor
 from bible_way.interactors.admin.create_promotion_interactor import CreatePromotionInteractor
 from bible_way.interactors.admin.create_category_interactor import CreateCategoryInteractor
 from bible_way.interactors.get_categories_interactor import GetCategoriesInteractor
@@ -78,6 +80,10 @@ from bible_way.interactors.admin.get_age_groups_interactor import GetAgeGroupsIn
 from bible_way.interactors.admin.get_languages_interactor import GetLanguagesInteractor
 from bible_way.interactors.admin.create_book_interactor import CreateBookInteractor
 from bible_way.interactors.admin.create_chapters_interactor import CreateChaptersInteractor
+from bible_way.interactors.admin.update_category_interactor import UpdateCategoryInteractor
+from bible_way.interactors.admin.update_age_group_interactor import UpdateAgeGroupInteractor
+from bible_way.interactors.admin.update_book_interactor import UpdateBookInteractor
+from bible_way.interactors.delete_chapter_interactor import DeleteChapterInteractor
 from bible_way.interactors.get_all_books_interactor import GetAllBooksInteractor
 from bible_way.interactors.get_books_by_category_and_age_group_interactor import GetBooksByCategoryAndAgeGroupInteractor
 from bible_way.interactors.get_book_chapters_interactor import GetBookChaptersInteractor
@@ -142,6 +148,10 @@ from bible_way.presenters.admin.get_age_groups_response import GetAgeGroupsRespo
 from bible_way.presenters.admin.get_languages_response import GetLanguagesResponse
 from bible_way.presenters.admin.create_book_response import CreateBookResponse
 from bible_way.presenters.admin.create_chapters_response import CreateChaptersResponse
+from bible_way.presenters.admin.update_category_response import UpdateCategoryResponse
+from bible_way.presenters.admin.update_age_group_response import UpdateAgeGroupResponse
+from bible_way.presenters.admin.update_book_response import UpdateBookResponse
+from bible_way.presenters.delete_chapter_response import DeleteChapterResponse
 from bible_way.presenters.get_all_books_response import GetAllBooksResponse
 from bible_way.presenters.get_books_by_category_and_age_group_response import GetBooksByCategoryAndAgeGroupResponse
 from bible_way.presenters.get_book_chapters_response import GetBookChaptersResponse
@@ -908,6 +918,38 @@ def admin_create_verse_view(request):
         create_verse_interactor(title=title, description=description)
     return response
 
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_delete_verse_view(request):
+    verse_id = request.data.get('verse_id', '').strip()
+    
+    if not verse_id:
+        return DeleteVerseResponse().validation_error_response("verse_id is required in request body")
+    
+    response = DeleteVerseInteractor(storage=UserDB(), response=DeleteVerseResponse()).\
+        delete_verse_interactor(verse_id=verse_id)
+    return response
+
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_update_verse_view(request):
+    verse_id = request.data.get('verse_id', '').strip()
+    title = request.data.get('title', '').strip() or None
+    description = request.data.get('description', '').strip() or None
+    
+    if not verse_id:
+        return UpdateVerseResponse().validation_error_response("verse_id is required in request body")
+    
+    response = UpdateVerseInteractor(storage=UserDB(), response=UpdateVerseResponse()).\
+        update_verse_interactor(
+            verse_id=verse_id,
+            title=title,
+            description=description
+        )
+    return response
+
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated, IsAdminUser])
@@ -1132,6 +1174,70 @@ def admin_create_chapters_view(request):
         )
     return response
 
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_update_category_view(request):
+    category_id = request.data.get('category_id', '').strip()
+    cover_image_file = request.FILES.get('cover_image')
+    cover_image_url = request.data.get('cover_image_url', '').strip() or None
+    description = request.data.get('description', '').strip() or None
+    
+    if not category_id:
+        return UpdateCategoryResponse().validation_error_response("category_id is required in request body")
+    
+    response = UpdateCategoryInteractor(storage=UserDB(), response=UpdateCategoryResponse()).\
+        update_category_interactor(
+            category_id=category_id,
+            cover_image_file=cover_image_file,
+            cover_image_url=cover_image_url,
+            description=description
+        )
+    return response
+
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_update_age_group_view(request):
+    age_group_id = request.data.get('age_group_id', '').strip()
+    cover_image_file = request.FILES.get('cover_image')
+    cover_image_url = request.data.get('cover_image_url', '').strip() or None
+    description = request.data.get('description', '').strip() or None
+    
+    if not age_group_id:
+        return UpdateAgeGroupResponse().validation_error_response("age_group_id is required in request body")
+    
+    response = UpdateAgeGroupInteractor(storage=UserDB(), response=UpdateAgeGroupResponse()).\
+        update_age_group_interactor(
+            age_group_id=age_group_id,
+            cover_image_file=cover_image_file,
+            cover_image_url=cover_image_url,
+            description=description
+        )
+    return response
+
+@api_view(['PUT', 'PATCH'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def admin_update_book_view(request):
+    book_id = request.data.get('book_id', '').strip()
+    title = request.data.get('title', '').strip() or None
+    description = request.data.get('description', '').strip() or None
+    cover_image_file = request.FILES.get('cover_image')
+    cover_image_url = request.data.get('cover_image_url', '').strip() or None
+    
+    if not book_id:
+        return UpdateBookResponse().validation_error_response("book_id is required in request body")
+    
+    response = UpdateBookInteractor(storage=UserDB(), response=UpdateBookResponse()).\
+        update_book_interactor(
+            book_id=book_id,
+            title=title,
+            description=description,
+            cover_image_file=cover_image_file,
+            cover_image_url=cover_image_url
+        )
+    return response
 
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
@@ -1412,6 +1518,19 @@ def delete_reading_note_view(request):
     
     response = DeleteReadingNoteInteractor(storage=UserDB(), response=DeleteReadingNoteResponse()).\
         delete_reading_note_interactor(note_id=note_id, user_id=user_id)
+    return response
+
+@api_view(['DELETE'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def delete_chapter_view(request):
+    chapter_id = request.data.get('chapter_id', '').strip()
+    
+    if not chapter_id:
+        return DeleteChapterResponse().validation_error_response("chapter_id is required in request body")
+    
+    response = DeleteChapterInteractor(storage=UserDB(), response=DeleteChapterResponse()).\
+        delete_chapter_interactor(chapter_id=chapter_id)
     return response
 
 @api_view(['POST'])

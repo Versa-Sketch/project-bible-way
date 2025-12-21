@@ -1529,6 +1529,38 @@ class UserDB:
         )
         return verse
     
+    def get_verse_by_id(self, verse_id: str):
+        """Get verse by verse_id"""
+        try:
+            verse_uuid = uuid.UUID(verse_id) if isinstance(verse_id, str) else verse_id
+            return Verse.objects.get(verse_id=verse_uuid)
+        except (Verse.DoesNotExist, ValueError, TypeError):
+            return None
+    
+    def delete_verse(self, verse_id: str):
+        """Delete a verse by verse_id"""
+        try:
+            verse_uuid = uuid.UUID(verse_id) if isinstance(verse_id, str) else verse_id
+            verse = Verse.objects.get(verse_id=verse_uuid)
+            verse.delete()
+            return True
+        except (Verse.DoesNotExist, ValueError, TypeError) as e:
+            raise Exception(f"Verse not found: {str(e)}")
+    
+    def update_verse(self, verse_id: str, title: str = None, description: str = None):
+        """Update verse fields (all fields optional)"""
+        try:
+            verse_uuid = uuid.UUID(verse_id) if isinstance(verse_id, str) else verse_id
+            verse = Verse.objects.get(verse_id=verse_uuid)
+            if title is not None:
+                verse.title = title.strip() if title.strip() else None
+            if description is not None:
+                verse.description = description.strip() if description.strip() else None
+            verse.save()
+            return verse
+        except Verse.DoesNotExist:
+            raise Exception("Verse not found")
+    
     def create_promotion(self, title: str, description: str, price, redirect_link: str, meta_data: dict = None) -> Promotion:
         promotion = Promotion.objects.create(
             title=title.strip(),
@@ -1594,6 +1626,47 @@ class UserDB:
         except AgeGroup.DoesNotExist:
             return None
     
+    def update_category(self, category_id: str, cover_image_url: str = None, description: str = None):
+        """Update category fields (all fields optional)"""
+        try:
+            category = Category.objects.get(category_id=category_id)
+            if cover_image_url is not None:
+                category.cover_image_url = cover_image_url
+            if description is not None:
+                category.description = description
+            category.save()
+            return category
+        except Category.DoesNotExist:
+            raise Exception("Category not found")
+    
+    def update_age_group(self, age_group_id: str, cover_image_url: str = None, description: str = None):
+        """Update age group fields (all fields optional)"""
+        try:
+            age_group = AgeGroup.objects.get(age_group_id=age_group_id)
+            if cover_image_url is not None:
+                age_group.cover_image_url = cover_image_url
+            if description is not None:
+                age_group.description = description
+            age_group.save()
+            return age_group
+        except AgeGroup.DoesNotExist:
+            raise Exception("Age group not found")
+    
+    def update_book(self, book_id: str, title: str = None, description: str = None, cover_image_url: str = None):
+        """Update book fields (all fields optional)"""
+        try:
+            book = Book.objects.get(book_id=book_id)
+            if title is not None:
+                book.title = title
+            if description is not None:
+                book.description = description
+            if cover_image_url is not None:
+                book.cover_image_url = cover_image_url
+            book.save()
+            return book
+        except Book.DoesNotExist:
+            raise Exception("Book not found")
+    
     def get_language_by_id(self, language_id: str):
         try:
             return Language.objects.get(language_id=language_id)
@@ -1651,6 +1724,24 @@ class UserDB:
             video_url=video_url
         )
         return chapter
+    
+    def get_chapter_by_id(self, chapter_id: str):
+        """Get chapter by chapter_id"""
+        try:
+            chapter_uuid = uuid.UUID(chapter_id) if isinstance(chapter_id, str) else chapter_id
+            return Chapters.objects.get(chapter_id=chapter_uuid)
+        except (Chapters.DoesNotExist, ValueError, TypeError):
+            return None
+    
+    def delete_chapter(self, chapter_id: str):
+        """Delete a chapter by chapter_id"""
+        try:
+            chapter_uuid = uuid.UUID(chapter_id) if isinstance(chapter_id, str) else chapter_id
+            chapter = Chapters.objects.get(chapter_id=chapter_uuid)
+            chapter.delete()
+            return True
+        except (Chapters.DoesNotExist, ValueError, TypeError) as e:
+            raise Exception(f"Chapter not found: {str(e)}")
     
     def update_book_parsed_status(self, book_id: str, total_chapters: int, parsed_at=None) -> Book:
         from django.utils import timezone
