@@ -39,10 +39,9 @@ class ForgotPasswordInteractor:
         # Get user by email
         user = self.storage.get_user_by_email(email)
         if not user:
-            # Return success to prevent email enumeration attacks
-            # But log for debugging
+            # Log for debugging
             logger.warning(f"Password reset requested for non-existent email: {email}")
-            return self.response.otp_sent_success_response()
+            return self.response.user_not_found_response()
         
         # Check if user uses email authentication (not GOOGLE only)
         if user.auth_provider == AuthProviderChoices.GOOGLE:
