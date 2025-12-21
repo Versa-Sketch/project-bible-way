@@ -32,7 +32,9 @@ class GetHighlightsInteractor:
                 highlights_data.append({
                     "highlight_id": str(highlight.highlight_id),
                     "book_id": str(highlight.book.book_id),
-                    "block_id": str(highlight.block_id) if highlight.block_id else None,
+                    "chapter_id": str(highlight.chapter.chapter_id) if highlight.chapter else None,
+                    "start_block_id": highlight.start_block_id if highlight.start_block_id else None,
+                    "end_block_id": highlight.end_block_id if highlight.end_block_id else None,
                     "start_offset": highlight.start_offset,
                     "end_offset": highlight.end_offset,
                     "color": highlight.color,

@@ -1413,7 +1413,8 @@ def create_highlight_view(request):
     user_id = str(request.user.user_id)
     book_id = request.data.get('book_id', '').strip()
     chapter_id = request.data.get('chapter_id', '').strip()
-    block_id = request.data.get('block_id', '').strip() or None
+    start_block_id = request.data.get('start_block_id', '').strip() or None
+    end_block_id = request.data.get('end_block_id', '').strip() or None
     start_offset = request.data.get('start_offset', '').strip()
     end_offset = request.data.get('end_offset', '').strip()
     color = request.data.get('color', 'yellow').strip() or 'yellow'
@@ -1423,7 +1424,8 @@ def create_highlight_view(request):
             user_id=user_id,
             book_id=book_id,
             chapter_id=chapter_id,
-            block_id=block_id,
+            start_block_id=start_block_id,
+            end_block_id=end_block_id,
             start_offset=start_offset,
             end_offset=end_offset,
             color=color

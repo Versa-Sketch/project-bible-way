@@ -9,7 +9,8 @@ class CreateHighlightInteractor:
         self.storage = storage
         self.response = response
 
-    def create_highlight_interactor(self, user_id: str, book_id: str, chapter_id: str, block_id: str = None,
+    def create_highlight_interactor(self, user_id: str, book_id: str, chapter_id: str, 
+                                   start_block_id: str = None, end_block_id: str = None,
                                    start_offset: str = None, end_offset: str = None, 
                                    color: str = 'yellow') -> Response:
         if not book_id or not book_id.strip():
@@ -50,7 +51,8 @@ class CreateHighlightInteractor:
                 user_id=user_id,
                 book_id=book_id,
                 chapter_id=chapter_id,
-                block_id=block_id,
+                start_block_id=start_block_id,
+                end_block_id=end_block_id,
                 start_offset=start_offset,
                 end_offset=end_offset,
                 color=color

@@ -1792,7 +1792,8 @@ class UserDB:
         book.save()
         return book
     
-    def create_highlight(self, user_id: str, book_id: str, chapter_id: str, block_id: str = None, 
+    def create_highlight(self, user_id: str, book_id: str, chapter_id: str, 
+                        start_block_id: str = None, end_block_id: str = None,
                         start_offset: str = None, end_offset: str = None, color: str = 'yellow') -> Highlight:
         user = User.objects.get(user_id=user_id)
         book = Book.objects.get(book_id=book_id)
@@ -1802,7 +1803,8 @@ class UserDB:
             user=user,
             book=book,
             chapter=chapter,
-            block_id=block_id,
+            start_block_id=start_block_id,
+            end_block_id=end_block_id,
             start_offset=start_offset,
             end_offset=end_offset,
             color=color
