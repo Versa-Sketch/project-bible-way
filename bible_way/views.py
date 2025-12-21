@@ -138,6 +138,8 @@ from bible_way.presenters.unlike_verse_response import UnlikeVerseResponse
 from bible_way.presenters.get_verse_response import GetVerseResponse
 from bible_way.presenters.get_all_verses_response import GetAllVersesResponse
 from bible_way.presenters.admin.create_verse_response import CreateVerseResponse
+from bible_way.presenters.admin.delete_verse_response import DeleteVerseResponse
+from bible_way.presenters.admin.update_verse_response import UpdateVerseResponse
 from bible_way.presenters.admin.create_promotion_response import CreatePromotionResponse
 from bible_way.presenters.admin.create_category_response import CreateCategoryResponse
 from bible_way.presenters.get_categories_response import GetCategoriesResponse
