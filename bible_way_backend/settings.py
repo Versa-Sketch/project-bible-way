@@ -26,6 +26,17 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = ["*"]  # DEV ONLY
 
 # -------------------------------------------------------------------
+# DATA UPLOAD SETTINGS
+# -------------------------------------------------------------------
+# Increase limits for large data uploads (e.g., bulk chapter creation)
+# 500MB limit (524288000 bytes)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 524288000
+# No limit on number of fields (set to a very large number)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+# 500MB limit for file uploads in memory
+FILE_UPLOAD_MAX_MEMORY_SIZE = 524288000
+
+# -------------------------------------------------------------------
 # APPLICATIONS
 # -------------------------------------------------------------------
 INSTALLED_APPS = [
