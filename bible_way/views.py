@@ -178,6 +178,9 @@ from bible_way.interactors.get_top_books_reading_progress_interactor import GetT
 from bible_way.presenters.get_top_books_reading_progress_response import GetTopBooksReadingProgressResponse
 from bible_way.jwt_authentication.jwt_tokens import UserAuthentication
 from bible_way.storage import UserDB
+from bible_way.storage.s3_utils import upload_file_to_s3
+import os
+import uuid
 from bible_way.services.elasticsearch_service import ElasticsearchService
 
 @api_view(['POST'])
@@ -311,7 +314,43 @@ def update_profile_view(request):
     preferred_language = request.data.get('preferred_language', '').strip() or None
     age = request.data.get('age', None)
     country = request.data.get('country', '').strip() or None
-    profile_picture_url = request.data.get('profile_picture_url', '').strip() or None
+    
+    # Handle profile picture: file upload only
+    profile_picture_file = request.FILES.get('profile_picture')
+    profile_picture_url = None
+    
+    if profile_picture_file:
+        # Validate file type
+        allowed_image_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        file_content_type = profile_picture_file.content_type
+        
+        # Also check file extension as fallback
+        file_ext = os.path.splitext(profile_picture_file.name.lower())[1]
+        allowed_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+        
+        if file_content_type not in allowed_image_types and file_ext not in allowed_extensions:
+            return UpdateProfileResponse().validation_error_response(
+                "Profile picture must be an image file (jpg, jpeg, png, gif, or webp)"
+            )
+        
+        # Validate file size (max 5MB)
+        max_file_size = 5 * 1024 * 1024  # 5MB in bytes
+        if profile_picture_file.size > max_file_size:
+            return UpdateProfileResponse().validation_error_response(
+                "Profile picture size must be less than 5MB"
+            )
+        
+        # Upload file to S3
+        try:
+            # Generate S3 key: profiles/{user_id}/{uuid}/{filename}
+            file_uuid = str(uuid.uuid4())
+            safe_filename = os.path.basename(profile_picture_file.name)
+            # Sanitize filename
+            safe_filename = safe_filename.replace(' ', '_').replace('/', '_')
+            s3_key = f"profiles/{user_id}/{file_uuid}/{safe_filename}"
+            profile_picture_url = upload_file_to_s3(profile_picture_file, s3_key)
+        except Exception as e:
+            return UpdateProfileResponse().error_response(f"Failed to upload profile picture: {str(e)}")
     
     response = UpdateProfileInteractor(
         storage=UserDB(),

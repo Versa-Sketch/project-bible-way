@@ -39,10 +39,10 @@ class UpdateProfileInteractor:
             if len(country) < 2 or len(country) > 100:
                 return self.response.validation_error_response("Country must be between 2 and 100 characters")
         
-        # Validate profile_picture_url if provided
+        # Validate profile_picture_url if provided (URL comes from S3 upload)
         if profile_picture_url is not None and profile_picture_url:
-            if len(profile_picture_url) > 500:
-                return self.response.validation_error_response("Profile picture URL must be less than 500 characters")
+            if len(profile_picture_url) > 1000:
+                return self.response.validation_error_response("Profile picture URL must be less than 1000 characters")
         
         try:
             # Update user profile
