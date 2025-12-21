@@ -483,8 +483,9 @@ def get_user_following_view(request):
 @permission_classes([IsAuthenticated])
 def get_user_followers_view(request):
     user_id = str(request.user.user_id)
+    current_user_id = str(request.user.user_id)  # Authenticated user ID for is_following check
     response = GetUserFollowersInteractor(storage=UserDB(), response=GetUserFollowersResponse()).\
-        get_user_followers_interactor(user_id=user_id)
+        get_user_followers_interactor(user_id=user_id, current_user_id=current_user_id)
     return response
 
 @api_view(['POST'])
