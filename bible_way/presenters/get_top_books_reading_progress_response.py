@@ -2,15 +2,15 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-class GetBookDetailsResponse:
+class GetTopBooksReadingProgressResponse:
 
     @staticmethod
-    def book_details_retrieved_successfully_response(book_data: dict) -> Response:
+    def top_books_retrieved_successfully_response(books_data: list) -> Response:
         return Response(
             {
                 "success": True,
-                "message": "Book details retrieved successfully",
-                "data": book_data
+                "message": "Top books retrieved successfully",
+                "data": books_data
             },
             status=status.HTTP_200_OK
         )
@@ -36,3 +36,4 @@ class GetBookDetailsResponse:
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+

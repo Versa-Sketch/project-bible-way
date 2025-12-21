@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
     User,
     UserFollowers,
@@ -26,26 +25,13 @@ from .models import (
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(admin.ModelAdmin):
     list_display = ('username', 'email', 'country', 'age', 'preferred_language', 'auth_provider', 'is_email_verified', 'is_staff', 'is_active')
     list_filter = ('is_staff', 'is_active', 'country', 'preferred_language', 'auth_provider', 'is_email_verified')
     search_fields = ('username', 'email', 'country', 'google_id')
     ordering = ('username',)
     readonly_fields = ('user_id',)
-    fieldsets = BaseUserAdmin.fieldsets + (
-        ('Additional Info', {'fields': ('user_id', 'country', 'age', 'preferred_language')}),
-        ('Authentication', {
-            'fields': ('auth_provider', 'google_id', 'is_email_verified', 'email_verification_otp', 'otp_expiry')
-        }),
-        ('Profile', {
-            'fields': ('profile_picture_url',)
-        }),
-    )
-    add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ('Additional Info', {'fields': ('email', 'country', 'age', 'preferred_language')}),
-        ('Authentication', {'fields': ('auth_provider',)}),
-    )
-
+    
 
 @admin.register(UserFollowers)
 class UserFollowersAdmin(admin.ModelAdmin):

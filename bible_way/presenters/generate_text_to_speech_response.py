@@ -2,15 +2,23 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-class GetBookDetailsResponse:
+class GenerateTextToSpeechResponse:
 
     @staticmethod
-    def book_details_retrieved_successfully_response(book_data: dict) -> Response:
+    def audio_generated_successfully_response(
+        chunks_data: list,
+        total_chunks: int,
+        total_duration: float,
+        audio_format: str
+    ) -> Response:
         return Response(
             {
                 "success": True,
-                "message": "Book details retrieved successfully",
-                "data": book_data
+                "message": f"Audio generated successfully in {total_chunks} chunk{'s' if total_chunks != 1 else ''}",
+                "chunks": chunks_data,
+                "total_chunks": total_chunks,
+                "audio_format": audio_format,
+                "total_duration": total_duration
             },
             status=status.HTTP_200_OK
         )
@@ -36,3 +44,4 @@ class GetBookDetailsResponse:
             },
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
