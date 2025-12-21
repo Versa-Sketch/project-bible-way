@@ -34,6 +34,8 @@ class UserProfileResponseDTO:
     preferred_language: str | None
     profile_picture_url: str | None
     is_admin: bool
+    following_count: int
+    followers_count: int
 
 
 @dataclass
