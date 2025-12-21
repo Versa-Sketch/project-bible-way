@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
-    Bookmark,
     User,
     UserFollowers,
     Post,
@@ -28,16 +27,23 @@ from .models import (
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'country', 'age', 'preferred_language', 'is_staff', 'is_active')
-    list_filter = ('is_staff', 'is_active', 'country', 'preferred_language')
-    search_fields = ('username', 'email', 'country')
+    list_display = ('username', 'email', 'country', 'age', 'preferred_language', 'auth_provider', 'is_email_verified', 'is_staff', 'is_active')
+    list_filter = ('is_staff', 'is_active', 'country', 'preferred_language', 'auth_provider', 'is_email_verified')
+    search_fields = ('username', 'email', 'country', 'google_id')
     ordering = ('username',)
     readonly_fields = ('user_id',)
     fieldsets = BaseUserAdmin.fieldsets + (
         ('Additional Info', {'fields': ('user_id', 'country', 'age', 'preferred_language')}),
+        ('Authentication', {
+            'fields': ('auth_provider', 'google_id', 'is_email_verified', 'email_verification_otp', 'otp_expiry')
+        }),
+        ('Profile', {
+            'fields': ('profile_picture_url',)
+        }),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
         ('Additional Info', {'fields': ('email', 'country', 'age', 'preferred_language')}),
+        ('Authentication', {'fields': ('auth_provider',)}),
     )
 
 
@@ -243,15 +249,6 @@ class HighlightAdmin(admin.ModelAdmin):
     raw_id_fields = ('user', 'book')
 
 
-@admin.register(Bookmark)
-class BookmarkAdmin(admin.ModelAdmin):
-    list_display = ('bookmark_id', 'user', 'book', 'created_at', 'updated_at')
-    list_filter = ('created_at', 'updated_at')
-    search_fields = ('user__username', 'book__title')
-    readonly_fields = ('bookmark_id', 'created_at', 'updated_at')
-    raw_id_fields = ('user', 'book')
-
-
 @admin.register(ShareLink)
 class ShareLinkAdmin(admin.ModelAdmin):
     list_display = ('share_token', 'content_type', 'content_id', 'created_by', 'is_active', 'created_at')
@@ -259,12 +256,3 @@ class ShareLinkAdmin(admin.ModelAdmin):
     search_fields = ('share_token', 'created_by__user_name', 'created_by__email')
     readonly_fields = ('created_at',)
     raw_id_fields = ('created_by',)
-
-
-# @admin.register(ReadingProgress)
-# class ReadingProgressAdmin(admin.ModelAdmin):
-#     list_display = ('reading_progress_id', 'user', 'book', 'progress_percentage', 'block_id', 'chapter_id', 'last_read_at', 'created_at', 'updated_at')
-#     list_filter = ('last_read_at', 'created_at', 'updated_at')
-#     search_fields = ('user__username', 'book__title')
-#     readonly_fields = ('reading_progress_id', 'created_at', 'updated_at')
-#     raw_id_fields = ('user', 'book', 'chapter_id')
