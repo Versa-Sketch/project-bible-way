@@ -24,6 +24,7 @@ from .book_reading import (
     ReadingProgress,
     ReadingNote,
     Highlight,
+    Bookmark,
     LanguageChoices,
     CategoryChoices,
     AgeGroupChoices,
@@ -58,5 +59,6 @@ __all__ = [
     'ReadingProgress',
     'ReadingNote',
     'Highlight',
+    'Bookmark',
 ]
 

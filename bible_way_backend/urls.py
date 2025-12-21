@@ -103,9 +103,8 @@ urlpatterns = [
     path("reading-note/delete", delete_reading_note_view),
     
     # ==================== Bookmark APIs ====================
-    path("bookmark/create", create_bookmark_view),
+    path("bookmark/toggle", toggle_bookmark_view),
     path("bookmark/all", get_bookmarks_view),
-    path("bookmark/delete", delete_bookmark_view),
     
     # ==================== Reading Progress APIs ====================
     path("reading-progress/create", create_reading_progress_view),

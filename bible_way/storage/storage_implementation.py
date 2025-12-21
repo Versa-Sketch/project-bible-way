@@ -1742,19 +1742,20 @@ class UserDB:
             return reading_progress
     
     def get_reading_progress_by_user(self, user_id: str):
-        """Get all reading progress for a user, returns a dictionary mapping book_id to dict with progress_percentage and block_id"""
+        """Get all reading progress for a user, returns a dictionary mapping book_id to dict with progress_percentage, block_id, and chapter_id"""
         user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
         
         reading_progresses = ReadingProgress.objects.filter(
             user__user_id=user_uuid
-        ).select_related('book')
+        ).select_related('book', 'chapter_id')
         
-        # Create a dictionary mapping book_id to dict with progress_percentage and block_id
+        # Create a dictionary mapping book_id to dict with progress_percentage, block_id, and chapter_id
         progress_dict = {}
         for progress in reading_progresses:
             progress_dict[str(progress.book.book_id)] = {
                 'progress_percentage': float(progress.progress_percentage),
-                'block_id': progress.block_id if progress.block_id else None
+                'block_id': progress.block_id if progress.block_id else None,
+                'chapter_id': str(progress.chapter_id.chapter_id) if progress.chapter_id else None
             }
         
         return progress_dict

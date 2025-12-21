@@ -164,6 +164,8 @@ from bible_way.interactors.get_bookmarks_interactor import GetBookmarksInteracto
 from bible_way.presenters.get_bookmarks_response import GetBookmarksResponse
 from bible_way.interactors.delete_bookmark_interactor import DeleteBookmarkInteractor
 from bible_way.presenters.delete_bookmark_response import DeleteBookmarkResponse
+from bible_way.interactors.toggle_bookmark_interactor import ToggleBookmarkInteractor
+from bible_way.presenters.toggle_bookmark_response import ToggleBookmarkResponse
 from bible_way.interactors.create_reading_progress_interactor import CreateReadingProgressInteractor
 from bible_way.presenters.create_reading_progress_response import CreateReadingProgressResponse
 from bible_way.interactors.get_reading_progress_interactor import GetReadingProgressInteractor
@@ -1310,6 +1312,17 @@ def delete_bookmark_view(request):
     
     response = DeleteBookmarkInteractor(storage=UserDB(), response=DeleteBookmarkResponse()).\
         delete_bookmark_interactor(bookmark_id=bookmark_id, user_id=user_id)
+    return response
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def toggle_bookmark_view(request):
+    user_id = str(request.user.user_id)
+    book_id = request.data.get('book_id', '').strip()
+    
+    response = ToggleBookmarkInteractor(storage=UserDB(), response=ToggleBookmarkResponse()).\
+        toggle_bookmark_interactor(user_id=user_id, book_id=book_id)
     return response
 
 @api_view(['POST'])

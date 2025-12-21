@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
+    Bookmark,
     User,
     UserFollowers,
     Post,
@@ -242,6 +243,15 @@ class HighlightAdmin(admin.ModelAdmin):
     raw_id_fields = ('user', 'book')
 
 
+@admin.register(Bookmark)
+class BookmarkAdmin(admin.ModelAdmin):
+    list_display = ('bookmark_id', 'user', 'book', 'created_at', 'updated_at')
+    list_filter = ('created_at', 'updated_at')
+    search_fields = ('user__username', 'book__title')
+    readonly_fields = ('bookmark_id', 'created_at', 'updated_at')
+    raw_id_fields = ('user', 'book')
+
+
 @admin.register(ShareLink)
 class ShareLinkAdmin(admin.ModelAdmin):
     list_display = ('share_token', 'content_type', 'content_id', 'created_by', 'is_active', 'created_at')
@@ -249,3 +259,12 @@ class ShareLinkAdmin(admin.ModelAdmin):
     search_fields = ('share_token', 'created_by__user_name', 'created_by__email')
     readonly_fields = ('created_at',)
     raw_id_fields = ('created_by',)
+
+
+# @admin.register(ReadingProgress)
+# class ReadingProgressAdmin(admin.ModelAdmin):
+#     list_display = ('reading_progress_id', 'user', 'book', 'progress_percentage', 'block_id', 'chapter_id', 'last_read_at', 'created_at', 'updated_at')
+#     list_filter = ('last_read_at', 'created_at', 'updated_at')
+#     search_fields = ('user__username', 'book__title')
+#     readonly_fields = ('reading_progress_id', 'created_at', 'updated_at')
+#     raw_id_fields = ('user', 'book', 'chapter_id')

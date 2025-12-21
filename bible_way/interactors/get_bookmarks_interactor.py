@@ -26,9 +26,10 @@ class GetBookmarksInteractor:
                 book = bookmark.book
                 
                 # Get progress data for this book, default to 0.00 and None if not found
-                progress_data = reading_progress_dict.get(book_id, {'progress_percentage': 0.00, 'block_id': None})
+                progress_data = reading_progress_dict.get(book_id, {'progress_percentage': 0.00, 'block_id': None, 'chapter_id': None})
                 progress_percentage = progress_data.get('progress_percentage', 0.00)
                 block_id = progress_data.get('block_id')
+                chapter_id = progress_data.get('chapter_id')
                 
                 # Build book details
                 book_details = {
@@ -52,6 +53,7 @@ class GetBookmarksInteractor:
                     "book_title": book.title,
                     "progress_percentage": str(progress_percentage),
                     "block_id": block_id,
+                    "chapter_id": chapter_id,
                     "book_details": book_details,
                     "created_at": bookmark.created_at.isoformat() if bookmark.created_at else None,
                     "updated_at": bookmark.updated_at.isoformat() if bookmark.updated_at else None
