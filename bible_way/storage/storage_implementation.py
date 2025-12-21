@@ -1748,6 +1748,98 @@ class UserDB:
         reading_note.delete()
         return True
     
+    def get_all_reading_notes_by_user(self, user_id: str) -> list:
+        """Get all reading notes for a user, grouped by book and chapter"""
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        
+        # Fetch all notes for the user with book relationship
+        notes = ReadingNote.objects.filter(
+            user__user_id=user_uuid
+        ).select_related('book').order_by('book__book_order', 'book__title', '-created_at')
+        
+        if not notes.exists():
+            return []
+        
+        # Extract unique chapter_ids (excluding None)
+        chapter_ids = set()
+        book_ids = set()
+        for note in notes:
+            book_ids.add(note.book.book_id)
+            if note.chapter_id:
+                chapter_ids.add(note.chapter_id)
+        
+        # Fetch all chapters in bulk
+        chapters_dict = {}
+        if chapter_ids:
+            chapters = Chapters.objects.filter(chapter_id__in=chapter_ids).select_related('book')
+            for chapter in chapters:
+                chapters_dict[str(chapter.chapter_id)] = {
+                    'chapter_id': str(chapter.chapter_id),
+                    'chapter_name': chapter.chapter_name or chapter.title or None,
+                    'chapter_number': chapter.chapter_number
+                }
+        
+        # Group notes by book_id, then by chapter_id
+        books_dict = {}
+        
+        for note in notes:
+            book_id = str(note.book.book_id)
+            book_name = note.book.title
+            
+            # Initialize book if not exists
+            if book_id not in books_dict:
+                books_dict[book_id] = {
+                    'book_id': book_id,
+                    'book_name': book_name,
+                    'chapters': {}
+                }
+            
+            # Handle chapter grouping - use None as key for null chapter_id
+            chapter_id_key = str(note.chapter_id) if note.chapter_id else None
+            
+            # Initialize chapter if not exists
+            if chapter_id_key not in books_dict[book_id]['chapters']:
+                chapter_info = chapters_dict.get(chapter_id_key, {}) if chapter_id_key else {}
+                books_dict[book_id]['chapters'][chapter_id_key] = {
+                    'chapter_id': str(note.chapter_id) if note.chapter_id else None,
+                    'chapter_name': chapter_info.get('chapter_name') if chapter_id_key else None,
+                    'notes': []
+                }
+            
+            # Add note to appropriate chapter
+            note_data = {
+                'note_id': str(note.note_id),
+                'content': note.content,
+                'block_id': note.block_id if note.block_id else None,
+                'created_at': note.created_at.isoformat(),
+                'updated_at': note.updated_at.isoformat()
+            }
+            books_dict[book_id]['chapters'][chapter_id_key]['notes'].append(note_data)
+        
+        # Convert to list format and sort chapters
+        result = []
+        for book_id, book_data in books_dict.items():
+            chapters_list = []
+            # Sort chapters: null chapter_id last, then by chapter_number
+            sorted_chapters = sorted(
+                book_data['chapters'].items(),
+                key=lambda x: (
+                    x[0] is None,  # None values go last
+                    chapters_dict.get(x[0], {}).get('chapter_number', 999999) if x[0] else 999999
+                )
+            )
+            
+            for chapter_id, chapter_data in sorted_chapters:
+                chapters_list.append(chapter_data)
+            
+            result.append({
+                'book_id': book_data['book_id'],
+                'book_name': book_data['book_name'],
+                'chapters': chapters_list
+            })
+        
+        return result
+    
     def create_bookmark(self, user_id: str, book_id: str) -> Bookmark:
         user = User.objects.get(user_id=user_id)
         book = Book.objects.get(book_id=book_id)
