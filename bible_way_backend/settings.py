@@ -113,46 +113,29 @@ WSGI_APPLICATION = 'bible_way_backend.wsgi.application'
 ASGI_APPLICATION = 'bible_way_backend.asgi.application'
 
 # Database Configuration
-# Switch between SQLite (local) and MySQL (production) via DB_ENGINE env variable
-# Set DB_ENGINE=mysql for production, leave unset or set to sqlite for local development
-
-DB_ENGINE = os.getenv('DB_ENGINE', 'sqlite').lower()
-
-if DB_ENGINE == 'mysql':
-    # Production: AWS RDS MySQL Configuration
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DB_NAME', 'bible_way_db'),
-            'USER': os.getenv('DB_USER', 'admin'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '3306'),
-            'OPTIONS': {
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-                'charset': 'utf8mb4',
-                'connect_timeout': 10,
-            },
-            'CONN_MAX_AGE': 600,  # Connection pooling (10 minutes)
+# Production: AWS RDS MySQL Configuration
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
         }
     }
-else:
-    # Local Development: SQLite Configuration
-    # Uncomment below and comment MySQL config above to use SQLite locally
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-    
-    # Alternative: Keep SQLite always available (commented for reference)
-    # DATABASES = {
-    #     'default': {
-    #         'ENGINE': 'django.db.backends.sqlite3',
-    #         'NAME': BASE_DIR / 'db.sqlite3',
-    #     }
-    # }
+}
+
+# Local Development: SQLite Configuration (Commented out - uncomment to use locally)
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': BASE_DIR / 'db.sqlite3',
+#     }
+# }
 
 # -------------------------------------------------------------------
 # AUTH
