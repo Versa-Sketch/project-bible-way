@@ -1785,12 +1785,14 @@ class UserDB:
         for note in notes:
             book_id = str(note.book.book_id)
             book_name = note.book.title
+            cover_image_url = note.book.cover_image_url or ''
             
             # Initialize book if not exists
             if book_id not in books_dict:
                 books_dict[book_id] = {
                     'book_id': book_id,
                     'book_name': book_name,
+                    'cover_image_url': cover_image_url,
                     'chapters': {}
                 }
             
@@ -1835,6 +1837,7 @@ class UserDB:
             result.append({
                 'book_id': book_data['book_id'],
                 'book_name': book_data['book_name'],
+                'cover_image_url': book_data['cover_image_url'],
                 'chapters': chapters_list
             })
         
