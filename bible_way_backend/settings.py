@@ -23,7 +23,7 @@ SECRET_KEY = os.getenv(
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ["*"]  # DEV ONLY
+ALLOWED_HOSTS = ["*"]
 
 # -------------------------------------------------------------------
 # DATA UPLOAD SETTINGS
@@ -64,7 +64,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'bible_way.middleware.DisableCSRFForAPI',  # Custom middleware to exempt API endpoints
+    # 'bible_way.middleware.DisableCSRFForAPI',  # Custom middleware to exempt API endpoints
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -74,11 +74,12 @@ MIDDLEWARE = [
 # -------------------------------------------------------------------
 # CORS CONFIGURATION (FOR FRONTEND)
 # -------------------------------------------------------------------
-# TESTING ONLY - Allow all origins
+# Note: CORS_ALLOW_ALL_ORIGINS and CORS_ALLOW_CREDENTIALS cannot both be True
+# Using CORS_ALLOW_ALL_ORIGINS = True for maximum compatibility
 CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_CREDENTIALS = True  # Cannot be used with CORS_ALLOW_ALL_ORIGINS
 
-CORS_ALLOW_CREDENTIALS = True
-
+# Explicitly allow all methods and headers for maximum compatibility
 CORS_ALLOW_METHODS = [
     'DELETE',
     'GET',
@@ -103,13 +104,30 @@ CORS_ALLOW_HEADERS = [
 # -------------------------------------------------------------------
 # CSRF CONFIG
 # -------------------------------------------------------------------
-# TESTING ONLY - Allow all origins
+# Allow all origins - Configure CSRF to be maximally permissive
+# Note: Django doesn't support wildcards in CSRF_TRUSTED_ORIGINS
+# For API endpoints using JWT auth, CSRF is not required
 CSRF_TRUSTED_ORIGINS = [
     "https://bibleway.io",
     "https://www.bibleway.io",
-    "https://*",
-    "http://*",
+    "https://api.bibleway.io",
+    "https://www.api.bibleway.io",
+    "https://www.api.bibleway.io",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:8000",
+    "http://localhost",
+    "http://127.0.0.1",
+    # Add any other specific origins you need
 ]
+# Make CSRF cookies work with all cross-origin requests
+CSRF_COOKIE_SECURE = False  # Allow HTTP (set to True in production with HTTPS only)
+CSRF_COOKIE_SAMESITE = 'None'  # Allow all cross-site requests
+CSRF_USE_SESSIONS = False  # Use cookie-based CSRF tokens
+# CSRF is effectively bypassed for API endpoints via JWT authentication
 
 # -------------------------------------------------------------------
 ROOT_URLCONF = 'bible_way_backend.urls'
