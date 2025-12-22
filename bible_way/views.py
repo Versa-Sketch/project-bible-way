@@ -180,6 +180,8 @@ from bible_way.interactors.create_reading_note_interactor import CreateReadingNo
 from bible_way.presenters.create_reading_note_response import CreateReadingNoteResponse
 from bible_way.interactors.get_reading_notes_interactor import GetReadingNotesInteractor
 from bible_way.presenters.get_reading_notes_response import GetReadingNotesResponse
+from bible_way.interactors.get_all_reading_notes_interactor import GetAllReadingNotesInteractor
+from bible_way.presenters.get_all_reading_notes_response import GetAllReadingNotesResponse
 from bible_way.interactors.update_reading_note_interactor import UpdateReadingNoteInteractor
 from bible_way.presenters.update_reading_note_response import UpdateReadingNoteResponse
 from bible_way.interactors.delete_reading_note_interactor import DeleteReadingNoteInteractor
@@ -1509,6 +1511,19 @@ def get_reading_notes_view(request, book_id: str):
     
     response = GetReadingNotesInteractor(storage=UserDB(), response=GetReadingNotesResponse()).\
         get_reading_notes_interactor(user_id=user_id, book_id=book_id)
+    return response
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def get_all_reading_notes_view(request):
+    user_id = request.query_params.get('user_id', '').strip()
+    
+    if not user_id:
+        user_id = str(request.user.user_id)
+    
+    response = GetAllReadingNotesInteractor(storage=UserDB(), response=GetAllReadingNotesResponse()).\
+        get_all_reading_notes_interactor(user_id=user_id)
     return response
 
 @api_view(['PUT', 'PATCH'])

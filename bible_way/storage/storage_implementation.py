@@ -1879,6 +1879,11 @@ class UserDB:
         reading_note.delete()
         return True
     
+    def get_all_reading_notes_by_user(self, user_id: str):
+        return ReadingNote.objects.filter(
+            user__user_id=user_id
+        ).select_related('user', 'book').prefetch_related('book__chapters').order_by('book__title', '-created_at')
+    
     def create_bookmark(self, user_id: str, book_id: str) -> Bookmark:
         user = User.objects.get(user_id=user_id)
         book = Book.objects.get(book_id=book_id)

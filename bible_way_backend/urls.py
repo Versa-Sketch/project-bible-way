@@ -107,6 +107,7 @@ urlpatterns = [
     
     # ==================== Reading Note APIs ====================
     path("reading-note/create", create_reading_note_view),
+    path("reading-note/all", get_all_reading_notes_view),
     path("reading-note/book/<str:book_id>", get_reading_notes_view),
     path("reading-note/update", update_reading_note_view),
     path("reading-note/delete", delete_reading_note_view),
