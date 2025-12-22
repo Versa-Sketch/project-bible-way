@@ -74,10 +74,8 @@ MIDDLEWARE = [
 # -------------------------------------------------------------------
 # CORS CONFIGURATION (FOR FRONTEND)
 # -------------------------------------------------------------------
-CORS_ALLOWED_ORIGINS = [
-    "https://bibleway.io",
-    "https://www.bibleway.io",
-]
+# TESTING ONLY - Allow all origins
+CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -105,9 +103,12 @@ CORS_ALLOW_HEADERS = [
 # -------------------------------------------------------------------
 # CSRF CONFIG
 # -------------------------------------------------------------------
+# TESTING ONLY - Allow all origins
 CSRF_TRUSTED_ORIGINS = [
     "https://bibleway.io",
     "https://www.bibleway.io",
+    "https://*",
+    "http://*",
 ]
 
 # -------------------------------------------------------------------
