@@ -79,17 +79,19 @@ MIDDLEWARE = [
 # -------------------------------------------------------------------
 # CORS CONFIGURATION (FOR FRONTEND)
 # -------------------------------------------------------------------
-# Allow CORS only from bibleway.io domains
-CORS_ALLOW_ALL_ORIGINS = False
+# ✅ TEMPORARY: Allow all origins for debugging
+# Once working, restrict to specific domains
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-# Only allow requests from bibleway.io domains
-CORS_ALLOWED_ORIGINS = [
-    "https://bibleway.io",
-    "https://www.bibleway.io",
-    "http://bibleway.io",
-    "http://www.bibleway.io",
-]
+# Only allow requests from bibleway.io domains (not used when ALLOW_ALL is True)
+# CORS_ALLOWED_ORIGINS = [
+#     "https://bibleway.io",
+#     "https://www.bibleway.io",
+#     "http://bibleway.io",
+#     "http://www.bibleway.io",
+#     "http://13.201.42.31",
+# ]
 
 # Explicitly allow all methods and headers for maximum compatibility
 CORS_ALLOW_METHODS = [
