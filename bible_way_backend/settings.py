@@ -293,8 +293,14 @@ USE_TZ = True
 # -------------------------------------------------------------------
 # STATIC / MEDIA (S3)
 # -------------------------------------------------------------------
-STATIC_URL = 'static/'
+# Static files (CSS, JavaScript, admin files) - served locally via NGINX
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# Media files (user uploads) - served from S3
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+
+# AWS S3 Configuration (for media files)
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME', '')
@@ -316,9 +322,6 @@ AWS_SES_FROM_EMAIL = os.getenv('AWS_SES_FROM_EMAIL', 'noreply@bibleway.com')
 ZEPTOMAIL_API_TOKEN = os.getenv('ZEPTOMAIL_API_TOKEN', '')
 ZEPTOMAIL_FROM_EMAIL = os.getenv('ZEPTOMAIL_FROM_EMAIL', 'noreply@linchpinsoftsolution.com')
 ZEPTOMAIL_OTP_EXPIRY_MINUTES = int(os.getenv('ZEPTOMAIL_OTP_EXPIRY_MINUTES', '15'))
-
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
 # -------------------------------------------------------------------
 # FIREBASE
