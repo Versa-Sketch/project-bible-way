@@ -74,10 +74,14 @@ MIDDLEWARE = [
 # -------------------------------------------------------------------
 # CORS CONFIGURATION (FOR FRONTEND)
 # -------------------------------------------------------------------
-# Note: CORS_ALLOW_ALL_ORIGINS and CORS_ALLOW_CREDENTIALS cannot both be True
+# IMPORTANT: CORS_ALLOW_ALL_ORIGINS and CORS_ALLOW_CREDENTIALS cannot both be True
 # Using CORS_ALLOW_ALL_ORIGINS = True for maximum compatibility
+# If your frontend sends credentials (withCredentials: true), you MUST:
+#   1. Set CORS_ALLOW_ALL_ORIGINS = False
+#   2. Set CORS_ALLOW_CREDENTIALS = True  
+#   3. Add specific origins to CORS_ALLOWED_ORIGINS list
 CORS_ALLOW_ALL_ORIGINS = True
-# CORS_ALLOW_CREDENTIALS = True  # Cannot be used with CORS_ALLOW_ALL_ORIGINS
+CORS_ALLOW_CREDENTIALS = True
 
 # Explicitly allow all methods and headers for maximum compatibility
 CORS_ALLOW_METHODS = [
@@ -92,14 +96,31 @@ CORS_ALLOW_METHODS = [
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
+    'accept-language',
     'authorization',
     'content-type',
+    'content-length',
     'dnt',
     'origin',
+    'referer',
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'x-forwarded-for',
+    'x-forwarded-proto',
+    'cache-control',
+    'pragma',
 ]
+
+# Expose headers that frontend might need to read
+CORS_EXPOSE_HEADERS = [
+    'content-type',
+    'authorization',
+    'x-csrftoken',
+]
+
+# Cache preflight requests for 1 hour
+CORS_PREFLIGHT_MAX_AGE = 3600
 
 # -------------------------------------------------------------------
 # CSRF CONFIG
