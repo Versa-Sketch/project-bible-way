@@ -28,6 +28,9 @@ ALLOWED_HOSTS = [
     "www.bibleway.io",
     "api.bibleway.io",
     "www.api.bibleway.io",
+    "13.201.42.31",  # ✅ AWS EC2 IP address
+    "127.0.0.1",
+    "localhost",
 ]
 
 # -------------------------------------------------------------------
