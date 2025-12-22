@@ -127,6 +127,8 @@ CORS_ALLOW_HEADERS = [
     'sec-ch-ua',
     'sec-ch-ua-mobile',
     'sec-ch-ua-platform',
+    # ✅ Ngrok header (if using ngrok for testing)
+    'ngrok-skip-browser-warning',
 ]
 
 # Expose headers that frontend might need to read
