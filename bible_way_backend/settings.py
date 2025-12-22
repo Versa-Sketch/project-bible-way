@@ -23,7 +23,12 @@ SECRET_KEY = os.getenv(
 
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    "bibleway.io",
+    "www.bibleway.io",
+    "api.bibleway.io",
+    "www.api.bibleway.io",
+]
 
 # -------------------------------------------------------------------
 # DATA UPLOAD SETTINGS
@@ -74,14 +79,17 @@ MIDDLEWARE = [
 # -------------------------------------------------------------------
 # CORS CONFIGURATION (FOR FRONTEND)
 # -------------------------------------------------------------------
-# IMPORTANT: CORS_ALLOW_ALL_ORIGINS and CORS_ALLOW_CREDENTIALS cannot both be True
-# Using CORS_ALLOW_ALL_ORIGINS = True for maximum compatibility
-# If your frontend sends credentials (withCredentials: true), you MUST:
-#   1. Set CORS_ALLOW_ALL_ORIGINS = False
-#   2. Set CORS_ALLOW_CREDENTIALS = True  
-#   3. Add specific origins to CORS_ALLOWED_ORIGINS list
-CORS_ALLOW_ALL_ORIGINS = True
+# Allow CORS only from bibleway.io domains
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
+
+# Only allow requests from bibleway.io domains
+CORS_ALLOWED_ORIGINS = [
+    "https://bibleway.io",
+    "https://www.bibleway.io",
+    "http://bibleway.io",
+    "http://www.bibleway.io",
+]
 
 # Explicitly allow all methods and headers for maximum compatibility
 CORS_ALLOW_METHODS = [
