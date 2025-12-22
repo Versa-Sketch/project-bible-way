@@ -69,7 +69,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    # 'bible_way.middleware.DisableCSRFForAPI',  # Custom middleware to exempt API endpoints
+    'bible_way.middleware.DisableCSRFForAPI',  # ✅ Custom middleware to exempt API endpoints (MUST BE BEFORE CSRF)
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -118,6 +118,10 @@ CORS_ALLOW_HEADERS = [
     'x-forwarded-proto',
     'cache-control',
     'pragma',
+    # ✅ Additional headers for modern browsers
+    'sec-ch-ua',
+    'sec-ch-ua-mobile',
+    'sec-ch-ua-platform',
 ]
 
 # Expose headers that frontend might need to read
@@ -153,7 +157,8 @@ CSRF_TRUSTED_ORIGINS = [
     # Add any other specific origins you need
 ]
 # Make CSRF cookies work with all cross-origin requests
-CSRF_COOKIE_SECURE = False  # Allow HTTP (set to True in production with HTTPS only)
+# ✅ CRITICAL: SameSite=None REQUIRES Secure=True (browser requirement)
+CSRF_COOKIE_SECURE = True  # Required when using SameSite=None
 CSRF_COOKIE_SAMESITE = 'None'  # Allow all cross-site requests
 CSRF_USE_SESSIONS = False  # Use cookie-based CSRF tokens
 # CSRF is effectively bypassed for API endpoints via JWT authentication
